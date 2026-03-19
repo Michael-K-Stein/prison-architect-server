@@ -1,7 +1,6 @@
 from enum import Enum
 
 MSG_MAGIC = 0xF3
-FIRST_SERVER_TO_CLIENT_PACKET = b"\xfb\x00\x00\x00\x0a\x00\x01\xf3\x01\x00"
 NAMESERVER_IP = "216.120.180.54"
 NAMESERVER_PORT = 4533
 
