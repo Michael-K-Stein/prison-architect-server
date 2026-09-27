@@ -21,8 +21,17 @@ class ServerType(Enum):
     DownstreamProxyServer = "DownstreamProxyServer"
 
 
+def normalize_app_id(app_id: str) -> str:
+    """Canonical form for comparing app ids.
+
+    The real Prison Architect client sends its app id WITHOUT dashes
+    (32 hex chars), while the constant is written in UUID form with dashes.
+    """
+    return app_id.replace("-", "").lower()
+
+
 def check_app_id(app_id: str) -> None:
-    if app_id != PRISON_ARCHITECT_APP_ID:
+    if normalize_app_id(app_id) != normalize_app_id(PRISON_ARCHITECT_APP_ID):
         raise ValueError(
             f"Server only support Prison Architect, not the app by id {app_id}"
         )
