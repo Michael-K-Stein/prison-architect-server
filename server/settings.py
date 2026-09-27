@@ -19,12 +19,14 @@ class Settings:
         ip: Union[Literal["127.0.0.1"], str],
         timeout: int,
         region_name: str,
+        upstream: Optional[str] = None,
     ):
         self._verbosity = verbosity
         self._listen_host = listen_host
         self._ip = ip
         self._timeout = timeout
         self._region_name = region_name
+        self._upstream = upstream
 
     def get_verbosity(self) -> "Verbosity":
         return self._verbosity
@@ -40,3 +42,6 @@ class Settings:
 
     def get_region_name(self) -> str:
         return self._region_name
+
+    def get_upstream(self) -> Optional[str]:
+        return self._upstream
