@@ -41,7 +41,7 @@ def _add_common_arguments(p):
         "--timeout",
         type=int,
         help="Grace period between client keep alives before closing sockets.",
-        default=10,
+        default=60,
         required=False,
     )
     p.add_argument(

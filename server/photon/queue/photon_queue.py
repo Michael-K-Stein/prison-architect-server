@@ -56,6 +56,13 @@ class PhotonQueue:
     def __init__(self, sock: socket, remote_name: str, server_type: ServerType) -> None:
         self._init_time = time()
         self._sock = sock
+        # A short recv timeout (not the idle disconnect timeout) so a worker
+        # blocked in recv() wakes up regularly and notices _closing instead of
+        # lingering forever after the socket is shut down from another thread.
+        try:
+            self._sock.settimeout(5.0)
+        except OSError:
+            pass
         self._closing = False
         self._aes_key = None
         self._server_type = server_type
@@ -65,6 +72,11 @@ class PhotonQueue:
         self._last_keep_alive = time()
         self._stream_parser = PhotonStreamParser()
         self._private_key = None
+        # Set while a server-initiated keep-alive ping is unanswered; the
+        # next keep-alive packet from the client must then be parsed as a
+        # *response* (9 bytes) rather than a *request* (5 bytes). TCP ordering
+        # makes this deterministic: a response can only follow our request.
+        self._keepalive_ping_outstanding = False
 
         self._recv_worker = Thread(
             target=self._handle_recv,
@@ -99,36 +111,50 @@ class PhotonQueue:
 
         self._stream_parser.feed(data)
 
-        for packet in self._stream_parser.parse(
-            expect_responses=False,
-            aes_key=self._aes_key,
-        ):
-            try:
-                if isinstance(packet, PhotonKeepAlive):
-                    self._handle_keep_alive(packet)
-                    continue
-                else:
-                    assert isinstance(
-                        packet, PhotonDataPacket
-                    ), f'Expected "PhotonDataPacket", got {type(packet).__name__}'
-                    if isinstance(packet, InitResponsePacket):
-                        self._handle_init_response(packet)
+        try:
+            parsed_packets = self._stream_parser.parse(
+                expect_responses=self._keepalive_ping_outstanding,
+                aes_key=self._aes_key,
+            )
+            for packet in parsed_packets:
+                try:
+                    if isinstance(packet, PhotonKeepAlive):
+                        self._handle_keep_alive(packet)
                         continue
-                    elif isinstance(packet, InitRequestPacket):
-                        self._handle_init_request(packet)
-                        continue
-                    if isinstance(packet, InitEncryptionRequest):
-                        self._outgoing.put(self._handle_dh_request(packet))
-                        continue
-                    elif isinstance(packet, InitEncryptionResponse):
-                        self._handle_dh_response(packet)
-                        continue
-                    self._incoming.put(packet)
-            except RuntimeError as ex:
-                print_error(
-                    self._server_type,
-                    f"Failed to process packet from {self.remote_name}! Exception: {ex}, Raw: {packet.serialize().hex()}",
-                )
+                    else:
+                        assert isinstance(
+                            packet, PhotonDataPacket
+                        ), f'Expected "PhotonDataPacket", got {type(packet).__name__}'
+                        if isinstance(packet, InitResponsePacket):
+                            self._handle_init_response(packet)
+                            continue
+                        elif isinstance(packet, InitRequestPacket):
+                            self._handle_init_request(packet)
+                            continue
+                        if isinstance(packet, InitEncryptionRequest):
+                            self._outgoing.put(self._handle_dh_request(packet))
+                            continue
+                        elif isinstance(packet, InitEncryptionResponse):
+                            self._handle_dh_response(packet)
+                            continue
+                        self._incoming.put(packet)
+                except RuntimeError as ex:
+                    print_error(
+                        self._server_type,
+                        f"Failed to process packet from {self.remote_name}! Exception: {ex}, Raw: {packet.serialize().hex()}",
+                    )
+        except AssertionError as ex:
+            # The byte stream desynced (e.g. a client keep-alive raced our own
+            # ping, so a request was parsed with the response layout). Drop the
+            # undecodable tail and resync: reliable Photon commands are
+            # retransmitted by the client, so nothing irreplaceable is lost.
+            # Without this, the exception would kill the recv worker thread.
+            print_warning(
+                self._server_type,
+                f"Resyncing packet stream from {self.remote_name}: {ex}",
+            )
+            self._stream_parser = PhotonStreamParser()
+            self._keepalive_ping_outstanding = False
 
     def set_aes_key(self, key: bytes) -> None:
         self._aes_key = key
@@ -195,6 +221,8 @@ class PhotonQueue:
 
     def _handle_keep_alive(self, packet: PhotonKeepAlive) -> None:
         if isinstance(packet, PhotonKeepAliveResponse):
+            # Answer to our keep-alive ping: the client is alive.
+            self._keepalive_ping_outstanding = False
             return
         assert isinstance(packet, PhotonKeepAliveRequest)
         self._last_keep_alive = time()
@@ -213,20 +241,44 @@ class PhotonQueue:
         self.push(InitResponsePacket())
 
     def _check_keep_alive(self):
+        timeout = Settings().get_timeout()
+        # Nudge quiet clients with a keep-alive request halfway through the
+        # grace period. A live client answers and refreshes its timer, so only
+        # truly dead connections are reaped at the full timeout. (The game
+        # client goes quiet for long stretches in menus and lobbies, which the
+        # old "close after N seconds of silence" logic mistook for a dead peer.)
+        ping_after = timeout / 2
+        last_ping = 0.0
         while not self._closing:
             sleep(1)
-            if time() - self._last_keep_alive > Settings().get_timeout():
+            idle = time() - self._last_keep_alive
+            if idle > timeout:
                 print_warning(
                     self._server_type,
-                    f"{self.remote_name} timed out. Closing socket.",
+                    f"{self.remote_name} timed out after {int(idle)}s without "
+                    "traffic. Closing socket.",
                 )
-                self._sock.close()
-                self._last_keep_alive = time()
+                try:
+                    self._sock.close()
+                except OSError:
+                    pass
                 self._closing = True
+            elif idle > ping_after and time() - last_ping > ping_after:
+                last_ping = time()
+                # The client's answer arrives as a keep-alive *response*; mark
+                # the ping outstanding so the stream parser decodes it with
+                # the response layout (see _recv_data).
+                self._keepalive_ping_outstanding = True
+                self._outgoing.put(PhotonKeepAliveRequest(self.get_uptime()))
 
     def _handle_send(self):
         while not self._closing:
-            outgoing_packet = self._outgoing.get()
+            try:
+                # Poll (rather than block forever) so __exit__ can join this
+                # worker promptly during shutdown.
+                outgoing_packet = self._outgoing.get(timeout=1)
+            except Empty:
+                continue
             self._recrypt(outgoing_packet)
             serialized_data = outgoing_packet.serialize()
             if isinstance(outgoing_packet, PhotonOperationPacket):
@@ -237,10 +289,15 @@ class PhotonQueue:
                 )
             try:
                 self._sock.sendall(serialized_data)
-            except ConnectionAbortedError:
-                print_error(
+            except OSError as ex:
+                # The peer is gone (e.g. the keep-alive checker closed the
+                # socket while a send was queued, or the client vanished).
+                # Shut this queue down quietly: an uncaught exception here
+                # would kill the worker thread with a traceback.
+                print_warning(
                     self._server_type,
-                    f"Failed to send! ConnectionAbortedError on {self.remote_name}",
+                    f"Failed to send to {self.remote_name}: "
+                    f"{type(ex).__name__}. Closing.",
                 )
                 self._closing = True
                 return
