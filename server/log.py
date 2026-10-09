@@ -8,6 +8,7 @@ import colorama
 
 from server.consts import ServerType
 from server.photon.packet.base import PhotonDataPacket
+from server.proxy_servers.proxy_queue_type import ProxyQueueType
 from server.settings import Settings
 
 
@@ -28,7 +29,7 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
-SENDER_COLORS: Dict[ServerType, str] = {
+SENDER_COLORS: Dict[ServerType | ProxyQueueType, str] = {
     ServerType.NameServer: colorama.Fore.MAGENTA,
     ServerType.MasterServer: colorama.Fore.CYAN,
     ServerType.GameServer: colorama.Fore.WHITE,
@@ -36,14 +37,20 @@ SENDER_COLORS: Dict[ServerType, str] = {
 
 
 def _print_for_sender(
-    sender: Union[ServerType, str], msg: Any, *args: Any, **kwargs: Any
+    sender: Union[ServerType, str, ProxyQueueType], msg: Any, *args: Any, **kwargs: Any
 ) -> None:
-    full_message = (
-        f"[{sender.value.upper() if isinstance(sender, ServerType) else sender.upper()}] \t"
-        + msg
-        + "\t"
-        + "\t".join(str(x) for x in args)
+    sender_name = (
+        sender.value.upper()
+        if isinstance(
+            sender,
+            (
+                ServerType,
+                ProxyQueueType,
+            ),
+        )
+        else sender.upper()
     )
+    full_message = f"[{sender_name}] \t" + msg + "\t" + "\t".join(str(x) for x in args)
     print(
         f"{SENDER_COLORS[sender] if sender in SENDER_COLORS else ''}{full_message}{colorama.Style.RESET_ALL}",
         **kwargs,
@@ -51,7 +58,11 @@ def _print_for_sender(
 
 
 def _print_with_prefix(
-    prefix: str, sender: Union[ServerType, str], msg: Any, *args: Any, **kwargs: Any
+    prefix: str,
+    sender: Union[ServerType, str, ProxyQueueType],
+    msg: Any,
+    *args: Any,
+    **kwargs: Any,
 ) -> None:
     _print_for_sender(
         sender,
@@ -61,34 +72,44 @@ def _print_with_prefix(
     )
 
 
-def print_critical(sender: ServerType, msg: Any, *args: Any, **kwargs: Any) -> None:
+def print_critical(
+    sender: ServerType | ProxyQueueType, msg: Any, *args: Any, **kwargs: Any
+) -> None:
     if Settings().get_verbosity() <= Verbosity.Critical:
         _print_with_prefix("*", sender, msg, *args, **kwargs)
 
 
 def print_debug(
-    sender: Union[ServerType, str], msg: Any, *args: Any, **kwargs: Any
+    sender: Union[ServerType, str, ProxyQueueType], msg: Any, *args: Any, **kwargs: Any
 ) -> None:
     if Settings().get_verbosity() <= Verbosity.Debug:
         _print_with_prefix("~", sender, msg, *args, **kwargs)
 
 
-def print_info(sender: ServerType, msg: Any, *args: Any, **kwargs: Any) -> None:
+def print_info(
+    sender: ServerType | ProxyQueueType, msg: Any, *args: Any, **kwargs: Any
+) -> None:
     if Settings().get_verbosity() <= Verbosity.Info:
         _print_with_prefix("i", sender, msg, *args, **kwargs)
 
 
-def print_success(sender: ServerType, msg: Any, *args: Any, **kwargs: Any) -> None:
+def print_success(
+    sender: ServerType | ProxyQueueType, msg: Any, *args: Any, **kwargs: Any
+) -> None:
     if Settings().get_verbosity() <= Verbosity.Info:
         _print_with_prefix("+", sender, msg, *args, **kwargs)
 
 
-def print_error(sender: ServerType, msg: Any, *args: Any, **kwargs: Any) -> None:
+def print_error(
+    sender: ServerType | ProxyQueueType, msg: Any, *args: Any, **kwargs: Any
+) -> None:
     if Settings().get_verbosity() <= Verbosity.Error:
         _print_with_prefix("!", sender, msg, *args, **kwargs)
 
 
-def print_warning(sender: ServerType, msg: Any, *args: Any, **kwargs: Any) -> None:
+def print_warning(
+    sender: ServerType | ProxyQueueType, msg: Any, *args: Any, **kwargs: Any
+) -> None:
     if Settings().get_verbosity() <= Verbosity.Warning:
         _print_with_prefix("?", sender, msg, *args, **kwargs)
 
@@ -99,9 +120,9 @@ def pprint_clean(val: Any) -> str:
 
 
 def print_packet_log(
-    server_type: ServerType,
+    server_type: ServerType | ProxyQueueType,
     packet: PhotonDataPacket,
-    printer: Optional[Callable[[ServerType, str], None]] = None,
+    printer: Optional[Callable[[ServerType | ProxyQueueType, str], None]] = None,
 ) -> None:
     print_func = printer if printer is not None else print_debug
     print_func(

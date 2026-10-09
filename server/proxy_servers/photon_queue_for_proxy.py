@@ -1,12 +1,11 @@
 from queue import Empty, Queue
 from socket import AF_INET, SOCK_STREAM, socket
 from threading import Thread
-from time import sleep, time
+from time import time
 from types import TracebackType
 from typing import Optional, Type
 
 from server.log import (
-    print_debug,
     print_error,
     print_info,
 )
@@ -28,57 +27,80 @@ from server.photon.photon_enc import (
     generate_dh_keys,
     process_dh_response,
 )
+from server.proxy_servers.proxy_queue_type import ProxyQueueType
 
 
-class PhotonQueueForProxy:  # TODO: Delete this
+class PhotonQueueForProxy:
+    """Base class for Photon Queues used for proxying traffic"""
+
     _incoming: Queue["PhotonDataPacket"]
     _outgoing: Queue["PhotonPacket"]
 
     _sock: socket
-
-    _closing: bool
 
     _aes_key: Optional[bytes]
     _private_key: Optional[int]
 
     _recv_worker: Thread
     _send_worker: Thread
-    my_name: str
-    remote_name: str
 
     _last_keep_alive = 0
     _stream_parser: PhotonStreamParser
 
-    def __init__(self, my_name: str, remote_name: str) -> None:
+    def __init__(self, proxy_type: ProxyQueueType) -> None:
         self._init_time = time()
         self._sock = socket(AF_INET, SOCK_STREAM)
         self._closing = False
-        self._aes_key = None
-        self.my_name = my_name
-        self.remote_name = remote_name
         self._incoming = Queue()
         self._outgoing = Queue()
-        self._last_keep_alive = time()
         self._stream_parser = PhotonStreamParser()
+        self._aes_key = None
         self._private_key = None
+        self._proxy_type = proxy_type
+
+        self._recv_worker = Thread(
+            target=self._recv_loop, name=f"{proxy_type.value} Recv Worker"
+        )
+        self._send_worker = Thread(
+            target=self._send_loop, name=f"{proxy_type.value} Send Worker"
+        )
+
+    def _recv_loop(self) -> None:
+        while not self._closing:
+            try:
+                self._recv_data(self._sock)
+            except ConnectionAbortedError:
+                print_error(self.get_type(), "Receive failed. ConnectionAbortedError")
+                self._closing = True
+
+    def _send_loop(self) -> None:
+        while not self._closing:
+            try:
+                outgoing_packet = self._outgoing.get(timeout=0.5)
+            except Empty:
+                continue
+            self._recrypt(outgoing_packet)
+            try:
+                self._sock.sendall(outgoing_packet.serialize())
+            except (ConnectionAbortedError, ConnectionResetError) as ex:
+                print_error(self.get_type(), f"Send failed. {type(ex).__name__}")
+                self._closing = True
 
     def _recv_data(self, client_sock: socket):
         try:
-            data = client_sock.recv(0x12000)
+            data = client_sock.recv(0x1000)
         except ConnectionResetError:
-            print_error("Failed to recieve! ConnectionResetError")
-            sleep(0.1)
+            print_error(self.get_type(), "Failed to recieve! ConnectionResetError")
             return
         except OSError:
             return
         if len(data) == 0:
             return
-        hdr = f"[{self.remote_name} -> {self.my_name}]"
-        print_debug(f"{hdr} Recieved {len(data)} bytes")
+
         self._stream_parser.feed(data)
 
         for packet in self._stream_parser.parse(
-            expect_responses=self.remote_name == "Server",
+            expect_responses=self.get_type() == ProxyQueueType.Upstream,
             aes_key=self._aes_key,
         ):
             try:
@@ -87,9 +109,6 @@ class PhotonQueueForProxy:  # TODO: Delete this
                     continue
                 else:
                     assert isinstance(packet, PhotonDataPacket)
-                    print_debug(
-                        f"{hdr} {packet.get_header().get_command_name()}, Length: {packet.get_header().packet_length}"
-                    )
                     if isinstance(packet, InitResponsePacket):
                         self._handle_init_response(packet)
                         continue
@@ -105,7 +124,8 @@ class PhotonQueueForProxy:  # TODO: Delete this
                     self._incoming.put(packet)
             except RuntimeError as ex:
                 print_error(
-                    f"{hdr} Failed to process packet! Exception: {ex}, Raw: {packet.serialize().hex()}"
+                    self.get_type(),
+                    f"Failed to process packet! Exception: {ex}, Raw: {packet.serialize().hex()}",
                 )
 
     def set_aes_key(self, key: bytes) -> None:
@@ -123,6 +143,7 @@ class PhotonQueueForProxy:  # TODO: Delete this
         exc_tb: Optional[TracebackType],
     ) -> None:
         self._closing = True
+        self._sock.close()
         self._recv_worker.join(5)
         self._send_worker.join(5)
 
@@ -138,16 +159,22 @@ class PhotonQueueForProxy:  # TODO: Delete this
         self._outgoing.put(packet)
 
     def _handle_dh_request(self, request_packet: InitEncryptionRequest):
-        print_info("    Diffie-Hellman Request")
+        print_info(self.get_type(), "    Diffie-Hellman Request")
 
         client_pub_key = request_packet.get_public_key()
-        print_info(f"    Client Public Key: {client_pub_key[:16].hex()}...")
+        print_info(
+            self.get_type(), f"    Client Public Key: {client_pub_key[:16].hex()}..."
+        )
 
         server_pub_key, self._aes_key = generate_dh_keys(
             request_packet.get_public_key()
         )
-        print_info(f"    Server Public Key: {server_pub_key[:16].hex()}...")
-        print_info(f"    Downstream AES Key: {self._aes_key[:16].hex()}...")
+        print_info(
+            self.get_type(), f"    Server Public Key: {server_pub_key[:16].hex()}..."
+        )
+        print_info(
+            self.get_type(), f"    Downstream AES Key: {self._aes_key[:16].hex()}..."
+        )
 
         return InitEncryptionResponse(public_key=server_pub_key)
 
@@ -189,3 +216,6 @@ class PhotonQueueForProxy:  # TODO: Delete this
 
     def _handle_init_request(self, _packet: InitRequestPacket) -> None:
         self.push(InitResponsePacket())
+
+    def get_type(self) -> ProxyQueueType:
+        return self._proxy_type
