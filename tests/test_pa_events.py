@@ -22,6 +22,7 @@ from pyphotonrealtime.protocol.packet.operation_payload import (  # noqa: E402
 from pa_events import (  # noqa: E402
     Node,
     decode_args,
+    decode_tree,
     decompress,
     format_event,
     format_tree,
@@ -39,6 +40,11 @@ COLOUR = bytes.fromhex(
     "fc0003fb6800017300014373000a30783834373966346666fe6900000001fa6f01"
 )
 PING = bytes.fromhex("fc0003fb68000173000150690000014ffe6900000001fa6f01")
+FOUNDATIONS = bytes.fromhex(
+    "fd0002f5780000001f0ba014121866696e616e63655f636f73745f666f756e646174696f6e73"
+    "0000f46276"
+)
+SPAWN = bytes.fromhex("fd0002f57800000008043497800211028bf4620d")
 FINANCE = bytes.fromhex(
     "fd0002f57800000033120746696e616e63651228789cb36177cbcc4bcc4b4e65622929d24b62ac"
     "2e6560602ed333639c076430d8010085e807941f02f46209"
@@ -85,7 +91,7 @@ def main() -> None:
 
     assert format_event(118, decode_and_get(CASHFLOW)) == [
         "Event 118 (Cashflow):",
-        "  finance_cost_cashflow: amount 35 (unknown: 0, 0)",
+        "  finance_cost_cashflow: amount +35 (unknown: 0, 0)",
     ]
     assert packet_label(packet(CASHFLOW)) == "RaiseEvent:Cashflow"
 
@@ -94,6 +100,23 @@ def main() -> None:
     assert not any("Broadcast" in line for line in lines), lines
     lines = log_lines(packet(PING))
     assert lines[-1] == "  Actor 1: ping = 335 ms (broadcast)", lines
+
+    # Paying for a 17x14 concrete foundation (run4 packet 274): negative int tag.
+    data = decode_and_get(FOUNDATIONS)
+    assert decode_args(data) == [-5280, b"finance_cost_foundations", 0, 0]
+    assert format_event(118, data)[1] == (
+        "  finance_cost_foundations: amount -5280 (unknown: 0, 0)"
+    )
+    # The delivery truck spawning (run4 packet 327).
+    assert format_event(13, decode_and_get(SPAWN)) == [
+        "Event 13 (SpawnObject):",
+        "  uId 8427316 as object 17, type 139",
+    ]
+    # Float tag 0x1a (a sound's position) and a null string (length 0xff, -1).
+    assert decode_args(bytes.fromhex("1a00002242")) == [40.5]
+    assert decode_tree(bytes.fromhex("3c014101014104ffffffffff003e")).fields == [
+        ("A", None)
+    ]
 
     # Anything that doesn't parse is shown raw rather than raising.
     assert "unparsed" in format_event(9, b"\xff")[0]

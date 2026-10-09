@@ -243,3 +243,71 @@ Reading:
 So to **set** the speed from a proxy/bot, one would have to send a `World`
 `SystemState` with `ClientData.gt` changed -- there is no dedicated command.
 Whether a non-host client can do that (or the host ignores it) is untested.
+
+## `captures/run4.sqlite`: building a concrete foundation (Claude Opus 5.5 work)
+
+> **Written by Claude Opus 5.5** from `captures/run4.sqlite`. Not verified by
+> hand; items marked *guess* are inference, not observation.
+
+### The capture
+
+Session 3 is the game (`:4531`, ~14 s). The user placed one concrete
+foundation. All 276 `RaiseEvent`s parse once the encoding fixes below are in.
+Times are seconds from the start of session 3.
+
+### Encoding fixes (new in this run)
+
+| Where | Bytes | Meaning |
+| ----- | ----- | ------- |
+| tagged list | `0x0a`-`0x0d` | **negative** int, 1-4 bytes (bit `0x08` = sign): `0b a0 14` = -5280 |
+| tagged list | `0x1a` | float32: `1a 00 00 22 42` = 40.5 |
+| tree string | length `ff` + int32 | long string; int32 `-1` = **null** (`ActionName`) |
+
+The proxy's `truncated at 41 (wanted 1221952679807963496448 bytes)` errors on
+`NetworkSoundSystem`, and the `unknown field type 0x80` errors on `WorkQueue`,
+were these.
+
+### The build, step by step
+
+| t (s) | Packet | What | Game action |
+| ----- | ------ | ---- | ----------- |
+| 5.3-6.3 | 123-139 `PlayerData` | `Job {Type='Foundations', Material=59, PosX/PosY, SizeX/SizeY, Status=1, Cost=...}` | **Dragging the blueprint**: live preview under the cursor. 1x1 = -60, 7x4 = -1180, 17x14 = -5280. |
+| 6.4 | 144 `WorkQueue` (new system) | 238 jobs `{Type='Construct', CellX, CellY, MatType='ConcreteFloor'/'BuildingFrame', PlayerIssued=True, ...}` | **Jobs created**: one per tile (17x14 = 238): 143 `ConcreteFloor`, 95 `BuildingFrame`. |
+| 6.4-14.2 | `WorkQueue` (91 snapshots) | `<job id> {ObjAssigned.i, ObjAssigned.u}` | **Jobs assigned to workmen**: `.u` = workman uId (8426891-8426901), `.i` = their `ObjectData` index (23-32). |
+| 6.7 | 163 `ConstructionSystem` | `Jobs[0] {Type='Foundations', Status=2, Cost=-5280, Speed=238, Counter, FoundationCostSpent}` | **Blueprint on the map**: the placed job. `Counter` goes up to `Speed` (238 = tile count) while `FoundationCostSpent` goes -1630, -2520, -3520, -5040, -5280. |
+| 6.7 | 165 `NetworkSoundSystem` | `[0, '_Construction', 'OrderMaterial', x+0.5, y+0.5, 0, 0]` per tile | **Sound**: the order sound at each tile's centre. |
+| 7.82 | 274 **event 118** | `[-5280, 'finance_cost_foundations', 0, 0]` | **Cost charged**, once `FoundationCostSpent` reaches `Cost`. |
+| 8.02 | 293/294/296/298 | `Jobs[0].Hidden=True`; `Finance.v.6=25110`; sound `[0, '_Finance', 'MakePaymentLarge', 0]`; `World.Balance=25110` | **Balance down** 30390 -> 25110 (exactly -5280), with the payment sound. |
+| 10.04 | 327-335 **event 13** | `[8427316, 17, 139]`, then `[8427317..8427320, 26/35/43/44, 2]` | **Materials imported**: 5 objects spawned. |
+| 10.37 | 359 `ObjectData` | `17 {a=True, sl0..sl3 = the 4 others}`; `26/35/43/44 {l=True, cr=17/8427316}` | Object 17 (type 139) **carries** the four type-2 objects in slots `sl0`-`sl3`; they are `l`oaded with `cr` (carrier) = 17. |
+| 10.42 | 371 `Finance` | `v.3=18840` | Unknown (see below). |
+
+### Magic numbers
+
+| Number / key | Meaning | Confidence |
+| ------------ | ------- | ---------- |
+| event **13** | **SpawnObject** `[uId, ObjectData index, type]`; `World.ObjectId.next` goes 8427316 -> 8427321 at the same time | observed |
+| event **118** | **Cashflow** `[signed amount, ledger key, ?, ?]`; negative = spending | observed |
+| `finance_cost_foundations` | ledger key for foundations | observed |
+| `Type='Foundations'` | the build tool; `Type=-1` = no tool | observed |
+| `Material=59` | concrete (the `WorkQueue` jobs say `MatType='ConcreteFloor'`) | *guess* from co-occurrence |
+| `Status` | `-2` no job, `-1` invalid spot (preview red), `1` valid preview, `2` placed | observed |
+| `Speed` | the job's tile count (238 for 17x14; 60 for a 1x1 preview) | *guess*; 1x1 says 60, not 1 |
+| `Counter`/`Counter2` | progress over the tiles, 0..`Speed`, then restarts with `Hidden=True` | observed |
+| `ValidPosSegments [i n] {x, y, 1, 2}` | one row per tile row: from `(x, y)` to `(1, 2)` | observed |
+| `QRWallType=46` | unknown; constant | - |
+| `PlayerData.p` / `jp` / `js` | cursor position / job position / job size | observed |
+| `Finance.v.6` | the bank balance | observed (run2, run4) |
+| `Finance.v.3` | unknown; 18840 appears right after the import | - |
+| object type **139** | delivery truck | *guess*: it spawns at the map edge (`p` hi 0x55a0 ≈ 85.6) with the 4 materials in its slots |
+| object type **2** | a material pallet; `qua` = quantity (20, then 2 and 12), `con` = 79/80 unknown | *guess* |
+| sounds `_Construction/OrderMaterial`, `_Finance/MakePaymentLarge`, `_Finance/ReceivePaymentSmall` | `NetworkSoundSystem` cues `[0, bank, name, x, y, ...]` | observed |
+
+### Open questions
+
+- Cost per tile isn't linear (1 -> 60, 28 -> 1180, 238 -> 5280).
+- `BuildingFrame` vs `ConcreteFloor`: 95 + 143 = 238, but a 17x14 border is
+  58 tiles, so the frame jobs aren't just the edge.
+- Run2's event 14 `[8427316, 8]` uses the same uId as this run's truck.
+  The ids restart between game loads, so it's a different object. 14 could be
+  "despawn".

@@ -4,7 +4,9 @@ The game sends everything through ``RaiseEvent`` with the event code in
 ``ParameterKey.Code`` (244) and a byte array in ``ParameterKey.Data`` (245).
 That byte array is a list of tagged values (:func:`decode_args`):
 
-* tag ``0x0N``: an integer in ``N - 1`` little-endian bytes (``0x00`` is 0);
+* tag ``0x0N`` (N 1-4): a whole number in ``N - 1`` little-endian bytes
+  (``0x00`` is 0); ``0x08`` set means negative (``0x0b a0 14`` = -5280);
+* tag ``0x1a``: a float32;
 * tag ``0x1N``: a byte string whose length is in ``N - 1`` little-endian
   bytes (``0x12`` = 1-byte length, ``0x13`` = 2-byte length).
 
@@ -15,9 +17,14 @@ Observed event codes:
   backwards (big-endian bytes, then their count + 1) so it can be read from
   the end. Uncompressed, it is a binary form of the save-file tree
   (:func:`decode_tree`).
-* ``118`` -- ``[35, "finance_cost_cashflow", 0, 0]``: a cash-flow item of 35 added
-  to the balance (the next ``Finance`` snapshot's ``v.6`` is ``tr.b + 35``).
-  Sent at game start and once more mid-game; the other arguments are unknown.
+* ``13`` -- ``[uId, index, type]``: an object was spawned (it then appears
+  in ``ObjectData`` as node ``index`` with ``uId`` and ``t=type``). Seen for
+  a delivery truck (type 139) and the materials it carries (type 2).
+* ``118`` -- ``[amount, ledger key, 0, 0]``: a cash-flow item added to the
+  balance (``World.Balance``, ``Finance.v.6``). ``35`` /
+  ``finance_cost_cashflow`` at game start; ``-5280`` /
+  ``finance_cost_foundations`` for a 17x14 concrete foundation. The last two
+  arguments are unknown.
 
 Unknown tags or field types raise :class:`ValueError`; callers that only
 display payloads should fall back to the raw bytes.
@@ -41,8 +48,10 @@ if TYPE_CHECKING:
         PhotonOperationPacket,
     )
 
+FLOAT_TAG = 0x1A
+SPAWN_EVENT = 13
 CASHFLOW_EVENT = 118
-EVENT_NAMES = {9: "SystemState", CASHFLOW_EVENT: "Cashflow"}
+EVENT_NAMES = {9: "SystemState", SPAWN_EVENT: "SpawnObject", CASHFLOW_EVENT: "Cashflow"}
 """Names for event codes whose meaning is known (our own, not the game's)."""
 
 
@@ -83,8 +92,14 @@ class _Reader:
     def uint(self, n: int) -> int:
         return int.from_bytes(self.take(n), "little")
 
-    def str8(self) -> str:
-        return self.take(self.u8()).decode("utf-8", "replace")
+    def str8(self) -> str | None:
+        """A u8-length string; length ``0xff`` escapes to an int32 (-1: null)."""
+        size = self.u8()
+        if size == 0xFF:
+            size = struct.unpack("<i", self.take(4))[0]
+            if size < 0:
+                return None
+        return self.take(size).decode("utf-8", "replace")
 
     @property
     def done(self) -> bool:
@@ -97,9 +112,12 @@ def decode_args(data: bytes) -> list[Any]:
     values: list[Any] = []
     while not reader.done:
         tag = reader.u8()
-        kind, size = tag >> 4, max((tag & 0xF) - 1, 0)
-        if kind == 0:
-            values.append(reader.uint(size))
+        kind, size = tag >> 4, max((tag & 0x7) - 1, 0)
+        if tag == FLOAT_TAG:
+            values.append(struct.unpack("<f", reader.take(4))[0])
+        elif kind == 0:
+            value = reader.uint(size)
+            values.append(-value if tag & 0x8 else value)
         elif kind == 1:
             values.append(reader.take(reader.uint(size)))
         else:
@@ -309,8 +327,11 @@ def format_event(code: int, data: bytes) -> list[str]:
             name = args[1].decode("utf-8", "replace")
             return [
                 f"{title}:",
-                f"  {name}: amount {args[0]} (unknown: {args[2]}, {args[3]})",
+                f"  {name}: amount {args[0]:+} (unknown: {args[2]}, {args[3]})",
             ]
+        if code == SPAWN_EVENT and len(args) == 3:
+            uid, index, kind = args
+            return [f"{title}:", f"  uId {uid} as object {index}, type {kind}"]
         lines = []
         for value in args:
             if isinstance(value, bytes) and value[:1] == b"\x78":
