@@ -68,6 +68,20 @@ python main.py local --upstream 1.2.3.4:4533
 ### Proxy (packet inspection)
 `python main.py proxy` sits between the game and a real Photon server (by default the real Name Server) and logs every operation, event and response both ways, encrypted ones included. Point the game at it with the hosts-file redirect; `-u host:port` and `-p port` pick another server and listen port.
 
+#### Recording traffic
+`python main.py proxy --record captures/run1.sqlite` (`-o`) also saves every packet, **decrypted**, to a [SQLite](https://sqlite.org) file, so you can record once against the real servers and analyze offline as often as you like. Ciphertext is never stored. Addresses are saved as the real server sent them, before the proxy rewrites them. Recording to an existing file appends to it.
+
+Tables: `sessions` (one per client connection) and `packets` (`id` in arrival order, `ts_ns`, `session`, `dir` 0=client->server 1=server->client, `command`, `code` = operation/event code, `return_code`, `size`, `payload` BLOB; indexed on session and command/code). Query with SQL or from Python:
+```python
+from capture import Capture
+
+with Capture("captures/run1.sqlite") as cap:
+    for pkt in cap.packets(direction=0, code=226):
+        print(pkt.ts_ns, pkt.name, pkt.decode().params)
+    print(cap.db.execute("SELECT code, count(*) FROM packets GROUP BY code").fetchall())
+```
+Captures contain auth tokens and player data: don't commit or share them (`captures/` is git-ignored).
+
 The server itself is [pyPhotonRealtime](https://github.com/Michael-K-Stein/pyPhotonRealtime)'s self-hosted Photon server; `prison_architect.py` only adds the game's rules.
 
 ## Docker & CI/CD

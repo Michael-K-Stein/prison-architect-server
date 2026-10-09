@@ -181,7 +181,11 @@ def _start_local(opts: CommonOptions, upstream: Optional[str] = None) -> None:
 
 
 def _start_proxy(
-    opts: CommonOptions, upstream: Optional[str], port: int, follow: bool = True
+    opts: CommonOptions,
+    upstream: Optional[str],
+    port: int,
+    follow: bool = True,
+    record: Optional[Path] = None,
 ) -> None:
     # Imported here: only the proxy command needs them.
     from contextlib import ExitStack
@@ -197,6 +201,13 @@ def _start_proxy(
     _setup_logging(opts)
 
     stack = ExitStack()
+    recorder = None
+    if record is not None:
+        from capture import Recorder
+
+        record.parent.mkdir(parents=True, exist_ok=True)
+        recorder = stack.enter_context(Recorder(record))
+        logging.info("Recording traffic to %s", record)
     hops: dict[tuple[str, int], int] = {}
 
     def local_port_for(address: str) -> str:
@@ -227,6 +238,9 @@ def _start_proxy(
             ]
 
     def on_packet(session, direction, packet):
+        if recorder is not None:
+            # Before the address rewrite: keep what the real server said.
+            recorder.on_packet(session, direction, packet)
         if isinstance(packet, PhotonOperationPacket):
             if follow and direction == Direction.ToClient:
                 hijack_addresses(packet)
@@ -353,13 +367,24 @@ def proxy(
             "proxy only the name server.",
         ),
     ] = True,
+    record: Annotated[
+        Optional[Path],
+        typer.Option(
+            "-o",
+            "--record",
+            help="Also save every packet (decrypted) to this capture file, a "
+            "SQLite database for offline analysis (see capture.py). An "
+            "existing file is appended to.",
+            dir_okay=False,
+        ),
+    ] = None,
     verbose: VerboseOpt = None,
     listen: ListenOpt = None,
     ip: IpOpt = None,
 ) -> None:
     """Proxy traffic to a Photon server, logging every packet both ways."""
     opts = _merge_common(ctx, verbose=verbose, listen=listen, ip=ip)
-    _start_proxy(opts, upstream, port, follow)
+    _start_proxy(opts, upstream, port, follow, record)
 
 
 def _interactive(defaults: CommonOptions) -> None:
