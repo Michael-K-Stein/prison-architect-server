@@ -1,4 +1,4 @@
-name: Docker Image CI/CD
+name: CI/CD
 
 on:
   push:
@@ -8,12 +8,46 @@ on:
     branches: ["master"]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pinned ruff
+        run: python -m pip install ruff==0.16.10
+      # Only correctness rules: the default rule set fails on the existing baseline.
+      - name: Ruff check
+        run: python -m ruff check --select E9,F63,F7,F82 .
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - name: Run tests
+        run: |
+          python tests/test_keepalive.py
+          python tests/test_proxy_routing.py
+          python tests/test_proxy_tunnel.py
+
   build-and-push:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read

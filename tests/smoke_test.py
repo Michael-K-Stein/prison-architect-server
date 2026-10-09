@@ -19,8 +19,9 @@ and the Name/Master server handlers end to end. No game client needed.
 
 import socket
 import sys
+from pathlib import Path
 
-sys.path.insert(0, ".")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from server.consts import PRISON_ARCHITECT_APP_ID
 from server.photon.command_code import CommandCode

@@ -11,17 +11,18 @@ Tests:
   2. test_relay_completes_init_handshake
   3. test_peek_unit (peek doesn't consume; garbage -> None; resolve parsing)
 
-Run:  venv/bin/python test_proxy_routing.py
+Run:  venv/bin/python tests/test_proxy_routing.py
 """
 
 import contextlib
 import io
 import socket
 import sys
+from pathlib import Path
 import threading
 import time
 
-sys.path.insert(0, ".")
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from server.consts import PRISON_ARCHITECT_APP_ID
 from server.local_servers.name_server import NameServer
