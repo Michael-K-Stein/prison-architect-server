@@ -71,6 +71,8 @@ python main.py local --upstream 1.2.3.4:4533
 #### Recording traffic
 `python main.py proxy --record captures/run1.sqlite` (`-o`) also saves every packet, **decrypted**, to a [SQLite](https://sqlite.org) file, so you can record once against the real servers and analyze offline as often as you like. Ciphertext is never stored. Addresses are saved as the real server sent them, before the proxy rewrites them. Recording to an existing file appends to it.
 
+To watch traffic live, run `python capture.py tail captures/run1.sqlite` in a second terminal while the proxy records. New packets print within about 0.1 s of being recorded, rendered as the proxy shows them. `--from-start` replays the file first, `--code N` (repeatable) and `--dir to-server|to-client` filter, and `--raw` prints names and hex. `python capture.py sessions captures/run1.sqlite` lists the connections. Recording and reading can run in separate processes at the same time.
+
 Tables: `sessions` (one per client connection) and `packets` (`id` in arrival order, `ts_ns`, `session`, `dir` 0=client->server 1=server->client, `command`, `code` = operation/event code, `return_code`, `size`, `payload` BLOB; indexed on session and command/code). Query with SQL or from Python:
 ```python
 from capture import Capture
