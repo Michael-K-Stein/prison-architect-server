@@ -14,6 +14,25 @@ _This only works if you are on [LAN](https://en.wikipedia.org/wiki/Local_area_ne
    2) Or just `python main.py` for an interactive setup wizard.
    3) `python main.py --help` (or `python main.py local --help`) lists all options.
 
+### Quick Setup with Docker
+_No Python needed, just [Docker](https://docs.docker.com/get-docker/)_
+1) Redirect `ns.exitgames.com` in your hosts file, same as step 1 above.
+2) Run the prebuilt image:
+   ```bash
+   docker run -d --name prison-architect-server --restart unless-stopped \
+      -p 4530-4533:4530-4533 \
+      -e PUBLIC_IP=127.0.0.1 \
+      ghcr.io/michael-k-stein/prison-architect-server:latest
+   ```
+   1) For friends over WAN, set `PUBLIC_IP` to your public IP and follow the
+      firewall/port forwarding steps [below](#playing-with-friends-wan).
+   2) Optional variables: `TIMEOUT` (default `60`), `REGION` (default `local`),
+      `MAX_PLAYERS` (default `4`).
+3) Check the logs with `docker logs -f prison-architect-server`, stop with
+   `docker stop prison-architect-server`.
+4) To update: `docker pull ghcr.io/michael-k-stein/prison-architect-server:latest`,
+   then `docker rm -f prison-architect-server` and run step 2 again.
+
 ### Playing with Friends ([WAN](https://en.wikipedia.org/wiki/Wide_area_network))
 _If your friends are on a different network than you, such as at their house and you are at yours_
 1) Find your [public IP address](https://www.geeksforgeeks.org/computer-networks/what-is-public-ip-address/)
