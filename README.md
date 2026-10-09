@@ -8,7 +8,7 @@ _This only works if you are on [LAN](https://en.wikipedia.org/wiki/Local_area_ne
    2) Add the line `127.0.0.1 ns.exitgames.com` to your hosts file.
 2) Install the required dependencies.
    1) `pip install -r requirements.txt`
-   2) Requires Python 3.10 or newer.
+   2) Requires Python 3.12 or newer.
 3) Run the local server
    1) `python main.py local`
    2) Or just `python main.py` for an interactive setup wizard.
@@ -87,7 +87,9 @@ Captures contain auth tokens and player data: don't commit or share them (`captu
 The server itself is [pyPhotonRealtime](https://github.com/Michael-K-Stein/pyPhotonRealtime)'s self-hosted Photon server; `src/server/` only adds the game's rules.
 
 ### Bot (join a game as a client)
-`python main.py bot` connects to Photon as a client, lists regions, lobbies and games, joins the game you pick, and opens a menu. From the menu you can change the game speed with a slider, or watch incoming events. Useful flags: `--region` skips the region picker, `--name` and `--colour` set the actor shown in the game, `--name-server` points at a Name Server (`auto` resolves `ns.exitgames.com`), and `--verbose` shows full DirectoryData events. `python main.py bot regions` lists the regions and exits.
+`python main.py bot` connects to Photon as a client, lists regions, lobbies and games, joins the game you pick, and opens a menu. From the menu you can change the game speed with a slider, or watch incoming events. Useful flags: `--region` skips the region picker, `--name` and `--colour` set the actor shown in the game, `--name-server` points at a Name Server (`auto` resolves `ns.exitgames.com`), and `--full-events` shows full DirectoryData events. `python main.py bot regions` lists the regions and exits.
+
+To debug the bot, `--log-file bot.log` writes a timestamped log of what it does (connections, choices, every RPC it sends, errors), and `-v debug` adds every event and ping. `--record captures/bot1.sqlite` (`-o`) saves the bot's own packets, decrypted, in the same capture format as the proxy, so `python main.py capture tail captures/bot1.sqlite` shows them live.
 
 The app ID is read from `--app-id`, or from `PHOTON_APP_ID` in the environment or a `.env` file next to `main.py` (copy `.env.example`). Variables already set in the environment win over `.env`. `.env` is loaded with [python-dotenv](https://pypi.org/project/python-dotenv/), which is in `requirements.txt`.
 

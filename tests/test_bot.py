@@ -1,6 +1,8 @@
 """The bot's pure helpers, the slider Application and the speed action (no network)."""
 
+import logging
 import sys
+from contextlib import contextmanager
 from os import environ
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,14 +13,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from prompt_toolkit.input import create_pipe_input
 from prompt_toolkit.output import DummyOutput
+from pyphotonrealtime.protocol.command_code import CommandCode
+from pyphotonrealtime.protocol.packet.factory import PacketFactory
 from pyphotonrealtime.protocol.param.int8_slice_param import Int8SliceParameter
 from pyphotonrealtime.protocol.param.parameter_key import ParameterKey
+from pyphotonrealtime.protocol.serialization_protocol import SerializationProtocol
 from pyphotonrealtime.realtime._convert import to_param
 from pyphotonrealtime.realtime.lobby import LobbyType, TypedLobby
 from pyphotonrealtime.realtime.room import RoomInfo
 
 from src.bot import actions, formatting, slider, speed
+from src.bot.recording import RecordingTransport
 from src.bot.session import Options, Session, make_settings, split_address
+from src.capture import TO_CLIENT, TO_SERVER, Capture, Recorder
 from src.env import load_env
 from src.protocol.rpc import build
 
@@ -247,3 +254,153 @@ def test_ping_is_reported_like_the_game() -> None:
     assert not session.report_ping(15.3)  # next one is due 4 s after the last
     assert session.report_ping(15.4)
     assert len(client.sent) == 2
+
+
+class _FakeEventClient(_FakeClient):
+    """A client that also accepts raised events (for the log and recording tests)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.raised: list[tuple[int, bytes]] = []
+
+    def op_raise_event(self, code: int, content: bytes) -> bool:
+        self.raised.append((code, content))
+        return True
+
+
+@contextmanager
+def _file_logging(path: Path, level: int = logging.DEBUG):
+    """Send the ``src`` loggers to ``path`` for the duration (no console output)."""
+    handler = logging.FileHandler(path, encoding="utf-8")
+    handler.setFormatter(logging.Formatter("%(levelname)s %(name)s: %(message)s"))
+    root = logging.getLogger("src")
+    old_level = root.level
+    root.addHandler(handler)
+    root.setLevel(level)
+    try:
+        yield
+    finally:
+        root.removeHandler(handler)
+        root.setLevel(old_level)
+        handler.close()
+
+
+def test_log_file_records_the_menu_and_speed_actions(
+    monkeypatch, tmp_path: Path
+) -> None:
+    picks = iter([actions.action_speed, None])
+    monkeypatch.setattr(actions, "pick", lambda *a, **k: next(picks))
+    monkeypatch.setattr(actions, "pick_speed", lambda *a, **k: 3)  # "5x"
+    log_path = tmp_path / "bot.log"
+    session = Session(_FakeEventClient())  # type: ignore[arg-type]
+    with _file_logging(log_path):
+        actions.menu(actions.Context(session, Options("id")))
+    lines = log_path.read_text(encoding="utf-8").splitlines()
+    assert any("action action_speed: start" in line for line in lines)
+    assert any("speed: 5x chosen, wire value 5" in line for line in lines)
+    assert any("sent RPC 96 GameSpeedChange (2 B): queued" in line for line in lines)
+    assert any("action action_speed: end" in line for line in lines)
+    assert lines[-1].endswith("menu: leave")
+    # Per-packet detail only appears at debug level.
+    assert any(line.startswith("DEBUG ") and "#2" in line for line in lines)
+
+
+def test_log_file_has_no_debug_lines_at_info(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(actions, "pick_speed", lambda *a, **k: 1)
+    log_path = tmp_path / "info.log"
+    session = Session(_FakeEventClient())  # type: ignore[arg-type]
+    with _file_logging(log_path, logging.INFO):
+        actions.action_speed(actions.Context(session, Options("id")))
+    text = log_path.read_text(encoding="utf-8")
+    assert "sent RPC 96" in text
+    assert "DEBUG" not in text
+
+
+def _op_bytes(command: CommandCode, code: int, data: bytes) -> bytes:
+    """One plaintext Photon packet: an operation (or event) with a Data slice."""
+    packet = PacketFactory.operation(
+        command,
+        operation=code,
+        params={ParameterKey.Data: to_param(data)},
+        protocol=SerializationProtocol.V18,
+    )
+    return packet.serialize()
+
+
+class _FakeTransport:
+    """An in-memory transport: sends are kept, receives come from ``inbox``."""
+
+    path = ""
+
+    def __init__(self) -> None:
+        self.sent: list[bytes] = []
+        self.inbox: list[bytes] = []
+
+    def connect(self, host: str, port: int, timeout: float) -> None:
+        pass
+
+    def send(self, data: bytes) -> None:
+        self.sent.append(data)
+
+    def receive(self) -> bytes:
+        return self.inbox.pop(0) if self.inbox else b""
+
+
+class _FakeRecordingPeer:
+    """The peer attributes that RecordingTransport reads; no network."""
+
+    serialization_protocol = SerializationProtocol.V18
+    _aes_key = None
+
+
+def test_recording_transport_writes_both_directions(tmp_path: Path) -> None:
+    path = tmp_path / "bot.sqlite"
+    inner = _FakeTransport()
+    event = _op_bytes(CommandCode.Event, 13, b"\x04\x34")
+    inner.inbox.append(event)
+    with Recorder(path) as recorder:
+        wrapper = RecordingTransport(inner, recorder, _FakeRecordingPeer())  # type: ignore[arg-type]
+        wrapper.connect("10.0.0.1", 5058, 1.0)
+        outgoing = _op_bytes(CommandCode.Operation, 96, b"\x02\x05")
+        wrapper.send(outgoing)
+        assert wrapper.receive() == event  # the bytes pass through unchanged
+        assert wrapper.path == ""  # attributes come from the wrapped transport
+        assert inner.sent == [outgoing]
+    with Capture(path) as cap:
+        packets = list(cap.packets())
+        sessions = cap.sessions()
+    assert [(p.direction, p.code) for p in packets] == [
+        (TO_SERVER, 96),
+        (TO_CLIENT, 13),
+    ]
+    assert [p.is_event for p in packets] == [False, True]
+    assert len(sessions) == 1
+    assert sessions[0][3] == "10.0.0.1:5058"
+
+
+def test_each_connect_is_its_own_session(tmp_path: Path) -> None:
+    path = tmp_path / "hops.sqlite"
+    with Recorder(path) as recorder:
+        wrapper = RecordingTransport(
+            _FakeTransport(),
+            recorder,
+            _FakeRecordingPeer(),  # type: ignore[arg-type]
+        )
+        wrapper.connect("10.0.0.1", 5058, 1.0)  # Name Server
+        wrapper.send(_op_bytes(CommandCode.Operation, 230, b"\x01"))
+        wrapper.connect("10.0.0.2", 5055, 1.0)  # Master Server
+        wrapper.send(_op_bytes(CommandCode.Operation, 226, b"\x02"))
+    with Capture(path) as cap:
+        sessions = cap.sessions()
+        packets = list(cap.packets())
+    assert [s[3] for s in sessions] == ["10.0.0.1:5058", "10.0.0.2:5055"]
+    assert [p.session for p in packets] == [1, 2]
+
+
+def test_session_recorder_wires_the_peer(tmp_path: Path) -> None:
+    path = tmp_path / "wired.sqlite"
+    client = _FakeClient()
+    client.peer.transport = _FakeTransport()  # type: ignore[attr-defined]
+    with Recorder(path) as recorder:
+        Session(client, recorder=recorder)  # type: ignore[arg-type]
+        assert isinstance(client.peer.transport, RecordingTransport)  # type: ignore[attr-defined]

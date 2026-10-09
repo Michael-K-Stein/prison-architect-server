@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from typing import Any
 
@@ -12,6 +13,9 @@ from pyphotonrealtime.realtime.lobby import LobbyType, TypedLobby
 
 from src.bot.formatting import colour_property, format_lobby, format_room
 from src.bot.session import Options, Session, make_settings
+from src.capture import Recorder
+
+log = logging.getLogger(__name__)
 
 
 def pick(message: str, choices: list[tuple[str, Any]]) -> Any:
@@ -23,9 +27,9 @@ def pick(message: str, choices: list[tuple[str, Any]]) -> Any:
     ).execute()
 
 
-def join_flow(opts: Options, region: str) -> Session:
+def join_flow(opts: Options, region: str, recorder: Recorder | None = None) -> Session:
     """Connect to ``region``'s Master, pick a lobby and a game, join it."""
-    session = Session()
+    session = Session(recorder=recorder)
     # Sent as the actor name (Photon player property 255), which the game shows.
     session.client.local_player.nick_name = opts.name
     try:
@@ -42,6 +46,7 @@ def join_flow(opts: Options, region: str) -> Session:
         lobby = lobbies[0]
         if len(lobbies) > 1:
             lobby = pick("Lobby", [(format_lobby(x), x) for x in lobbies])
+        log.info("lobby: %s", format_lobby(lobby))
         with session.lock:
             session.client.op_join_lobby(lobby)
         session.wait_for(lambda: session.lobby_joined)
@@ -53,7 +58,9 @@ def join_flow(opts: Options, region: str) -> Session:
             rooms = list(session.client.room_list.values())
         if not rooms:
             raise typer.BadParameter("no games in this lobby")
+        log.info("%d games listed", len(rooms))
         name = pick("Game", [(format_room(r), r.name) for r in rooms if r.is_open])
+        log.info("game chosen: %s", name)
         with session.lock:
             session.client.op_join_room(
                 EnterRoomParams(

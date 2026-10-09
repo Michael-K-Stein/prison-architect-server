@@ -8,11 +8,13 @@ every client call, from either thread, takes one ``RLock``. Callbacks fire insid
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import Any
 
 import typer
@@ -25,7 +27,13 @@ from pyphotonrealtime.realtime import (
     OnEventCallback,
 )
 
+from src.bot.formatting import format_event_lines
+from src.bot.recording import record_traffic
+from src.capture import Recorder
+from src.protocol import rpc
 from src.server.upstream import resolve_upstream
+
+log = logging.getLogger(__name__)
 
 PING_INTERVAL = 4.0  # seconds between the game client's P (ping) updates
 FIRST_PING_DELAY = 1.3  # ... the first one comes this long after joining
@@ -42,9 +50,11 @@ class Options:
     name_server: str = ""
     region: str | None = None
     speed_index: bool = False
-    verbose: bool = False
+    full_events: bool = False
     name: str = "Claude"
     colour: str = CLAUDE_ORANGE
+    record: Path | None = None
+    """Capture file for the bot's own traffic (``--record``); None = not recorded."""
 
 
 class Session(
@@ -55,8 +65,13 @@ class Session(
 ):
     """A ``RealtimeClient`` pumped by a background thread, plus what it saw."""
 
-    def __init__(self, client: RealtimeClient | None = None) -> None:
-        """Wrap ``client`` (a new one by default) and register for callbacks."""
+    def __init__(
+        self, client: RealtimeClient | None = None, recorder: Recorder | None = None
+    ) -> None:
+        """Wrap ``client`` (a new one by default) and register for callbacks.
+
+        With ``recorder``, every packet this client sends or receives is recorded.
+        """
         self.client = client or RealtimeClient()
         self.lock = threading.RLock()
         self.regions: dict[str, str] = {}
@@ -70,35 +85,43 @@ class Session(
             # Photon only measures its round trip from keep-alive pings, which
             # are sent when idle; ping often so the game's "P" is a real value.
             peer.keep_alive_interval = 1.0
+            if recorder is not None:
+                record_traffic(peer, recorder)
         self._thread = threading.Thread(target=self._pump, daemon=True)
         self.client.add_callback_target(self)
 
     # callbacks (called from the service thread)
     def on_region_list_received(self, regions: dict[str, str]) -> None:
         """Keep the regions; a set ``cloud_region`` stops the library auto-pinging."""
+        log.info("Name Server sent %d regions: %s", len(regions), ", ".join(regions))
         self.regions = regions
         if self.client.cloud_region is None:
             self.client.cloud_region = "-"
 
     def on_connected_to_master(self) -> None:
         """Mark the Master Server as reached."""
+        log.info("connected to the Master Server")
         self.master = True
 
     def on_joined_lobby(self) -> None:
         """Mark the lobby as joined."""
+        log.info("joined the lobby")
         self.lobby_joined = True
 
     def on_joined_room(self) -> None:
         """Mark the room as joined."""
+        log.info("joined the room as actor #%d", self.client.local_player.actor_number)
         self.joined = True
 
     def on_join_room_failed(self, return_code: int, message: str) -> None:
         """Remember why joining failed."""
         self.join_error = f"{message} (code {return_code})"
+        log.warning("join room failed: %s", self.join_error)
 
     def on_disconnected(self, cause: object) -> None:
         """Remember the disconnect cause."""
         self.disconnected = cause
+        log.warning("disconnected: %s", cause)
 
     def on_event(self, event: Any) -> None:
         """Queue custom (game) events: code 1-199, ``Data`` as raw bytes."""
@@ -106,6 +129,9 @@ class Session(
             return
         data = event.parameters.get(ParameterKey.Data)
         value = data.value if data is not None else None
+        if log.isEnabledFor(logging.DEBUG):
+            for line in format_event_lines(event.sender, event.code, value):
+                log.debug("event %s", line)
         self.events.append((event.sender, event.code, value))
 
     # thread and helpers
@@ -125,9 +151,10 @@ class Session(
         if now < self._next_ping or peer.last_round_trip_time is None:
             return False
         self._next_ping = now + PING_INTERVAL
-        return self.client.op_set_properties_of_actor(
-            actor, {"P": int(peer.round_trip_time)}
-        )
+        rtt = int(peer.round_trip_time)
+        sent = self.client.op_set_properties_of_actor(actor, {"P": rtt})
+        log.debug("ping P=%d ms (queued: %s)", rtt, sent)
+        return sent
 
     def _pump(self) -> None:
         while not self._stop.is_set():
@@ -138,6 +165,11 @@ class Session(
 
     def start(self, settings: AppSettings) -> None:
         """Connect and start the service thread."""
+        log.info(
+            "connecting to %s (region %s)",
+            settings.name_server or "the default Name Server",
+            settings.fixed_region or "picked by the library",
+        )
         with self.lock:
             self.client.connect_using_settings(settings)
         if not self._thread.is_alive():
@@ -155,10 +187,22 @@ class Session(
     def raise_event(self, code: int, data: bytes) -> bool:
         """Send a game RPC. ``bytes`` go out as an Int8Slice under key Data (245)."""
         with self.lock:
-            return self.client.op_raise_event(code, data)
+            sent = self.client.op_raise_event(code, data)
+            actor = self.client.local_player.actor_number
+        log.info(
+            "sent RPC %d %s (%d B): %s",
+            code,
+            rpc.rpc_name(code),
+            len(data),
+            "queued" if sent else "NOT queued",
+        )
+        for line in format_event_lines(actor, code, data):
+            log.debug("  %s", line)
+        return sent
 
     def stop(self) -> None:
         """Disconnect cleanly and stop the thread (safe to call twice)."""
+        log.info("disconnecting")
         with self.lock:
             self.client.disconnect()
         time.sleep(0.2)  # let the thread flush the disconnect
@@ -183,16 +227,18 @@ def make_settings(opts: Options, region: str | None = None) -> AppSettings:
     )
     if opts.name_server == "auto":
         host, port = resolve_upstream("auto")
+        log.info("resolved ns.exitgames.com over DNS-over-HTTPS to %s:%d", host, port)
         return replace(settings, name_server=host, name_server_port=port)
     if opts.name_server:
         host, port = split_address(opts.name_server)
+        log.info("using Name Server %s:%d from the options", host, port)
         return replace(settings, name_server=host, name_server_port=port)
     return settings
 
 
-def fetch_regions(opts: Options) -> dict[str, str]:
+def fetch_regions(opts: Options, recorder: Recorder | None = None) -> dict[str, str]:
     """Ask the Name Server for its regions (read-only), then disconnect."""
-    session = Session()
+    session = Session(recorder=recorder)
     try:
         session.start(make_settings(opts))
         if not session.wait_for(lambda: bool(session.regions)):

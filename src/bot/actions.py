@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -16,6 +17,7 @@ from src.bot.speed import GAME_SPEED_CHANGE, SPEED_STOPS, speed_wire_value
 from src.protocol import rpc
 
 console = Console()
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -31,8 +33,10 @@ def action_speed(ctx: Context) -> None:
     """Pick a speed on the slider and send ``GameSpeedChange``."""
     index = pick_speed()
     if index is None:
+        log.info("speed: cancelled")
         return
     value = speed_wire_value(index, speed_index=ctx.opts.speed_index)
+    log.info("speed: %s chosen, wire value %d", SPEED_STOPS[index][0], value)
     data = rpc.build(GAME_SPEED_CHANGE, value)
     ok = ctx.session.raise_event(GAME_SPEED_CHANGE, data)
     mode = "index" if ctx.opts.speed_index else "multiplier"
@@ -52,7 +56,7 @@ def action_events(ctx: Context) -> None:
             while ctx.session.events:
                 sender, code, data = ctx.session.events.popleft()
                 for line in format_event_lines(
-                    sender, code, data, verbose=ctx.opts.verbose
+                    sender, code, data, verbose=ctx.opts.full_events
                 ):
                     console.print(line, markup=False, highlight=False)
             if ctx.session.disconnected is not None:
@@ -78,5 +82,13 @@ def menu(ctx: Context) -> None:
             [*[(label, fn) for label, fn in ACTIONS], ("Leave / quit", None)],
         )
         if choice is None:
+            log.info("menu: leave")
             return
-        choice(ctx)
+        name = choice.__name__
+        log.info("action %s: start", name)
+        try:
+            choice(ctx)
+        except Exception:
+            log.exception("action %s failed", name)
+            raise
+        log.info("action %s: end", name)
