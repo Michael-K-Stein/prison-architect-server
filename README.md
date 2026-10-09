@@ -71,7 +71,7 @@ python main.py local --upstream 1.2.3.4:4533
 #### Recording traffic
 `python main.py proxy --record captures/run1.sqlite` (`-o`) also saves every packet, **decrypted**, to a [SQLite](https://sqlite.org) file, so you can record once against the real servers and analyze offline as often as you like. Ciphertext is never stored. Addresses are saved as the real server sent them, before the proxy rewrites them. Recording to an existing file appends to it.
 
-To watch traffic live, run `python capture.py tail captures/run1.sqlite` in a second terminal while the proxy records. New packets print within about 0.1 s of being recorded, rendered as the proxy shows them. `--from-start` replays the file first, `--code N` (repeatable) and `--dir to-server|to-client` filter, and `--raw` prints names and hex. `python capture.py sessions captures/run1.sqlite` lists the connections. Recording and reading can run in separate processes at the same time.
+To watch traffic live, run `python main.py capture tail captures/run1.sqlite` in a second terminal while the proxy records. New packets print within about 0.1 s of being recorded, rendered as the proxy shows them. `--from-start` replays the file first, `--code N` (repeatable) and `--dir to-server|to-client` filter, and `--raw` prints names and hex. `python main.py capture sessions captures/run1.sqlite` lists the connections. Recording and reading can run in separate processes at the same time.
 
 Tables: `sessions` (one per client connection) and `packets` (`id` in arrival order, `ts_ns`, `session`, `dir` 0=client->server 1=server->client, `command`, `code` = operation/event code, `return_code`, `size`, `payload` BLOB; indexed on session and command/code). Query with SQL or from Python:
 ```python
@@ -84,12 +84,12 @@ with Capture("captures/run1.sqlite") as cap:
 ```
 Captures contain auth tokens and player data: don't commit or share them (`captures/` is git-ignored).
 
-The server itself is [pyPhotonRealtime](https://github.com/Michael-K-Stein/pyPhotonRealtime)'s self-hosted Photon server; `prison_architect.py` only adds the game's rules.
+The server itself is [pyPhotonRealtime](https://github.com/Michael-K-Stein/pyPhotonRealtime)'s self-hosted Photon server; `src/server/` only adds the game's rules.
 
 ### Bot (join a game as a client)
-`python bot.py` connects to Photon as a client, lists regions, lobbies and games, joins the game you pick, and opens a menu. From the menu you can change the game speed with a slider, or watch incoming events. Useful flags: `--region` skips the region picker, `--name` and `--colour` set the actor shown in the game, `--name-server` points at a Name Server (`auto` resolves `ns.exitgames.com`), and `--verbose` shows full DirectoryData events. `python bot.py regions` lists the regions and exits.
+`python main.py bot` connects to Photon as a client, lists regions, lobbies and games, joins the game you pick, and opens a menu. From the menu you can change the game speed with a slider, or watch incoming events. Useful flags: `--region` skips the region picker, `--name` and `--colour` set the actor shown in the game, `--name-server` points at a Name Server (`auto` resolves `ns.exitgames.com`), and `--verbose` shows full DirectoryData events. `python main.py bot regions` lists the regions and exits.
 
-The app ID is read from `--app-id`, or from `PHOTON_APP_ID` in the environment or a `.env` file next to `bot.py` and `main.py` (copy `.env.example`). Variables already set in the environment win over `.env`. `.env` is loaded with [python-dotenv](https://pypi.org/project/python-dotenv/), which is in `requirements.txt`.
+The app ID is read from `--app-id`, or from `PHOTON_APP_ID` in the environment or a `.env` file next to `main.py` (copy `.env.example`). Variables already set in the environment win over `.env`. `.env` is loaded with [python-dotenv](https://pypi.org/project/python-dotenv/), which is in `requirements.txt`.
 
 ## Docker & CI/CD
 This repository includes a Docker image workflow for GitHub Container Registry (GHCR).

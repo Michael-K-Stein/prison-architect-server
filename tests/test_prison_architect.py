@@ -11,11 +11,11 @@ from pyphotonrealtime.realtime import EnterRoomParams, RoomOptions  # noqa: E402
 
 from pyphotonrealtime.server import PhotonServer  # noqa: E402
 
-from prison_architect import (  # noqa: E402
+from src.server.server import (  # noqa: E402
     PRISON_ARCHITECT_APP_ID,
     PrisonArchitectServer,
-    resolve_upstream,
 )
+from src.server.upstream import resolve_upstream  # noqa: E402
 
 OTHER_APP_ID = "00000000-0000-0000-0000-000000000000"
 

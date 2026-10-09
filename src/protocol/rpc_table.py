@@ -11,7 +11,7 @@ Type names are the game's C++ types: ``int``, ``bool``, ``float``,
 ``WorldPosition``, ``MemoryBlock``, ``MisconductPolicy``, ``SoundConstraint``,
 ``SoundObjectId``, ``NetworkSoundId``, ``CustomSectorNetworkData``. How the
 composite ones flatten into wire values is *not* fully known (see
-``COMPOSITE_ARITY`` in ``pa_rpc.py``).
+``COMPOSITE_ARITY`` in ``src/protocol/rpc.py``).
 """
 
 RPCS: dict[int, tuple[str, tuple[str, ...]]] = {

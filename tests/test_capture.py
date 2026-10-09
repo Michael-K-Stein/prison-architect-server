@@ -1,7 +1,8 @@
 """Recording proxied traffic: a real client through a real proxy to a server.
 
 Also: reading a capture while it is still being written (``Capture.follow``),
-the ``tail`` and ``sessions`` commands, and captures recorded by older runs.
+the ``capture tail`` and ``capture sessions`` commands, and captures recorded by
+older runs.
 """
 
 import sys
@@ -12,6 +13,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from typer.testing import CliRunner
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -34,8 +36,9 @@ from pyphotonrealtime.protocol.packet.operation_packet import (  # noqa: E402
     PhotonOperationPacket,
 )
 
-import capture  # noqa: E402
-from capture import TO_CLIENT, TO_SERVER, Capture, Recorder  # noqa: E402
+from src.capture import TO_CLIENT, TO_SERVER, Capture, Recorder  # noqa: E402
+from src.capture.cli import app  # noqa: E402
+from src.capture.reader import Packet  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -350,7 +353,7 @@ def test_packet_rebuilds_as_operation() -> None:
         rebuilt = pkt.operation()
         assert rebuilt.get_payload().operation_code == pkt.code
         assert rebuilt.log()[0].startswith("Command:")
-        raw = capture.Packet(1, 0, 1, 0, None, 0, None, False, 6, None, 0, b"")
+        raw = Packet(1, 0, 1, 0, None, 0, None, False, 6, None, 0, b"")
         with pytest.raises(ValueError):
             raw.operation()
 
@@ -380,48 +383,48 @@ def test_old_captures_still_load() -> None:
         assert [p.id for p in followed] == [p.id for p in stored], path
 
 
-def test_tail_and_sessions_commands(capsys: pytest.CaptureFixture[str]) -> None:
+def test_tail_and_sessions_commands() -> None:
+    runner = CliRunner()
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "cli.sqlite"
         with Recorder(path) as rec:
             rec.on_packet(FakeSession(), Direction.ToServer, _op(COLOUR))
             _write(rec, FakeSession(), Direction.ToClient, 0, 1)
-        assert capture.main(["sessions", str(path)]) == 0
-        out = capsys.readouterr().out
-        assert "client -> upstream" in out and "127.0.0.1:4530" in out
+        result = runner.invoke(app, ["sessions", str(path)])
+        assert result.exit_code == 0, result.output
+        assert "client -> upstream" in result.output
+        assert "127.0.0.1:4530" in result.output
 
-        assert (
-            capture.main(["tail", str(path), "--from-start", "--timeout", "0.3"]) == 0
+        result = runner.invoke(
+            app, ["tail", str(path), "--from-start", "--timeout", "0.3"]
         )
-        out = capsys.readouterr().out
-        assert "client -> server" in out and "Operation: SetProperties" in out
-        assert "format 0xf3" in out  # the raw packet
+        assert result.exit_code == 0, result.output
+        assert "client -> server" in result.output
+        assert "Operation: SetProperties" in result.output
+        assert "format 0xf3" in result.output  # the raw packet
 
         code = int(_op(COLOUR).get_payload().operation_code)
-        assert (
-            capture.main(
-                [
-                    "tail",
-                    str(path),
-                    "--from-start",
-                    "--timeout",
-                    "0.3",
-                    "--code",
-                    str(code),
-                ]
-            )
-            == 0
+        result = runner.invoke(
+            app,
+            [
+                "tail",
+                str(path),
+                "--from-start",
+                "--timeout",
+                "0.3",
+                "--code",
+                str(code),
+            ],
         )
-        out = capsys.readouterr().out
-        assert "Operation: SetProperties" in out and "format 0xf3" not in out
+        assert result.exit_code == 0, result.output
+        assert "Operation: SetProperties" in result.output
+        assert "format 0xf3" not in result.output
 
-        assert (
-            capture.main(
-                ["tail", str(path), "--from-start", "--timeout", "0.3", "--raw"]
-            )
-            == 0
+        result = runner.invoke(
+            app, ["tail", str(path), "--from-start", "--timeout", "0.3", "--raw"]
         )
-        assert COLOUR.hex() in capsys.readouterr().out
+        assert result.exit_code == 0, result.output
+        assert COLOUR.hex() in result.output
 
 
 if __name__ == "__main__":

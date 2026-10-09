@@ -19,18 +19,20 @@ from pyphotonrealtime.protocol.packet.operation_payload import (  # noqa: E402
     PhotonPacketPayload,
 )
 
-from pa_events import (  # noqa: E402
-    Node,
-    decode_args,
-    decode_tree,
-    decompress,
+from src.protocol.events import (  # noqa: E402
     format_event,
-    format_tree,
     is_hidden,
     log_lines,
     packet_label,
 )
-from pa_rpc import build, encode_args, rpc_name  # noqa: E402
+from src.protocol.rpc import build, encode_args, rpc_name  # noqa: E402
+from src.protocol.snapshot import (  # noqa: E402
+    Node,
+    decode_args,
+    decode_tree,
+    decompress,
+    format_tree,
+)
 
 # Whole RaiseEvent operation payloads (packets 31 and 35).
 CASHFLOW = bytes.fromhex(

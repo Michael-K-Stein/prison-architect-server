@@ -12,11 +12,10 @@ import typer
 from dotenv import load_dotenv
 from rich.logging import RichHandler
 
-from prison_architect import (
-    NAME_SERVER_PORT,
-    PrisonArchitectServer,
-    resolve_upstream,
-)
+from src.bot.cli import app as bot_app
+from src.capture.cli import app as capture_app
+from src.server.server import PrisonArchitectServer
+from src.server.upstream import NAME_SERVER_PORT, resolve_upstream
 
 LOG_LEVELS = ("debug", "info", "warning", "error", "critical")
 
@@ -101,6 +100,8 @@ app = typer.Typer(
     no_args_is_help=False,
     context_settings={"help_option_names": ["-h", "--help"]},
 )
+app.add_typer(bot_app, name="bot")
+app.add_typer(capture_app, name="capture")
 
 
 def _merge_common(ctx: typer.Context, **overrides) -> CommonOptions:
@@ -178,14 +179,14 @@ def _start_proxy(
     from pyphotonrealtime.protocol.param.string_param import StringParameter
     from pyphotonrealtime.server import Direction, PhotonProxy
 
-    from pa_events import is_hidden, log_lines, packet_label
+    from src.protocol.events import is_hidden, log_lines, packet_label
 
     _setup_logging(opts)
 
     stack = ExitStack()
     recorder = None
     if record is not None:
-        from capture import Recorder
+        from src.capture import Recorder
 
         record.parent.mkdir(parents=True, exist_ok=True)
         recorder = stack.enter_context(Recorder(record))
@@ -357,7 +358,7 @@ def proxy(
             "-o",
             "--record",
             help="Also save every packet (decrypted) to this capture file, a "
-            "SQLite database for offline analysis (see capture.py). An "
+            "SQLite database for offline analysis (see `main.py capture`). An "
             "existing file is appended to.",
             dir_okay=False,
         ),

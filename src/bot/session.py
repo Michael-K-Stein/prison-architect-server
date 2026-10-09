@@ -1,0 +1,202 @@
+"""Connection to Photon: a ``RealtimeClient`` pumped by a background thread.
+
+Threading: ``RealtimeClient`` is single-threaded and needs ``service()`` calls,
+but prompts block. So :class:`Session` runs ``service()`` in a daemon thread and
+every client call, from either thread, takes one ``RLock``. Callbacks fire inside
+``service()`` (lock held) and only append to plain containers.
+"""
+
+from __future__ import annotations
+
+import threading
+import time
+from collections import deque
+from collections.abc import Callable
+from dataclasses import dataclass, replace
+from typing import Any
+
+import typer
+from pyphotonrealtime import AppSettings, RealtimeClient
+from pyphotonrealtime.protocol.param.parameter_key import ParameterKey
+from pyphotonrealtime.realtime import (
+    ConnectionCallbacks,
+    LobbyCallbacks,
+    MatchmakingCallbacks,
+    OnEventCallback,
+)
+
+from src.server.upstream import resolve_upstream
+
+PING_INTERVAL = 4.0  # seconds between the game client's P (ping) updates
+FIRST_PING_DELAY = 1.3  # ... the first one comes this long after joining
+CLAUDE_ORANGE = "d97757"  # RRGGBB; sent as the game does: "0xRRGGBBAA"
+APP_VERSION = "the_slammer_1.0"  # AppVersion in the game's Authenticate (captures)
+
+
+@dataclass
+class Options:
+    """Command line settings shared by the commands."""
+
+    app_id: str
+    app_version: str = APP_VERSION
+    name_server: str = ""
+    region: str | None = None
+    speed_index: bool = False
+    verbose: bool = False
+    name: str = "Claude"
+    colour: str = CLAUDE_ORANGE
+
+
+class Session(
+    ConnectionCallbacks,
+    MatchmakingCallbacks,
+    LobbyCallbacks,
+    OnEventCallback,
+):
+    """A ``RealtimeClient`` pumped by a background thread, plus what it saw."""
+
+    def __init__(self, client: RealtimeClient | None = None) -> None:
+        """Wrap ``client`` (a new one by default) and register for callbacks."""
+        self.client = client or RealtimeClient()
+        self.lock = threading.RLock()
+        self.regions: dict[str, str] = {}
+        self.events: deque[tuple[int, int, Any]] = deque(maxlen=5000)
+        self.master = self.joined = self.lobby_joined = False
+        self.disconnected: object | None = None
+        self.join_error = ""
+        self._stop = threading.Event()
+        self._next_ping: float | None = None
+        if (peer := getattr(self.client, "peer", None)) is not None:
+            # Photon only measures its round trip from keep-alive pings, which
+            # are sent when idle; ping often so the game's "P" is a real value.
+            peer.keep_alive_interval = 1.0
+        self._thread = threading.Thread(target=self._pump, daemon=True)
+        self.client.add_callback_target(self)
+
+    # callbacks (called from the service thread)
+    def on_region_list_received(self, regions: dict[str, str]) -> None:
+        """Keep the regions; a set ``cloud_region`` stops the library auto-pinging."""
+        self.regions = regions
+        if self.client.cloud_region is None:
+            self.client.cloud_region = "-"
+
+    def on_connected_to_master(self) -> None:
+        """Mark the Master Server as reached."""
+        self.master = True
+
+    def on_joined_lobby(self) -> None:
+        """Mark the lobby as joined."""
+        self.lobby_joined = True
+
+    def on_joined_room(self) -> None:
+        """Mark the room as joined."""
+        self.joined = True
+
+    def on_join_room_failed(self, return_code: int, message: str) -> None:
+        """Remember why joining failed."""
+        self.join_error = f"{message} (code {return_code})"
+
+    def on_disconnected(self, cause: object) -> None:
+        """Remember the disconnect cause."""
+        self.disconnected = cause
+
+    def on_event(self, event: Any) -> None:
+        """Queue custom (game) events: code 1-199, ``Data`` as raw bytes."""
+        if not 0 < event.code < 200:
+            return
+        data = event.parameters.get(ParameterKey.Data)
+        value = data.value if data is not None else None
+        self.events.append((event.sender, event.code, value))
+
+    # thread and helpers
+    def report_ping(self, now: float) -> bool:
+        """Like the game: set our actor's ``P`` to the round trip time (ms).
+
+        First ~1.3 s after joining, then every 4 s; nothing until Photon has
+        measured a round trip (a ``P`` of 0 would show as no latency). Returns
+        whether a ``SetProperties`` was queued.
+        """
+        peer = getattr(self.client, "peer", None)
+        actor = self.client.local_player.actor_number
+        if not self.joined or peer is None or actor <= 0:
+            return False
+        if self._next_ping is None:
+            self._next_ping = now + FIRST_PING_DELAY
+        if now < self._next_ping or peer.last_round_trip_time is None:
+            return False
+        self._next_ping = now + PING_INTERVAL
+        return self.client.op_set_properties_of_actor(
+            actor, {"P": int(peer.round_trip_time)}
+        )
+
+    def _pump(self) -> None:
+        while not self._stop.is_set():
+            with self.lock:
+                self.client.service()
+                self.report_ping(time.monotonic())
+            time.sleep(1 / 30)
+
+    def start(self, settings: AppSettings) -> None:
+        """Connect and start the service thread."""
+        with self.lock:
+            self.client.connect_using_settings(settings)
+        if not self._thread.is_alive():
+            self._thread.start()
+
+    def wait_for(self, done: Callable[[], bool], timeout: float = 20) -> bool:
+        """Poll ``done`` until true; False on timeout or disconnect."""
+        end = time.monotonic() + timeout
+        while time.monotonic() < end and self.disconnected is None:
+            if done():
+                return True
+            time.sleep(0.05)
+        return done()
+
+    def raise_event(self, code: int, data: bytes) -> bool:
+        """Send a game RPC. ``bytes`` go out as an Int8Slice under key Data (245)."""
+        with self.lock:
+            return self.client.op_raise_event(code, data)
+
+    def stop(self) -> None:
+        """Disconnect cleanly and stop the thread (safe to call twice)."""
+        with self.lock:
+            self.client.disconnect()
+        time.sleep(0.2)  # let the thread flush the disconnect
+        self._stop.set()
+        if self._thread.is_alive():
+            self._thread.join(timeout=2)
+
+
+def split_address(spec: str) -> tuple[str, int]:
+    """``host`` or ``host:port`` -> (host, port); port 0 = protocol default."""
+    host, _, port = spec.partition(":")
+    return host, int(port) if port else 0
+
+
+def make_settings(opts: Options, region: str | None = None) -> AppSettings:
+    """``AppSettings`` for ``opts``; the name server may be ``auto`` or host[:port]."""
+    settings = AppSettings(
+        app_id_realtime=opts.app_id,
+        app_version=opts.app_version,
+        fixed_region=region,
+        enable_lobby_statistics=True,
+    )
+    if opts.name_server == "auto":
+        host, port = resolve_upstream("auto")
+        return replace(settings, name_server=host, name_server_port=port)
+    if opts.name_server:
+        host, port = split_address(opts.name_server)
+        return replace(settings, name_server=host, name_server_port=port)
+    return settings
+
+
+def fetch_regions(opts: Options) -> dict[str, str]:
+    """Ask the Name Server for its regions (read-only), then disconnect."""
+    session = Session()
+    try:
+        session.start(make_settings(opts))
+        if not session.wait_for(lambda: bool(session.regions)):
+            raise typer.BadParameter("no region list received from the Name Server")
+        return dict(session.regions)
+    finally:
+        session.stop()

@@ -8,8 +8,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from pa_events import decode_args
-from pa_rpc import (
+from src.protocol.rpc import (
     COMPOSITE_ARITY,
     ParsedRpc,
     RpcShapeError,
@@ -20,7 +19,8 @@ from pa_rpc import (
     parse,
     rpc_name,
 )
-from pa_rpc_data import RPCS
+from src.protocol.rpc_table import RPCS
+from src.protocol.snapshot import decode_args
 
 # Event 13 (ObjectAdded) from run4: uId 8427316, index 17, type 139.
 OBJECT_ADDED = bytes.fromhex("043497800211028b")

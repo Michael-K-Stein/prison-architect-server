@@ -1,6 +1,6 @@
 """Typed RPC arguments inside a ``RaiseEvent`` ``Data`` byte array.
 
-:mod:`pa_rpc_data` says what each event code means: ``RPCS`` maps the code
+:mod:`src.protocol.rpc_table` says what each event code means: ``RPCS`` maps the code
 to the RPC name and the C++ types of its arguments. This module uses those
 types to read and write ``Data``:
 
@@ -9,7 +9,7 @@ types to read and write ``Data``:
   ``(uId, index)`` tuple;
 * :func:`build` does the reverse and returns the ``Data`` bytes for a call;
 * :func:`encode_args` writes tagged values (the inverse of
-  :func:`pa_events.decode_args` for them).
+  :func:`src.protocol.snapshot.decode_args` for them).
 
 A ``bool`` is not a tagged value: it is one raw byte, ``00`` (false) or
 ``01`` (true), so it is read and written by its type, never as a tag. (A
@@ -19,7 +19,7 @@ A ``bool`` is not a tagged value: it is one raw byte, ``00`` (false) or
 that uses a type of unknown arity cannot be split, so :func:`parse` and
 :func:`build` raise :class:`RpcShapeError` for it.
 
-Encoding follows the tags that :func:`pa_events.decode_args` reads: a whole
+Encoding follows the tags that :func:`src.protocol.snapshot.decode_args` reads: a whole
 number uses the fewest little-endian magnitude bytes (at most 3, the
 largest size the captures use), tag ``0x08`` for negative, and ``0x00`` for
 zero. A byte string's tag is ``0x10`` plus the length-bytes count plus one,
@@ -32,7 +32,8 @@ import struct
 from dataclasses import dataclass
 from typing import Any
 
-from pa_rpc_data import RPCS
+from src.protocol.rpc_table import RPCS
+from src.protocol.snapshot import FLOAT_TAG
 
 COMPOSITE_ARITY: dict[str, int | None] = {
     "int": 1,  # measured: code 13 (x5, with ObjectId) and 118 (x8)
@@ -56,7 +57,6 @@ COMPOSITE_ARITY: dict[str, int | None] = {
 MAX_MAGNITUDE_BYTES = 3
 """Largest whole-number magnitude (in bytes) the encoder writes."""
 
-FLOAT_TAG = 0x1A
 NEGATIVE_BIT = 0x08
 _MAX_MAGNITUDE = (1 << (8 * MAX_MAGNITUDE_BYTES)) - 1
 
@@ -126,7 +126,7 @@ def _encode_bytes(data: bytes) -> bytes:
 def encode_args(values: list[int | float | bool | bytes | str]) -> bytes:
     """Encode flat values as a ``Data`` byte array.
 
-    The inverse of :func:`pa_events.decode_args` for tagged values: ``str``
+    The inverse of :func:`src.protocol.snapshot.decode_args` for tagged values: ``str``
     is its UTF-8 bytes, ``float`` a float32. A ``bool`` is not a tagged
     value (the game reads it as one raw byte), so it is refused here; use
     :func:`build`, which writes it correctly.
@@ -163,7 +163,7 @@ def _arity(type_name: str) -> int | None:
 
 
 def _read_tagged(rpc: Rpc, data: bytes, pos: int) -> tuple[Any, int]:
-    """One tagged value at ``pos`` (as :func:`pa_events.decode_args` reads it).
+    """One tagged value at ``pos`` (as :func:`src.protocol.snapshot.decode_args` reads it).
 
     Returns the value and the position after it. Only used for types other
     than ``bool``, which is a raw byte and so must be read by its type.
