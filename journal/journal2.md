@@ -904,3 +904,36 @@ readable while recording (1,418 packets seen within a minute).
   sends repeatedly before declaring a bot "joined".*
 - **Printed ~65 identical `P` rows** while checking cadence; cap output (use
   `head`/counts) when scanning a capture.
+
+## `twi` in `MisconductSystem` (run5, Claude Haiku 5.5 work)
+
+Goal: deduce what the `twi` field in the `MisconductSystem` directory entry
+means.
+
+### Where it lives
+
+- `captures/run5.sqlite`, `RPC 9 DirectoryData` packets. The `MisconductSystem`
+  entry is a zlib blob (`x\x9c`) inside the payload.
+- Decompressed body: `<` `\x10` `MisconductSystem` `\x01` `\x03` `twi`
+  `\x02` + 4-byte little-endian float + `\x00` `>`. The `\x02` is the value's
+  type tag. Read the float at offset +1 after the tag (not +0): the first
+  attempt was off by one byte.
+- 302 `MisconductSystem` packets in run5 (ids 2654 onward).
+
+### Findings
+
+- `twi` is a float in game-seconds that advances with the game speed.
+  Over 400 s of real time it rose from 1331.52 to about 1925 (+393.6), a slope
+  of 0.983 per real second. That matches `WorldData.TimeIndex` at `gt=1`
+  (see the run3 section). It is a clock, not a counter of events.
+- Not yet checked: whether it stops at `gt=0` (paused) or runs faster at
+  `gt=10`. Watching it while pausing would confirm the scaling.
+- The name `twi` is unconfirmed. The IDA copy (`../ida-work/db/pa.i64`) was not
+  opened, because idalib needs Python 3.11 here. The next step is to find the
+  `MisconductSystem` save/serialize routine there and read the string literal
+  for that float.
+
+### Mistakes log (continued)
+
+- Read the float one byte early after the type tag. Check the offset against
+  the raw hex before trusting a decoded value.
