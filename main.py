@@ -180,14 +180,58 @@ def _start_local(opts: CommonOptions, upstream: Optional[str] = None) -> None:
         _serve_forever()
 
 
-def _start_proxy(opts: CommonOptions, upstream: Optional[str], port: int) -> None:
+def _start_proxy(
+    opts: CommonOptions, upstream: Optional[str], port: int, follow: bool = True
+) -> None:
     # Imported here: only the proxy command needs them.
+    from contextlib import ExitStack
+
     from pyphotonrealtime.protocol.packet.operation_packet import (
         PhotonOperationPacket,
     )
+    from pyphotonrealtime.protocol.param.parameter_key import ParameterKey
+    from pyphotonrealtime.protocol.param.slice_param import SliceParameter
+    from pyphotonrealtime.protocol.param.string_param import StringParameter
     from pyphotonrealtime.server import Direction, PhotonProxy
 
     _setup_logging(opts)
+
+    stack = ExitStack()
+    hops: dict[tuple[str, int], int] = {}
+
+    def local_port_for(address: str) -> str:
+        """Proxy ``address`` (a Master/Game Server) and return our own."""
+        host, _, raw_port = address.rpartition(":")
+        target = (host, int(raw_port))
+        if target not in hops:
+            hop = stack.enter_context(
+                PhotonProxy(target, opts.listen, 0, on_packet=on_packet)
+            )
+            hops[target] = hop.port
+            logging.info(
+                "Proxying %s:%d -> %s:%d", opts.listen, hop.port, host, target[1]
+            )
+        return f"{opts.ip}:{hops[target]}"
+
+    def hijack_addresses(packet: PhotonOperationPacket) -> None:
+        # Name/Master/Game Server addresses travel in responses; point them
+        # at ourselves so the client's next hop is proxied too.
+        params = packet.get_payload().params
+        value = params.get(ParameterKey.Address)
+        if isinstance(value, StringParameter) and value.value:
+            params[ParameterKey.Address] = StringParameter(local_port_for(value.value))
+        elif isinstance(value, SliceParameter):
+            value.value[:] = [
+                StringParameter(local_port_for(a.value)) if a.value else a
+                for a in value.value
+            ]
+
+    def on_packet(session, direction, packet):
+        if isinstance(packet, PhotonOperationPacket):
+            if follow and direction == Direction.ToClient:
+                hijack_addresses(packet)
+            return show(session, direction, packet)
+        return packet
 
     def show(_session, direction, packet):
         if isinstance(packet, PhotonOperationPacket):
@@ -199,9 +243,12 @@ def _start_proxy(opts: CommonOptions, upstream: Optional[str], port: int) -> Non
             logging.info("%s\n  %s", arrow, "\n  ".join(packet.log()))
         return packet
 
-    with PhotonProxy(
-        resolve_upstream(upstream), opts.listen, port, on_packet=show
-    ) as tunnel:
+    with (
+        stack,
+        PhotonProxy(
+            resolve_upstream(upstream), opts.listen, port, on_packet=on_packet
+        ) as tunnel,
+    ):
         logging.info(
             "Proxying %s:%d -> %s:%d", opts.listen, tunnel.port, *tunnel.upstream
         )
@@ -296,12 +343,23 @@ def proxy(
             "Photon name server.",
         ),
     ] = None,
+    follow: Annotated[
+        bool,
+        typer.Option(
+            "--follow/--no-follow",
+            help="Also proxy the Master and Game Server traffic, by rewriting "
+            "the addresses in the server's responses to point at this proxy "
+            "(so --ip must be reachable by the client). Use --no-follow to "
+            "proxy only the name server.",
+        ),
+    ] = True,
     verbose: VerboseOpt = None,
     listen: ListenOpt = None,
+    ip: IpOpt = None,
 ) -> None:
     """Proxy traffic to a Photon server, logging every packet both ways."""
-    opts = _merge_common(ctx, verbose=verbose, listen=listen)
-    _start_proxy(opts, upstream, port)
+    opts = _merge_common(ctx, verbose=verbose, listen=listen, ip=ip)
+    _start_proxy(opts, upstream, port, follow)
 
 
 def _interactive(defaults: CommonOptions) -> None:
