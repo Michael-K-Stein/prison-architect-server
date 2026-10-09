@@ -19,7 +19,14 @@ from pyphotonrealtime.protocol.packet.operation_payload import (  # noqa: E402
     PhotonPacketPayload,
 )
 
-from pa_events import decode_args, decompress, format_event, log_lines  # noqa: E402
+from pa_events import (  # noqa: E402
+    decode_args,
+    decompress,
+    format_event,
+    is_hidden,
+    log_lines,
+    packet_label,
+)
 
 # Whole RaiseEvent operation payloads (packets 31 and 35).
 CASHFLOW = bytes.fromhex(
@@ -58,6 +65,12 @@ def main() -> None:
     lines = log_lines(packet(FINANCE))
     assert "    Finance {tr.b=30075, v.6=30110}" in lines[-1], lines
     assert not any(line.startswith("  Data/") for line in lines), lines
+
+    label = packet_label(packet(FINANCE))
+    assert label == "RaiseEvent:SystemState:Finance", label
+    assert is_hidden(label, ["RaiseEvent:SystemState"])
+    assert is_hidden(label, ["RaiseEvent:SystemState:Finance"])
+    assert not is_hidden(label, ["RaiseEvent:SystemState:Fin", "RaiseEvent:Other"])
 
     # Anything that doesn't parse is shown raw rather than raising.
     assert "unparsed" in format_event(9, b"\xff")[0]

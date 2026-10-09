@@ -186,6 +186,7 @@ def _start_proxy(
     port: int,
     follow: bool = True,
     record: Optional[Path] = None,
+    hide: Optional[list[str]] = None,
 ) -> None:
     # Imported here: only the proxy command needs them.
     from contextlib import ExitStack
@@ -198,7 +199,7 @@ def _start_proxy(
     from pyphotonrealtime.protocol.param.string_param import StringParameter
     from pyphotonrealtime.server import Direction, PhotonProxy
 
-    from pa_events import log_lines
+    from pa_events import is_hidden, log_lines, packet_label
 
     _setup_logging(opts)
 
@@ -251,6 +252,8 @@ def _start_proxy(
 
     def show(_session, direction, packet):
         if isinstance(packet, PhotonOperationPacket):
+            if hide and is_hidden(packet_label(packet), hide):
+                return packet
             arrow = (
                 "client -> server"
                 if direction == Direction.ToServer
@@ -380,13 +383,23 @@ def proxy(
             dir_okay=False,
         ),
     ] = None,
+    hide: Annotated[
+        Optional[list[str]],
+        typer.Option(
+            "--hide",
+            help="Don't print packets whose label starts with this (repeatable), "
+            "e.g. RaiseEvent:SystemState:World or RaiseEvent:SystemState. "
+            "Labels are OPERATION[:EVENT[:SYSTEM]]. Hidden packets are still "
+            "forwarded and recorded.",
+        ),
+    ] = None,
     verbose: VerboseOpt = None,
     listen: ListenOpt = None,
     ip: IpOpt = None,
 ) -> None:
     """Proxy traffic to a Photon server, logging every packet both ways."""
     opts = _merge_common(ctx, verbose=verbose, listen=listen, ip=ip)
-    _start_proxy(opts, upstream, port, follow, record)
+    _start_proxy(opts, upstream, port, follow, record, hide)
 
 
 def _interactive(defaults: CommonOptions) -> None:

@@ -209,6 +209,35 @@ def event_payload(packet: PhotonOperationPacket) -> tuple[int, bytes] | None:
     return None
 
 
+def packet_label(packet: PhotonOperationPacket) -> str:
+    """Colon-separated name for filtering, e.g. ``RaiseEvent:SystemState:World``.
+
+    Parts: the operation, then (for game events) the event name or code and
+    the first argument when it is text (a system's name for ``SystemState``).
+    """
+    op = packet.get_payload().operation_code
+    try:
+        parts = [OperationCode(op).name]
+    except ValueError:
+        parts = [str(op)]
+    event = event_payload(packet)
+    if event is not None:
+        code, data = event
+        parts.append(EVENT_NAMES.get(code, str(code)))
+        try:
+            args = decode_args(data)
+        except ValueError:
+            args = []
+        if args and isinstance(args[0], bytes):
+            parts.append(args[0].decode("utf-8", "replace"))
+    return ":".join(parts)
+
+
+def is_hidden(label: str, hidden: list[str]) -> bool:
+    """Whether ``label`` equals, or is nested under, one of ``hidden``."""
+    return any(label == h or label.startswith(h + ":") for h in hidden)
+
+
 def log_lines(packet: PhotonOperationPacket) -> list[str]:
     """``packet.log()``, with a game event's ``Data`` parsed."""
     lines = packet.log()
