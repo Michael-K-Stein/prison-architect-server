@@ -116,6 +116,8 @@ def _value(reader: _Reader, kind: int) -> Any:
         return struct.unpack("<i", reader.take(4))[0]
     if kind == 0x02:
         return struct.unpack("<f", reader.take(4))[0]
+    if kind == 0x03:
+        return reader.u8()
     if kind == 0x04:
         return reader.str8()
     if kind == 0x05:

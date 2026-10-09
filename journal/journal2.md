@@ -57,6 +57,7 @@ Every `RaiseEvent` has two params:
   | ---- | ------------------------------------------------------------------ |
   | `01` | int32                                                              |
   | `02` | float32                                                            |
+  | `03` | u8, e.g. colour channels `c1.r` (run6, `EffectsSystem`)            |
   | `04` | string (u8 length)                                                 |
   | `05` | bool (1 byte)                                                      |
   | `06` | u32 length, then a nested tagged list, e.g. `[0, '_Finance', 'ReceivePaymentSmall', 0]` |
