@@ -342,8 +342,7 @@ class GameServer(ServerBase):
 
         client.join_game(requested_game.get_id(), actor_number)
         actors = [
-            Int32Parameter(x)
-            for x in requested_game.get_connected_players().keys()
+            Int32Parameter(x) for x in requested_game.get_connected_players().keys()
         ]
 
         client.send(
@@ -374,7 +373,7 @@ class GameServer(ServerBase):
         if ParameterKey.Code not in params or ParameterKey.Data not in params:
             print_warning(
                 self.get_type(),
-                f'Ignoring malformed RaiseEvent from {client.get_address()}: missing required params (keys={list(params.keys())})',
+                f"Ignoring malformed RaiseEvent from {client.get_address()}: missing required params (keys={list(params.keys())})",
             )
             print_packet_log(self.get_type(), packet)
             return
@@ -406,9 +405,7 @@ class GameServer(ServerBase):
         if recieving_actors is not None:
             to_players = [
                 x.value
-                for x in cast(
-                    List[Int32Parameter], recieving_actors.value
-                )  # pyright: ignore[reportUnnecessaryCast]
+                for x in cast(List[Int32Parameter], recieving_actors.value)  # pyright: ignore[reportUnnecessaryCast]
             ]
 
         current_game.raise_event(

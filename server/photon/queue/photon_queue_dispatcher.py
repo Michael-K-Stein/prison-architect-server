@@ -126,7 +126,10 @@ class PhotonQueueDispatcher:
                 with self._clients_lock:
                     self._clients.append(
                         PhotonClientSocket(
-                            sock=sock, addr=addr, server_type=self._server_type, packet_ready_event=self._packet_ready_event
+                            sock=sock,
+                            addr=addr,
+                            server_type=self._server_type,
+                            packet_ready_event=self._packet_ready_event,
                         )
                     )
             except Exception as ex:

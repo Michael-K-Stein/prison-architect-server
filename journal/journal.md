@@ -78,6 +78,7 @@ LISTEN_HOST = "127.0.0.1"
 PORT = 4533
 TARGET_IP = "<REDACTED>"
 
+
 def pipe(src: socket, dst: socket, direction: Union[Literal["C->S"], Literal["S->C"]]):
     ind = 0
     while True:

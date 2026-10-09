@@ -24,7 +24,12 @@ from socket import MSG_PEEK, socket
 from threading import Lock, Thread
 from typing import Optional, Tuple
 
-from server.consts import NAMESERVER_IP, NAMESERVER_PORT, PRISON_ARCHITECT_APP_ID, normalize_app_id
+from server.consts import (
+    NAMESERVER_IP,
+    NAMESERVER_PORT,
+    PRISON_ARCHITECT_APP_ID,
+    normalize_app_id,
+)
 from server.log import print_info, print_success, print_warning
 from server.photon.command_code import CommandCode
 from server.photon.packet.format import PacketFormat
@@ -199,7 +204,9 @@ def relay_connection(
     return True
 
 
-def route_or_local(sock: socket, addr, server_type, upstream_spec: Optional[str]) -> bool:
+def route_or_local(
+    sock: socket, addr, server_type, upstream_spec: Optional[str]
+) -> bool:
     """Decide how to handle a newly accepted client.
 
     Returns True when the socket was taken over by an upstream relay (do not
@@ -222,6 +229,4 @@ def route_or_local(sock: socket, addr, server_type, upstream_spec: Optional[str]
         server_type,
         f"Non-PA app id {app_id!r} from {addr[0]}:{addr[1]}; proxying to Photon cloud",
     )
-    return relay_connection(
-        sock, addr, get_upstream_target(upstream_spec), server_type
-    )
+    return relay_connection(sock, addr, get_upstream_target(upstream_spec), server_type)

@@ -55,5 +55,6 @@ class Settings:
 
     def get_max_players(self) -> int:
         return self._max_players
+
     def get_upstream(self) -> Optional[str]:
         return self._upstream

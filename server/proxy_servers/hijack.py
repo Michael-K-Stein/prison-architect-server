@@ -64,8 +64,7 @@ def print_hijacked_payload_params(
             )
             continue
         print_critical(
-            ("    " * indentation)
-            + f"  {key_name}({key}): {pprint_clean(val.value)}"  # type: ignore
+            ("    " * indentation) + f"  {key_name}({key}): {pprint_clean(val.value)}"  # type: ignore
         )
 
 

@@ -183,7 +183,9 @@ class PhotonQueue:
                             self._handle_init_request(packet)
                             continue
                         if isinstance(packet, InitEncryptionRequest):
-                            self.push(self._handle_dh_request(packet), high_priority=True)
+                            self.push(
+                                self._handle_dh_request(packet), high_priority=True
+                            )
                             continue
                         elif isinstance(packet, InitEncryptionResponse):
                             self._handle_dh_response(packet)

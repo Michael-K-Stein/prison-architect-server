@@ -10,7 +10,7 @@ class PrisonArchitectEventCode(IntEnum):
 
     PlayerJoin_Unknown = 2  # Suspected Player Join
     PasswordAuthRequest = 5
-    KickPlayer = 6 # Soft kick, just asks the client to leave
+    KickPlayer = 6  # Soft kick, just asks the client to leave
     WorldUpdate = 9
     TickSpeedUpdate = 96
 

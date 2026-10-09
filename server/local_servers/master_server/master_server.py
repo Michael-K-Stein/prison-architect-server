@@ -208,7 +208,7 @@ class MasterServer(ServerBase):
             clients = self._dispatcher.get_clients()
             if not clients:
                 continue
-            
+
             # Build the packet exactly once for all clients
             packet = PacketFactory.event(
                 EventCode.GameListUpdate,

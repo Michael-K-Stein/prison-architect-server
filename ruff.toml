@@ -1,0 +1,5 @@
+# Formatting is enforced in CI (`ruff format --check .`). Lint is limited to
+# correctness rules there (see .github/workflows/docker-image.yml) because the
+# default rule set still fails on the existing code.
+# Keep the ruff pin in CI in sync with the version used locally.
+line-length = 88

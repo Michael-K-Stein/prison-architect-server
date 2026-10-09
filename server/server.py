@@ -13,9 +13,11 @@ def _process_internal(server_instance: ServerBase) -> None:
     had_packets = False
     for client, packet in server_instance.process():
         if (
-            server_instance.get_type() in (ServerType.NameServer, ServerType.MasterServer)
+            server_instance.get_type()
+            in (ServerType.NameServer, ServerType.MasterServer)
             and isinstance(packet, PhotonOperationPacket)
-            and packet.get_payload().operation_code in (
+            and packet.get_payload().operation_code
+            in (
                 OperationCode.RaiseEvent,
                 OperationCode.SetProperties,
                 OperationCode.GetProperties,
@@ -32,7 +34,7 @@ def _process_internal(server_instance: ServerBase) -> None:
         print_packet_log(server_instance.get_type(), packet, printer=print_error)
 
     if not had_packets:
-        # Instead of a hard sleep, we wait on an Event. This gives 0ms latency 
+        # Instead of a hard sleep, we wait on an Event. This gives 0ms latency
         # because the Event wakes us instantly the millisecond a packet is queued.
         if hasattr(server_instance, "wait_for_packets"):
             server_instance.wait_for_packets(0.01)
@@ -104,9 +106,15 @@ def _game_server():
 
 
 def main():
-    name_server_worker = Thread(target=_name_server, name="NameServer Worker", daemon=True)
-    master_server_worker = Thread(target=_master_server, name="MasterServer Worker", daemon=True)
-    game_server_worker = Thread(target=_game_server, name="GameServer Worker", daemon=True)
+    name_server_worker = Thread(
+        target=_name_server, name="NameServer Worker", daemon=True
+    )
+    master_server_worker = Thread(
+        target=_master_server, name="MasterServer Worker", daemon=True
+    )
+    game_server_worker = Thread(
+        target=_game_server, name="GameServer Worker", daemon=True
+    )
 
     name_server_worker.start()
     master_server_worker.start()

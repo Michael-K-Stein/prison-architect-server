@@ -48,9 +48,7 @@ class Client:
             if not chunk:
                 raise RuntimeError("Server closed the connection")
             self.parser.feed(chunk)
-            for packet in self.parser.parse(
-                expect_responses=True, aes_key=self.aes
-            ):
+            for packet in self.parser.parse(expect_responses=True, aes_key=self.aes):
                 return packet
 
     def send(self, packet):
@@ -65,9 +63,9 @@ class Client:
         priv, dh_req = build_dh_request()
         self.send(dh_req)
         resp = self.read_one()
-        assert (
-            resp.get_header().get_command_name() == "KeyExchangeResponse"
-        ), resp.get_header()
+        assert resp.get_header().get_command_name() == "KeyExchangeResponse", (
+            resp.get_header()
+        )
         self.aes = process_dh_response(priv, resp)
         assert len(self.aes) == 32
 
@@ -79,9 +77,9 @@ class Client:
         )
         resp = self.read_one()
         assert isinstance(resp, PhotonOperationPacket), type(resp)
-        assert (
-            resp.get_header().get_command_name() == "EncryptedOperationResponse"
-        ), resp.get_header()
+        assert resp.get_header().get_command_name() == "EncryptedOperationResponse", (
+            resp.get_header()
+        )
         return resp.get_payload()
 
     def close(self):
@@ -113,7 +111,9 @@ payload = ns.operation(
 )
 token = payload.params[ParameterKey.Token].value
 ns_addr = payload.params[ParameterKey.Address].value
-print(f"STEP 4: Authenticate -> got token ({len(token)} chars), master={ns_addr!r} ... OK")
+print(
+    f"STEP 4: Authenticate -> got token ({len(token)} chars), master={ns_addr!r} ... OK"
+)
 ns.close()
 
 # --- MasterServer: handshake + token Authenticate ---
@@ -126,7 +126,9 @@ payload = ms.operation(
     {ParameterKey.Token: StringParameter(token)},
 )
 new_token = payload.params[ParameterKey.Token].value
-print(f"STEP 7: Token authenticate -> accepted, new token ({len(new_token)} chars) ... OK")
+print(
+    f"STEP 7: Token authenticate -> accepted, new token ({len(new_token)} chars) ... OK"
+)
 ms.close()
 
 print("ALL STEPS PASSED - server handled the full client flow without errors")

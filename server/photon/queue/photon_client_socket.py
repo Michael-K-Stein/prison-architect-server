@@ -30,13 +30,22 @@ class PhotonClientSocket:
     _app_version: Optional[str]
     _region: Optional[str]
 
-    def __init__(self, sock: socket, addr: Tuple[str, int], server_type: ServerType, packet_ready_event: Optional[Event] = None):
+    def __init__(
+        self,
+        sock: socket,
+        addr: Tuple[str, int],
+        server_type: ServerType,
+        packet_ready_event: Optional[Event] = None,
+    ):
         self._sock = sock
         self._addr = addr
         self._user_id = None
         self._aes_key = None
         self._queue = PhotonQueue(
-            sock, str(f"{addr[0]}:{addr[1]}"), server_type=server_type, packet_ready_event=packet_ready_event
+            sock,
+            str(f"{addr[0]}:{addr[1]}"),
+            server_type=server_type,
+            packet_ready_event=packet_ready_event,
         ).__enter__()
         self._server_type = server_type
         self._connected_to_game_id = None
@@ -184,7 +193,12 @@ class PhotonClientSocket:
 
     @classmethod
     def from_token(
-        cls, sock: socket, addr: Tuple[str, int], token: str, server_type: ServerType, packet_ready_event: Optional[Event] = None
+        cls,
+        sock: socket,
+        addr: Tuple[str, int],
+        token: str,
+        server_type: ServerType,
+        packet_ready_event: Optional[Event] = None,
     ):
         client = cls(sock, addr, server_type, packet_ready_event)
         PhotonClientSocket.enrich_with_token_data(client, token)
