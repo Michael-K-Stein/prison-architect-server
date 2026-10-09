@@ -1,5 +1,7 @@
 import json
+from json import JSONDecodeError
 from socket import socket
+from threading import Event
 from typing import Generator, Optional, Tuple, cast
 
 from server.consts import ServerType
@@ -28,13 +30,13 @@ class PhotonClientSocket:
     _app_version: Optional[str]
     _region: Optional[str]
 
-    def __init__(self, sock: socket, addr: Tuple[str, int], server_type: ServerType):
+    def __init__(self, sock: socket, addr: Tuple[str, int], server_type: ServerType, packet_ready_event: Optional[Event] = None):
         self._sock = sock
         self._addr = addr
         self._user_id = None
         self._aes_key = None
         self._queue = PhotonQueue(
-            sock, str(f"{addr[0]}:{addr[1]}"), server_type=server_type
+            sock, str(f"{addr[0]}:{addr[1]}"), server_type=server_type, packet_ready_event=packet_ready_event
         ).__enter__()
         self._server_type = server_type
         self._connected_to_game_id = None
@@ -52,6 +54,12 @@ class PhotonClientSocket:
 
     def get_aes_key(self) -> bytes | None:
         return self._queue.get_aes_key()
+
+    def is_disconnected(self) -> bool:
+        return self._queue.is_closed()
+
+    def get_outgoing_depth(self) -> int:
+        return self._queue.get_outgoing_depth()
 
     def set_user_id(self, user_id: int) -> None:
         self._user_id = user_id
@@ -130,6 +138,13 @@ class PhotonClientSocket:
                 return packet
             if packet.get_payload().operation_code == OperationCode.Authenticate:
                 return self._handle_auth_request(packet)
+            if packet.get_payload().operation_code == OperationCode.Ping:
+                self._queue.push(
+                    PacketFactory.operation(
+                        CommandCode.OperationResponse, OperationCode.Ping, return_code=0
+                    )
+                )
+                return None
         return packet
 
     def _handle_auth_request(
@@ -166,20 +181,28 @@ class PhotonClientSocket:
 
     @classmethod
     def from_token(
-        cls, sock: socket, addr: Tuple[str, int], token: str, server_type: ServerType
+        cls, sock: socket, addr: Tuple[str, int], token: str, server_type: ServerType, packet_ready_event: Optional[Event] = None
     ):
-        client = cls(sock, addr, server_type)
+        client = cls(sock, addr, server_type, packet_ready_event)
         PhotonClientSocket.enrich_with_token_data(client, token)
         return client
 
     @staticmethod
     def enrich_with_token_data(client: "PhotonClientSocket", token: str) -> None:
-        token_data = json.loads(token)
+        try:
+            token_data = json.loads(token)
+        except JSONDecodeError:
+            return
+
+        if not isinstance(token_data, dict):
+            return
 
         client._connected_to_game_id = token_data.get(
             "connected_to_game_id", client._connected_to_game_id
         )
-        client._user_id = token_data.get("user_id", client._user_id)
+        user_id = token_data.get("user_id", client._user_id)
+        if isinstance(user_id, int) or user_id is None:
+            client._user_id = user_id
 
     def get_address(self) -> str:
         return f"{self._addr[0]}:{self._addr[1]}"

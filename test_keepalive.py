@@ -33,18 +33,32 @@ from server.photon.queue.photon_queue import PhotonQueue
 from server.settings import Settings
 
 
-def make_queue(timeout):
+def make_queue(soft_timeout, hard_timeout):
     Settings().set(
         verbosity=Verbosity.Critical,
         listen_host="127.0.0.1",
         ip="127.0.0.1",
-        timeout=timeout,
+        timeout=60,
         region_name="local",
         upstream=None,
     )
     server_sock, client_sock = socket.socketpair()
     queue = PhotonQueue(server_sock, "test-client", ServerType.GameServer)
+    # Shrink the per-server-type thresholds so the test runs in seconds.
+    queue._keep_alive_soft_timeout = soft_timeout
+    queue._keep_alive_hard_timeout = hard_timeout
     queue.__enter__()
+
+    # Stand-in for PhotonQueueDispatcher's global keep-alive worker.
+    def keep_alive_loop():
+        while not queue._closing:
+            time.sleep(1)
+            queue.check_keep_alive()
+
+    queue._test_keep_alive_worker = threading.Thread(
+        target=keep_alive_loop, name="Test KeepAlive Worker"
+    )
+    queue._test_keep_alive_worker.start()
     return queue, client_sock
 
 
@@ -70,16 +84,16 @@ def assert_workers_dead(queue):
     for worker in (
         queue._send_worker,
         queue._recv_worker,
-        queue._check_keep_alive_worker,
+        queue._test_keep_alive_worker,
     ):
         worker.join(10)
         assert not worker.is_alive(), f"worker {worker.name} did not stop"
 
 
 def test_quiet_client_is_pinged_and_survives():
-    # timeout=8 -> server pings after 4s idle. Answer every ping for 14s,
-    # well past the old 10s death window: the client must stay connected.
-    queue, client = make_queue(timeout=8)
+    # Soft timeout 4s -> server pings after 4s idle. Answer every ping for
+    # 14s, well past the 8s hard timeout: the client must stay connected.
+    queue, client = make_queue(soft_timeout=4, hard_timeout=8)
     parser = PhotonStreamParser()
     try:
         end = time.time() + 14
@@ -107,7 +121,7 @@ def test_send_on_dead_socket_shuts_down_quietly():
     thread_errors = []
     old_hook = threading.excepthook
     threading.excepthook = lambda args: thread_errors.append(args)
-    queue, client = make_queue(timeout=60)
+    queue, client = make_queue(soft_timeout=60, hard_timeout=120)
     try:
         # Abruptly destroy the server side of the socket, then queue a send:
         # this is the WinError 10038 race from the LAN session.

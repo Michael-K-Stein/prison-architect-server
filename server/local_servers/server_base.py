@@ -51,6 +51,10 @@ class ServerBase(ABC):
         for client, packet in self._dispatcher.process(do_not_handle=do_not_handle):
             yield client, packet
 
+    def wait_for_packets(self, timeout: float) -> None:
+        if hasattr(self._dispatcher, "wait_for_packets"):
+            self._dispatcher.wait_for_packets(timeout)
+
     @classmethod
     @abstractmethod
     def get_type(cls) -> ServerType:

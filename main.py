@@ -1,10 +1,40 @@
 from argparse import ArgumentParser
+from os import environ
+from pathlib import Path
 
 from server.consts import NAMESERVER_IP, NAMESERVER_PORT, ServerType
 from server import run_local_server
 from server.log import Verbosity
 from server.proxy_servers.server import run_proxy
 from server.settings import Settings
+
+
+def _load_dotenv(dotenv_path: Path) -> None:
+    if not dotenv_path.exists():
+        return
+
+    for raw_line in dotenv_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if "=" not in line:
+            continue
+
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+
+        if key == "":
+            continue
+
+        if key not in environ:
+            environ[key] = value
+
+
+def _resolve_log_level_default() -> str:
+    log_level = environ.get("LOG_LEVEL", "Info").strip()
+    by_lower = {name.lower(): name for name in Verbosity._member_names_}
+    return by_lower.get(log_level.lower(), "Info")
 
 
 def _add_common_arguments(p):
@@ -19,7 +49,7 @@ def _add_common_arguments(p):
         "--verbose",
         # Accept lowercase; main() capitalizes before the Verbosity lookup.
         choices=[name.lower() for name in Verbosity._member_names_],
-        default="info",
+        default=_resolve_log_level_default().lower(),
         required=False,
     )
     p.add_argument(
@@ -53,9 +83,17 @@ def _add_common_arguments(p):
         required=False,
         help='The name shown in the "Region" selection box.',
     )
-
+    p.add_argument(
+        "--max-players",
+        type=int,
+        default=4,
+        required=False,
+        help="Maximum players per game room (safe test range: 4-8).",
+    )
 
 if __name__ == "__main__":
+    _load_dotenv(Path(__file__).resolve().parent / ".env")
+
     parser = ArgumentParser()
     _add_common_arguments(parser)
 
@@ -90,6 +128,7 @@ if __name__ == "__main__":
         ip=args.ip,
         timeout=args.timeout,
         region_name=args.region,
+        max_players=args.max_players,
         # Only the `local` subparser defines --upstream; the `proxy` mode has
         # its own unrelated -u/--upstream flag.
         upstream=getattr(args, "upstream", None) if args.mode != "proxy" else None,

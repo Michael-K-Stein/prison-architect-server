@@ -26,12 +26,21 @@ def raised_event_to_event_packet(
         OperationCode,
         cast(Int8Parameter, raised_event.get_payload().params[ParameterKey.Code]).value,
     )
+
+    # Relay only the canonical event payload fields for client compatibility.
     params: CommandParams = {
         ParameterKey.ActorNr: Int32Parameter(sender_num),
         ParameterKey.Data: raised_event.get_payload().params[ParameterKey.Data],
     }
 
-    header = PhotonDataPacketHeader(CommandCode.Event)
+    # Preserve encryption mode from the incoming RaiseEvent payload.
+    command = (
+        CommandCode.EncryptedEvent
+        if raised_event.get_header().is_encrypted()
+        else CommandCode.Event
+    )
+
+    header = PhotonDataPacketHeader(command)
     event_packet = PhotonOperationPacket(
         header=header,
         payload=PhotonPacketPayload(

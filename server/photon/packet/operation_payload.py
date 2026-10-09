@@ -65,12 +65,16 @@ class PhotonPacketPayload:
         return payload
 
     def serialize(self) -> bytes:
+        if hasattr(self, "_cached_serialized"):
+            return self._cached_serialized
+
         serialized_data = serialize_photon_payload(
             self.operation_code,
             self.params,
             self.response_debug_data,
             header=self.header,
         )
+        self._cached_serialized = serialized_data
         return serialized_data
 
     def get_operation_name(self) -> str:

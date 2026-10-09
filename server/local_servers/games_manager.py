@@ -44,6 +44,9 @@ class GamesManager:
     def get_games(self) -> Dict[str, GameObject]:
         return self._games
 
+    def remove_game(self, game_id: str) -> None:
+        self._games.pop(game_id, None)
+
     def app_stats(self) -> CommandParams:
         return {
             ParameterKey.MasterPeerCount: Int32Parameter(1),

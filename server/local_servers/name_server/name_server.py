@@ -47,6 +47,12 @@ class NameServer(ServerBase):
         ):
             if (
                 isinstance(packet, PhotonOperationPacket)
+                and packet.get_payload().operation_code == OperationCode.RaiseEvent
+            ):
+                # NameServer only handles discovery/auth; gameplay events can be ignored here.
+                continue
+            if (
+                isinstance(packet, PhotonOperationPacket)
                 and packet.get_payload().operation_code == OperationCode.GetRegions
             ):
                 self._handle_get_regions_request(client, packet)

@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, cast
 
 from server.local_servers.common import raised_event_to_event_packet
 from server.models.actor_properties import ActorProperties
@@ -55,10 +55,12 @@ class GameObject(GameListEntry):
         self._connected_players[actor_num] = player
         self.player_count = len(self._connected_players)
 
-        actor_props = ActorProperties()
-        actor_props.player_name = player.get_user_name()
-        actor_props.user_id = str(player.get_user_id())
-        actor_props.ping = 0
+        # Start from the client's actual actor properties so we keep fields like color.
+        actor_props = ActorProperties(player.get_custom_properties().to_hashtable())
+        if actor_props.player_name == "":
+            actor_props.player_name = player.get_user_name()
+        if actor_props.user_id == "":
+            actor_props.user_id = str(player.get_user_id())
 
         actors_props = HashtableParameter(
             {Int32Parameter(actor_num): actor_props.to_hashtable()}
@@ -85,10 +87,28 @@ class GameObject(GameListEntry):
                 )
             )
 
+            # Some clients apply display fields (name/color) from PropertiesChanged.
+            # Push the full actor properties right after join to avoid "?" placeholders.
+            props_header = PhotonDataPacketHeader(CommandCode.EncryptedEvent)
+            old_player.send(
+                PhotonOperationPacket(
+                    header=props_header,
+                    payload=PhotonPacketPayload(
+                        operation_code=cast(OperationCode, 0xFD),
+                        params={
+                            ParameterKey.TargetActorNr: Int32Parameter(actor_num),
+                            ParameterKey.Properties: actor_props.to_hashtable(),
+                        },
+                        header=props_header,
+                        response_debug_data=None,
+                    ),
+                )
+            )
+
         return actor_num
 
     def remove_player(self, player_num: int):
-        self._connected_players.pop(player_num)
+        self._connected_players.pop(player_num, None)
         self.player_count = len(self._connected_players)
 
     def _new_player_num(self) -> int:
@@ -112,14 +132,17 @@ class GameObject(GameListEntry):
             if from_player == -1:
                 raise RuntimeError("Player not found!")
 
+        # Create the packet exactly once to avoid redundant allocations for every player.
         event_to_send = raised_event_to_event_packet(
             from_player=from_player, raised_event=event_packet
         )
+
         for actor_num, player in self._connected_players.items():
             if player == from_player:
                 continue
             if to_players is not None and actor_num not in to_players:
                 continue
+
             player.send(event_to_send)
 
     def get_id(self) -> str:

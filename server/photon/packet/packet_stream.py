@@ -19,6 +19,10 @@ from server.photon.packet.operation_packet import PhotonOperationPacket
 
 
 class PhotonStreamParser:
+    # Large maps can produce very large event payloads; keep a safety cap but avoid
+    # disconnecting valid clients because of overly strict packet limits.
+    MAX_PACKET_LENGTH = 16 * 1024 * 1024
+
     def __init__(self):
         # This persistent buffer survives across multiple socket.recv() calls
         self.buffer = bytearray()
@@ -54,15 +58,21 @@ class PhotonStreamParser:
                         break
                     parsed_packet = PhotonKeepAliveRequest.from_bytes(datastream)
             else:
-                assert (
-                    photon_packet.get_format() == PacketFormat.Data
-                ), "Unexpected packet format!"
+                if photon_packet.get_format() != PacketFormat.Data:
+                    raise ValueError("Unexpected packet format")
 
                 # We need to peek/parse the header to know the required length
                 if len(self.buffer) - start_pos < PhotonDataPacketHeader.size():
                     break  # Wait for more data
                 data_header = PhotonDataPacketHeader.from_bytes(datastream)
-                assert data_header.packet_length is not None, "Packet length is None!"
+                if data_header.packet_length is None:
+                    raise ValueError("Packet length is missing")
+                if data_header.packet_length <= 0:
+                    raise ValueError("Invalid packet length")
+                if data_header.packet_length > self.MAX_PACKET_LENGTH:
+                    raise ValueError(
+                        f"Packet too large: {data_header.packet_length} bytes"
+                    )
 
                 if len(self.buffer) - start_pos < data_header.packet_length:
                     break  # Wait for more data
