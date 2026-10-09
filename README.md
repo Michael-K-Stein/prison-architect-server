@@ -26,7 +26,7 @@ _No Python needed, just [Docker](https://docs.docker.com/get-docker/)_
    ```
    1) For friends over WAN, set `PUBLIC_IP` to your public IP and follow the
       firewall/port forwarding steps [below](#playing-with-friends-wan).
-   2) Optional variables: `TIMEOUT` (default `60`), `REGION` (default `local`),
+   2) Optional variables: `REGION` (default `local`),
       `MAX_PLAYERS` (default `4`).
 3) Check the logs with `docker logs -f prison-architect-server`, stop with
    `docker stop prison-architect-server`.
@@ -55,15 +55,11 @@ _If your friends are on a different network than you, such as at their house and
 4) Run the local server
    1) `python main.py local -l 0.0.0.0 -i [YOUR_IP_ADDRESS]`
    2) Replace `[YOUR_IP_ADDRESS]` with your public IP address.
-5) _(optional)_ If your connection isn't strong, try adding `--timeout 30` to the command.
 
-### Other Photon games keep working
-The hosts-file redirect sends *every* Photon-engine game on your machine to this server. That's fine: the server reads each client's app id from its first packet (it's plaintext) and only serves Prison Architect locally. Any other game's traffic is transparently proxied byte-for-byte to the real Photon cloud, so those games keep working as if the redirect wasn't there.
+### Other Photon games
+The hosts-file redirect sends *every* Photon-engine game on your machine to this server, and it only serves Prison Architect. Remove the redirect (`update_hosts.ps1`, option 2) to play other Photon games.
 
-By default the current IP of `ns.exitgames.com` is resolved automatically. To override it:
-```powershell
-python main.py local --upstream 1.2.3.4:4533
-```
+The server itself is [pyPhotonRealtime](https://github.com/Michael-K-Stein/pyPhotonRealtime)'s self-hosted Photon server; `prison_architect.py` only adds the game's rules.
 
 ## Docker & CI/CD
 This repository includes a Docker image workflow for GitHub Container Registry (GHCR).
@@ -96,7 +92,7 @@ there is nothing to install.
    and add `4531-4533` as additional allocations.
 4) Set `PUBLIC_IP` to the node's public IP, then start the server.
 
-The ports are fixed, so only one server per IP. `TIMEOUT`, `REGION`, and
+The ports are fixed, so only one server per IP. `REGION` and
 `MAX_PLAYERS` are optional.
 
 ## Legal Notice

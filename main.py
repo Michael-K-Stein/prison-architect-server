@@ -1,18 +1,19 @@
+import logging
 import sys
 from dataclasses import dataclass, fields, replace
+from enum import Enum
+from ipaddress import ip_address
 from os import environ
 from pathlib import Path
+from time import sleep
 from typing import Annotated, Optional
 
-from enum import Enum
-
 import typer
+from rich.logging import RichHandler
 
-from server.consts import NAMESERVER_IP, NAMESERVER_PORT, ServerType
-from server import run_local_server
-from server.log import Verbosity
-from server.proxy_servers.server import run_proxy
-from server.settings import Settings
+from prison_architect import PrisonArchitectServer
+
+LOG_LEVELS = ("debug", "info", "warning", "error", "critical")
 
 
 def _load_dotenv(dotenv_path: Path) -> None:
@@ -38,9 +39,8 @@ def _load_dotenv(dotenv_path: Path) -> None:
 
 
 def _resolve_log_level_default() -> str:
-    log_level = environ.get("LOG_LEVEL", "Info").strip()
-    by_lower = {name.lower(): name for name in Verbosity._member_names_}
-    return by_lower.get(log_level.lower(), "Info")
+    log_level = environ.get("LOG_LEVEL", "info").strip().lower()
+    return log_level if log_level in LOG_LEVELS else "info"
 
 
 @dataclass
@@ -48,17 +48,11 @@ class CommonOptions:
     verbose: str
     listen: str = "0.0.0.0"
     ip: str = "127.0.0.1"
-    timeout: int = 60
     region: str = "local"
     max_players: int = 4
 
 
-LogLevel = Enum(
-    "LogLevel", {n.lower(): n.lower() for n in Verbosity._member_names_}, type=str
-)
-ServerTypeChoice = Enum(
-    "ServerTypeChoice", {n: n for n in ServerType._member_names_}, type=str
-)
+LogLevel = Enum("LogLevel", {n: n for n in LOG_LEVELS}, type=str)
 
 
 # Options shared by every command. They are accepted both before and after the
@@ -90,14 +84,9 @@ IpOpt = Annotated[
         show_default="127.0.0.1",
     ),
 ]
-TimeoutOpt = Annotated[
-    Optional[int],
-    typer.Option(
-        "--timeout",
-        help="Grace period between client keep alives before closing sockets.",
-        show_default="60",
-    ),
-]
+# Still accepted so existing Docker/Pterodactyl start commands keep working,
+# but ignored: pyPhotonRealtime's server has no keep-alive timeout setting.
+TimeoutOpt = Annotated[Optional[int], typer.Option("--timeout", hidden=True)]
 RegionOpt = Annotated[
     Optional[str],
     typer.Option(
@@ -132,30 +121,35 @@ def _merge_common(ctx: typer.Context, **overrides) -> CommonOptions:
     return replace(base, **given)
 
 
-def _apply_settings(opts: CommonOptions, upstream: Optional[str]) -> None:
-    Settings().set(
-        listen_host=opts.listen,
-        verbosity=Verbosity[opts.verbose.capitalize()],
-        ip=opts.ip,
-        timeout=opts.timeout,
-        region_name=opts.region,
-        max_players=opts.max_players,
-        upstream=upstream,
+def _start_local(opts: CommonOptions) -> None:
+    if not 1 <= opts.max_players <= 16:
+        raise typer.BadParameter("max_players must be between 1 and 16")
+    ip_address(opts.listen)
+    ip_address(opts.ip)
+    logging.basicConfig(
+        level=opts.verbose.upper(),
+        format="%(message)s",
+        datefmt="%H:%M:%S",
+        handlers=[RichHandler(markup=False, rich_tracebacks=True)],
     )
-
-
-def _start_local(opts: CommonOptions, upstream: Optional[str]) -> None:
-    _apply_settings(opts, upstream)
-    run_local_server()
-
-
-def _start_proxy(
-    opts: CommonOptions, upstream: str, port: int, server_type: ServerType
-) -> None:
-    # The proxy's -u/--upstream is the proxied server, not the `local`
-    # passthrough upstream, so it is not stored in Settings.
-    _apply_settings(opts, None)
-    run_proxy(upstream, port, server_type)
+    server = PrisonArchitectServer(
+        opts.listen,
+        public_host=opts.ip,
+        region=opts.region,
+        max_players=opts.max_players,
+    )
+    with server:
+        logging.info(
+            "Prison Architect server up: name server on %s:%d, region %r",
+            opts.listen,
+            server.name_server_port,
+            opts.region,
+        )
+        try:
+            while True:
+                sleep(1)
+        except KeyboardInterrupt:
+            print("\nShutting down servers...")
 
 
 @app.callback(invoke_without_command=True)
@@ -175,14 +169,13 @@ def cli(
     if verbose is not None:
         verbose = verbose.value
     ctx.obj = replace(
-        CommonOptions(verbose=_resolve_log_level_default().lower()),
+        CommonOptions(verbose=_resolve_log_level_default()),
         **{
             k: v
             for k, v in dict(
                 verbose=verbose,
                 listen=listen,
                 ip=ip,
-                timeout=timeout,
                 region=region,
                 max_players=max_players,
             ).items()
@@ -195,22 +188,12 @@ def cli(
         _interactive(ctx.obj)
     else:
         # Non-interactive with no command: run the local server.
-        _start_local(ctx.obj, None)
+        _start_local(ctx.obj)
 
 
 @app.command()
 def local(
     ctx: typer.Context,
-    upstream: Annotated[
-        Optional[str],
-        typer.Option(
-            "--upstream",
-            help="Upstream Photon name server (host or host:port) that "
-            "non-Prison Architect clients are transparently proxied to. "
-            "If omitted, the current IP of ns.exitgames.com is resolved "
-            "automatically.",
-        ),
-    ] = None,
     verbose: VerboseOpt = None,
     listen: ListenOpt = None,
     ip: IpOpt = None,
@@ -224,44 +207,10 @@ def local(
         verbose=verbose,
         listen=listen,
         ip=ip,
-        timeout=timeout,
         region=region,
         max_players=max_players,
     )
-    _start_local(opts, upstream)
-
-
-@app.command()
-def proxy(
-    ctx: typer.Context,
-    server_type: Annotated[
-        ServerTypeChoice,
-        typer.Option(
-            "-t",
-            "--type",
-            help="Which server to proxy.",
-        ),
-    ],
-    port: Annotated[int, typer.Option("-p", "--port")] = NAMESERVER_PORT,
-    upstream: Annotated[str, typer.Option("-u", "--upstream")] = NAMESERVER_IP,
-    verbose: VerboseOpt = None,
-    listen: ListenOpt = None,
-    ip: IpOpt = None,
-    timeout: TimeoutOpt = None,
-    region: RegionOpt = None,
-    max_players: MaxPlayersOpt = None,
-) -> None:
-    """Proxy traffic, allowing reading and injecting packets."""
-    opts = _merge_common(
-        ctx,
-        verbose=verbose,
-        listen=listen,
-        ip=ip,
-        timeout=timeout,
-        region=region,
-        max_players=max_players,
-    )
-    _start_proxy(opts, upstream, port, ServerType[server_type.value])
+    _start_local(opts)
 
 
 def _interactive(defaults: CommonOptions) -> None:
@@ -269,30 +218,10 @@ def _interactive(defaults: CommonOptions) -> None:
     from InquirerPy import inquirer
     from InquirerPy.validator import NumberValidator
 
-    def ask_int(message: str, default: int) -> int:
-        return int(
-            inquirer.text(
-                message=message,
-                default=str(default),
-                validate=NumberValidator(message="Enter a whole number"),
-            ).execute()
-        )
-
     typer.secho("Prison Architect server setup", fg=typer.colors.CYAN, bold=True)
-    mode = inquirer.select(
-        message="Mode:",
-        choices=[
-            {"name": "Local server", "value": "local"},
-            {"name": "Proxy (read / inject packets)", "value": "proxy"},
-        ],
-        default="local",
-    ).execute()
-
     opts = CommonOptions(
         verbose=inquirer.select(
-            message="Log level:",
-            choices=[name.lower() for name in Verbosity._member_names_],
-            default=defaults.verbose,
+            message="Log level:", choices=list(LOG_LEVELS), default=defaults.verbose
         ).execute(),
         listen=inquirer.text(
             message="Listen address:", default=defaults.listen
@@ -300,44 +229,28 @@ def _interactive(defaults: CommonOptions) -> None:
         ip=inquirer.text(
             message="Redirect IP (127.0.0.1 or your public IP):", default=defaults.ip
         ).execute(),
-        timeout=ask_int("Keep-alive timeout (seconds):", defaults.timeout),
         region=inquirer.text(message="Region name:", default=defaults.region).execute(),
-        max_players=ask_int("Max players per room:", defaults.max_players),
+        max_players=int(
+            inquirer.text(
+                message="Max players per room:",
+                default=str(defaults.max_players),
+                validate=NumberValidator(message="Enter a whole number"),
+            ).execute()
+        ),
     )
-
-    if mode == "local":
-        upstream = inquirer.text(
-            message="Upstream name server (blank = auto-resolve ns.exitgames.com):",
-            default="",
-        ).execute()
-        _print_equivalent(
-            opts, ["local"] + (["--upstream", upstream] if upstream else [])
-        )
-        _start_local(opts, upstream or None)
-    else:
-        server_type = inquirer.select(
-            message="Server type to proxy:", choices=ServerType._member_names_
-        ).execute()
-        upstream = inquirer.text(
-            message="Upstream address:", default=NAMESERVER_IP
-        ).execute()
-        port = ask_int("Port:", NAMESERVER_PORT)
-        _print_equivalent(
-            opts, ["proxy", "-t", server_type, "-u", upstream, "-p", str(port)]
-        )
-        _start_proxy(opts, upstream, port, ServerType[server_type])
+    _print_equivalent(opts)
+    _start_local(opts)
 
 
-def _print_equivalent(opts: CommonOptions, command: list[str]) -> None:
+def _print_equivalent(opts: CommonOptions) -> None:
     flags = {
         "verbose": "-v",
         "listen": "-l",
         "ip": "-i",
-        "timeout": "--timeout",
         "region": "-r",
         "max_players": "--max-players",
     }
-    args = list(command)
+    args = ["local"]
     for f in fields(opts):
         args += [flags[f.name], str(getattr(opts, f.name))]
     typer.secho(

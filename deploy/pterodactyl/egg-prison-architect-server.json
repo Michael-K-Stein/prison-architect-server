@@ -13,7 +13,7 @@
     "ghcr.io/michael-k-stein/prison-architect-server:latest": "ghcr.io/michael-k-stein/prison-architect-server:latest"
   },
   "file_denylist": [],
-  "startup": "python main.py local -l 0.0.0.0 -i {{PUBLIC_IP}} --timeout {{TIMEOUT}} -r {{REGION}} --max-players {{MAX_PLAYERS}}",
+  "startup": "python main.py local -l 0.0.0.0 -i {{PUBLIC_IP}} -r {{REGION}} --max-players {{MAX_PLAYERS}}",
   "config": {
     "files": "{}",
     "startup": "{\"done\": [\"Server listening on\"]}",
@@ -36,15 +36,6 @@
       "user_viewable": true,
       "user_editable": true,
       "rules": "required|ip"
-    },
-    {
-      "name": "Timeout",
-      "description": "Keep-alive timeout in seconds.",
-      "env_variable": "TIMEOUT",
-      "default_value": "60",
-      "user_viewable": true,
-      "user_editable": true,
-      "rules": "required|integer|min:3|max:120"
     },
     {
       "name": "Region",
