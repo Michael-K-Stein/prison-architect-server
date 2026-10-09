@@ -1,6 +1,5 @@
 # Prison Architect Server dependencies
-# Generated 2026-09-26: the repo shipped with no requirements.txt at all
-# (this was the repo's open issue #2). These two packages are the only
-# third-party imports in the codebase.
-colorama==0.4.6      # server/log.py (colored log output), server/proxy_servers/hijack.py
+rich==15.0.0         # server/log.py, server/proxy_servers/hijack.py (colored log output; also a typer dependency)
 pycryptodome==3.23.0 # server/photon/packet/operation_payload.py (AES for Photon encrypted ops)
+typer==0.27.3        # main.py (CLI)
+InquirerPy==0.3.4    # main.py (interactive setup wizard when run with no command)

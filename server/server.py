@@ -34,8 +34,7 @@ def _process_internal(server_instance: ServerBase) -> None:
         print_packet_log(server_instance.get_type(), packet, printer=print_error)
 
     if not had_packets:
-        # Instead of a hard sleep, we wait on an Event. This gives 0ms latency
-        # because the Event wakes us instantly the millisecond a packet is queued.
+        # Wait on an Event so a newly queued packet wakes us immediately.
         if hasattr(server_instance, "wait_for_packets"):
             server_instance.wait_for_packets(0.01)
         else:

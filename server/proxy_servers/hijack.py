@@ -1,6 +1,6 @@
 from typing import Any, List, Tuple, cast
 
-import colorama
+from rich.text import Text
 
 from server.consts import ServerType
 from server.log import pprint_clean, print_critical
@@ -31,13 +31,11 @@ def hijack_regions_list(payload: PhotonPacketPayload):
         SliceParameter[StringParameter], payload.params[ParameterKey.Address]
     )
     regions_addresses = region_addresses_param.value
-    # regions_addresses.insert(0, StringParameter("127.0.0.1:4530"))
 
     region_names = cast(
         SliceParameter[StringParameter], payload.params[ParameterKey.Region]
     ).value
     regions_addresses[0] = StringParameter(f"{Settings().get_ip()}:4530")
-    # region_names.insert(0, StringParameter("jp"))
     print_hijacked_payload_params(1, payload, [ParameterKey.Address])
 
 
@@ -54,17 +52,24 @@ def print_hijacked_payload_params(
     payload: "PhotonPacketPayload",
     hijacked_parameters: List[ParameterKey],
 ) -> None:
-    print_critical(("    " * indentation) + f"Hijacked Params [{len(payload.params)}]:")
+    print_critical(
+        ServerType.ProxyServer,
+        ("    " * indentation) + f"Hijacked Params [{len(payload.params)}]:",
+    )
     for key, val in payload.params.items():
         key_name = get_parameter_key_name(key)
         if key in hijacked_parameters:
             print_critical(
-                ("    " * 1)
-                + f"  {key_name}({key}): {colorama.Fore.RED}{pprint_clean(val.value)}{colorama.Fore.RESET}"
+                ServerType.ProxyServer,
+                Text.assemble(
+                    ("    " * 1) + f"  {key_name}({key}): ",
+                    (pprint_clean(val.value), "red"),
+                ),
             )
             continue
         print_critical(
-            ("    " * indentation) + f"  {key_name}({key}): {pprint_clean(val.value)}"  # type: ignore
+            ServerType.ProxyServer,
+            ("    " * indentation) + f"  {key_name}({key}): {pprint_clean(val.value)}",  # type: ignore
         )
 
 
@@ -75,21 +80,30 @@ def print_event_game_list_parameters(packet: PhotonOperationPacket):
         ],
         packet.get_payload().params[ParameterKey.GameList],
     )
-    print_critical("      Game List")
+    print_critical(ServerType.ProxyServer, "      Game List")
     for k, v in game_list.value.items():
         game_name = cast(StringParameter, k)
         game_params = cast(HashtableParameter, v)
         entry = GameListEntry.from_hashtable_entry(game_name, game_params)
 
-        print_critical(f"        {entry.name}")
-        print_critical(f"          Owner: {entry.owner}")
+        print_critical(ServerType.ProxyServer, f"        {entry.name}")
+        print_critical(ServerType.ProxyServer, f"          Owner: {entry.owner}")
         print_critical(
-            f"          Password: {'Required' if entry.password_required else 'Not Required'}"
+            ServerType.ProxyServer,
+            f"          Password: {'Required' if entry.password_required else 'Not Required'}",
         )
-        print_critical(f"          Player Count: {entry.player_count}")
-        print_critical(f"          Capacity: {entry.player_capacity}")
-        print_critical(f"          Unknown(243): {entry.unknown243}")
-        print_critical(f"          Unknown(253): {entry.unknown253}")
+        print_critical(
+            ServerType.ProxyServer, f"          Player Count: {entry.player_count}"
+        )
+        print_critical(
+            ServerType.ProxyServer, f"          Capacity: {entry.player_capacity}"
+        )
+        print_critical(
+            ServerType.ProxyServer, f"          Unknown(243): {entry.unknown243}"
+        )
+        print_critical(
+            ServerType.ProxyServer, f"          Unknown(253): {entry.unknown253}"
+        )
 
 
 def hijack_event_join_lobby(packet: PhotonOperationPacket):

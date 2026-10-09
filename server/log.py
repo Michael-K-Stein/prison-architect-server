@@ -4,7 +4,8 @@ import pprint
 from collections.abc import Callable
 from typing import Any, Dict, Optional, Union
 
-import colorama
+from rich.console import Console
+from rich.text import Text
 
 from server.consts import ServerType
 from server.photon.packet.base import PhotonDataPacket
@@ -20,7 +21,9 @@ class Verbosity(IntEnum):
     Critical = 4
 
 
-colorama.init()
+# markup/highlight off: messages contain "[...]" and raw packet data that must
+# print verbatim. Styling is applied explicitly via Text instead.
+console = Console(markup=False, highlight=False, emoji=False, soft_wrap=True)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -30,9 +33,9 @@ logging.basicConfig(
 )
 
 SENDER_COLORS: Dict[ServerType | ProxyQueueType, str] = {
-    ServerType.NameServer: colorama.Fore.MAGENTA,
-    ServerType.MasterServer: colorama.Fore.CYAN,
-    ServerType.GameServer: colorama.Fore.WHITE,
+    ServerType.NameServer: "magenta",
+    ServerType.MasterServer: "cyan",
+    ServerType.GameServer: "white",
 }
 
 
@@ -50,11 +53,14 @@ def _print_for_sender(
         )
         else sender.upper()
     )
-    full_message = f"[{sender_name}] \t" + msg + "\t" + "\t".join(str(x) for x in args)
-    print(
-        f"{SENDER_COLORS[sender] if sender in SENDER_COLORS else ''}{full_message}{colorama.Style.RESET_ALL}",
-        **kwargs,
+    line = Text.assemble(
+        f"[{sender_name}] \t",
+        msg if isinstance(msg, Text) else str(msg),
+        "\t",
+        "\t".join(str(x) for x in args),
+        style=SENDER_COLORS.get(sender, ""),
     )
+    console.print(line, **kwargs)
 
 
 def _print_with_prefix(
@@ -66,7 +72,9 @@ def _print_with_prefix(
 ) -> None:
     _print_for_sender(
         sender,
-        f"{colorama.Style.BRIGHT}[{prefix}]{colorama.Style.NORMAL} {msg}",
+        Text.assemble(
+            (f"[{prefix}]", "bold"), " ", msg if isinstance(msg, Text) else str(msg)
+        ),
         *args,
         **kwargs,
     )

@@ -32,8 +32,6 @@ class PrisonArchitectEventCode(IntEnum):
         Gracefully handles unknown event codes intercepted from the network
         so your parser doesn't crash on undocumented events.
         """
-        # You can create a dynamic generic member or just return the raw integer
-        # so your script keeps running while you log the new code.
         return int(value)
 
 
@@ -54,8 +52,6 @@ class EventCode(IntEnum):
         Gracefully handles unknown event codes intercepted from the network
         so your parser doesn't crash on undocumented events.
         """
-        # You can create a dynamic generic member or just return the raw integer
-        # so your script keeps running while you log the new code.
         value = int(value)
         if value > 0 and value <= 200:
             return PrisonArchitectEventCode(value)

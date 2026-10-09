@@ -44,19 +44,6 @@ def deserialize_photon_payload(
 
         response_debug_data = (return_code, debug_message_param)
 
-        # debug_message = ""
-        # if (
-        #     debug_message_param
-        #     and hasattr(debug_message_param, "value")
-        #     and debug_message_param.value
-        # ):
-        #     debug_message = debug_message_param.value
-
-        # # if return_code != 0:
-        # #     print_error(
-        # #         f"Photon Server Error {return_code}{(': ' + debug_message) if debug_message else ''}"
-        # #     )
-
     param_count = struct.unpack(">h", stream.read(2))[0]
 
     params: Dict[ParameterKey, ParameterBase[Any]] = {}

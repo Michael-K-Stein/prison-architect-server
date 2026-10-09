@@ -332,16 +332,14 @@ class PhotonQueue:
                 outgoing_packet = self._outgoing_high.get_nowait()
             except Empty:
                 try:
-                    # Lowered timeout to 0.05s so high priority packets (like handshakes)
-                    # aren't delayed by half a second if the main queue is empty.
+                    # Short timeout so high priority packets (like handshakes)
+                    # aren't delayed while the main queue is empty.
                     outgoing_packet = self._outgoing.get(timeout=0.05)
                 except Empty:
                     continue
             try:
                 self._recrypt(outgoing_packet)
                 serialized_data = outgoing_packet.serialize()
-
-                # Removed excessive logging here because terminal I/O causes huge freezes.
 
                 if self._closing:
                     return

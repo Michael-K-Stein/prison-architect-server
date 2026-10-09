@@ -397,9 +397,7 @@ class GameServer(ServerBase):
             params.get(ParameterKey.Actors, None),
         )
 
-        # Removed terminal output for RaiseEvent here. Printing thousands of events
-        # per minute artificially limits server performance because stdout on Windows
-        # is blocking and pauses the entire Python process.
+        # No per-event logging: stdout is blocking on Windows and stalls the process.
 
         to_players = None
         if recieving_actors is not None:

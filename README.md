@@ -8,8 +8,11 @@ _This only works if you are on [LAN](https://en.wikipedia.org/wiki/Local_area_ne
    2) Add the line `127.0.0.1 ns.exitgames.com` to your hosts file.
 2) Install the required dependencies.
    1) `pip install -r requirements.txt`
+   2) Requires Python 3.10 or newer.
 3) Run the local server
    1) `python main.py local`
+   2) Or just `python main.py` for an interactive setup wizard.
+   3) `python main.py --help` (or `python main.py local --help`) lists all options.
 
 ### Playing with Friends ([WAN](https://en.wikipedia.org/wiki/Wide_area_network))
 _If your friends are on a different network than you, such as at their house and you are at yours_
@@ -44,7 +47,7 @@ python main.py local --upstream 1.2.3.4:4533
 ```
 
 ## Docker & CI/CD
-This repository now includes a Docker image workflow for GitHub Container Registry (GHCR).
+This repository includes a Docker image workflow for GitHub Container Registry (GHCR).
 
 ### Build locally
 ```bash

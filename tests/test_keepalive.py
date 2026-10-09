@@ -125,7 +125,7 @@ def test_send_on_dead_socket_shuts_down_quietly():
     queue, client = make_queue(soft_timeout=60, hard_timeout=120)
     try:
         # Abruptly destroy the server side of the socket, then queue a send:
-        # this is the WinError 10038 race from the LAN session.
+        # this is the WinError 10038 race.
         queue._sock.close()
         queue.push(PhotonKeepAliveRequest(0))
         queue._send_worker.join(10)
