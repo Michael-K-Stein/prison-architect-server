@@ -345,7 +345,7 @@ class PhotonQueue:
                     return
 
                 self._sock.sendall(serialized_data)
-            except ConnectionAbortedError:
+            except ConnectionAbortedError as ex:
                 print_error(
                     self._server_type,
                     f"Failed to send to {self.remote_name}: "

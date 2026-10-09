@@ -91,6 +91,7 @@ def _add_common_arguments(p):
         help="Maximum players per game room (safe test range: 4-8).",
     )
 
+
 if __name__ == "__main__":
     _load_dotenv(Path(__file__).resolve().parent / ".env")
 

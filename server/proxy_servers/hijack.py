@@ -4,6 +4,7 @@ import colorama
 
 from server.consts import ServerType
 from server.log import pprint_clean, print_critical
+from server.models.game_list_entry import GameListEntry
 from server.models.game_properties import GamePropertiesTable
 from server.photon.command_code import CommandCode
 from server.photon.enum_lookups import CommandParams, get_parameter_key_name
