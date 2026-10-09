@@ -311,3 +311,596 @@ were these.
 - Run2's event 14 `[8427316, 8]` uses the same uId as this run's truck.
   The ids restart between game loads, so it's a different object. 14 could be
   "despawn".
+
+## IDA database: how events are dispatched (Claude Sonnet 5.5 work)
+
+Goal: find where the game maps `RaiseEvent` codes (9 `SystemState`, 13, 14,
+118...) to handlers, and whether the `SystemState` names (`WorkQueue`,
+`Finance`, `PlayerData`...) can tell us the other codes.
+
+### Setup
+
+`Prison Architect64.exe.i64` (IDA 9.0, 60,266 functions, 22,960 strings) was
+opened headlessly with idalib on a **copy** (`../ida-work/db/pa.i64`, outside
+the repo; the original has unpacked `.id0` files next to it, so IDA probably
+has it open). idalib only works with **Python 3.11** here (`py -3.11`; the
+module is called `ida`, not `idapro`). Scripts are in `../ida-work/scripts`
+(`dump.py`, `dec.py`, `renames.py`, `apply.py`); `../ida-work/out/dump.json`
+has all function names and strings.
+
+### Findings
+
+- **The `SystemState` names are not a dispatch table.** `WorkQueue`,
+  `Finance`, `PlayerData`, `Intake`, `Research`... are the *save-file section
+  names* (e.g. `0x140abd8f0 Research`, `0x140ad04b8 Finance`). Each is
+  referenced by many unrelated functions (save/load, UI, per-system code), and
+  no single function references them all. Their address order is just the
+  string pool, so it tells us nothing about codes. The network snapshot is the
+  save-file tree, which is why they match.
+- **There is no switch on the event code either.** `ExitGames::LoadBalancing::
+  Client::onEvent` (`0x140843900`) handles the Photon built-ins (0, 3, 4, 6, 9,
+  10, 30, 33, 34, 35) and sends everything else (`default:`) to the listener:
+  `listener->customEventAction(playerNr, eventCode, content)`, vtable +48.
+  The game's listener is `PhotonInterfaceOld` (also `PhotonInterfaceNew`, a
+  second wrapper that queues calls onto another thread).
+  `PhotonInterfaceOld::customEventAction` (`0x14012BFB0`) looks the event code
+  up in a `std::map<int, handler>` at `this+104`. A miss logs
+  **`Trying to invoke unregistered RPC: %d`**. So the codes are **RPC ids
+  registered at runtime**, not a compiled switch. (CORRECTION, see Mistakes log: the `case` numbers in `onEvent`'s decompile
+  are an offset index, not wire codes; Photon's built-in events are 224-255, so
+  game codes 0-143 never collide with them.)
+- **Next step:** find the code that inserts into that map (`this+104`) and read
+  the ids it registers. Candidates: callers of the vtable methods around
+  `PhotonInterfaceOld`'s main vtable (`0x140ab1f48`) and
+  `sub_1401338F0`/`sub_140126750`, which also call `queueRPCHandlerCall?`
+  (`0x1401271A0`). The registrations should list every code with its handler.
+
+### Renames applied to the copy
+
+`../ida-work/scripts/renames.py` (idempotent; run it in IDA to apply to the
+real `.i64`). Convention: C++ `Class::method` like the existing
+`ExitGames::...` names; `?` = unsure, `???` = really unsure.
+
+| Address | Name |
+| ------- | ---- |
+| `0x140843900` | `ExitGames::LoadBalancing::Client::onEvent` (already named) |
+| `0x14012BFB0` | `PhotonInterfaceOld::customEventAction` |
+| `0x14012C180` | `PhotonInterfaceOld::joinRoomEventAction?` |
+| `0x1401271A0` | `PhotonInterfaceOld::queueRPCHandlerCall?` |
+| `0x1407C8320` / `0x1407C9D60` | `SaveGame::writeSystemSections???` / `readSystemSections???` (use the section names; not network) |
+| `0x1406D7F00` | `ReformProgram::serializeDefinition??` |
+| `0x1403CC960` | `PlayerDataSystem::handleState???` |
+
+Only analysed functions were renamed; the other ~55,000 `sub_*` are untouched.
+
+### `customEventAction` is the interesting function
+
+`PhotonInterfaceOld::customEventAction` (`0x14012BFB0`, listener vtable
+`0x140ab1e50` slot 6) is the single choke point for every game `RaiseEvent`
+the client *receives* (everything `Client::onEvent` doesn't consume).
+Worth coming back to because:
+
+- It is where the event code (the `Code (244)` param, our 9 / 13 / 14 / 118)
+  becomes a handler call. It looks the code up in a `std::map<int, handler>` at
+  `this+104`; a miss logs `Trying to invoke unregistered RPC: %d`. So the
+  full list of event codes = the ids registered into that map.
+- Its `content` argument is the `Data (245)` payload (the tagged value list).
+  The handler gets the args already parsed (`sub_14083B280/B290` read
+  value count and type), so this is also the reference for the tag format.
+- The same RPC machinery has a sibling for the sending side, a
+  `PhotonNetworkingManager::CanSendRPC` check, and a second implementation
+  (`PhotonInterfaceNew` / `QueuedRPCInterface`) that queues calls to another
+  thread, so there are at least two code paths to keep in mind.
+- The game also has an **RPC id -> name table**: `sub_1403E48A0` returns
+  `byte_140DB9640[32 * id]` (a `std::string`, ids 0..0x8F = 144 entries, else
+  `UnknownRPC(%d)`). It is filled at startup by static initialisers, so the
+  names are one decompile away. That would give names for every code.
+
+### The RPC table: every event code, with its name
+
+`sub_1403E48A0` (now `RPC::getName?`) indexes a table of 144 `std::string`s at
+`0x140DB9640`; the static initialiser `0x140030E20` (`RPC::initNames?`) fills
+it. **The index is the wire event code** (`Code (244)`). Names and ids
+extracted verbatim from the decompile (`../ida-work/out/rpc_names.json`):
+
+| | | | |
+| --- | --- | --- | --- |
+| 0 `None` | 1 `SetNumSaveDataChunks` | 2 `SaveDataChunkAck` | 3 `SaveDataChunk` |
+| 4 `ProcessingStarted` | 5 `AuthoriseConnection` | 6 `KickPlayer` | 7 `IncorrectPassword` |
+| 8 `SendingSaveGame` | 9 `DirectoryData` | 10 `LandPurchased` | 11 `LogObjectsFromIndex` |
+| 12 `FirstQueued` | 13 `ObjectAdded` | 14 `ObjectRemoved` | 15 `CreateRoom` |
+| 16 `RemoveRoom` | 17 `PowerCellModified` | 18 `WaterCellModified` | 19 `WaterCellCleared` |
+| 20 `RPCWaterValveChanged` | 21 `ObjectiveRemoved` | 22 `MarkerCreatedId` | 23 `MarkerCreatedPos` |
+| 24 `SectorZoneChange` | 25 `GangSegregationChange` | 26 `SectorAccessOnlyChange` | 27 `SectorJobCountChange` |
+| 28 `SectorAddTarget` | 29 `SectorClearTargets` | 30 `ChosenScheduleChange` | 31 `GuardDeploymentChange` |
+| 32 `PlanningJobChange` | 33 `PlayerSetsTarget` | 34 `ElectricalSwitch` | 35 `PerformAction` |
+| 36 `BeginResearch` | 37 `ToggleResearchDesired` | 38 `ApplyPrisonerCategory` | 39 `ApplyPunishment` |
+| 40 `ClearAllPunishments` | 41 `ActivateInformant` | 42 `DeactivateInformant` | 43 `NewVehicleCallout` |
+| 44 `SquadDismissal` | 45 `SackStaff` | 46 `ApporveTransfer` | 47 `AcceptGrant` |
+| 48 `CancelGrant` | 49 `IncreaseLoan` | 50 `DecreaseLoan` | 51 `SellShares` |
+| 52 `BuyBackShares` | 53 `SetRegime` | 54 `EvictGangTerritory` | 55 `CrisisButtonClicked` |
+| 56 `FiremanAimHose` | 57 `FireInformant` | 58 `TransferAllowedChange` | 59 `TransferChange` |
+| 60 `TransferAmountChange` | 61 `PolicyChange` | 62 `PrivilegePolicyChange` | 63 `MealPolicyChange` |
+| 64 `ParoleRateChange` | 65 `UseCellQualityChange` | 66 `StaffPayModifierChange` | 67 `StaffMaxBreakChange` |
+| 68 `SentencesEnabledChange` | 69 `ExtensionCriteriaChange` | 70 `ExtensionCriteriaValueChange` | 71 `ExtensionCriteriaMetChange` |
+| 72 `ReductionCriteriaChange` | 73 `ReductionCriteriaValueChange` | 74 `ReductionCriteriaMetChange` | 75 `NeedsDistributionUpdate` |
+| 76 `EntityUpdateRequest` | 77 `IntakeRatioChange` | 78 `IntakeTypeChange` | 79 `IntakeNumTotalChange` |
+| 80 `IntakeTimeChange` | 81 `IntakeRestrictionsChange` | 82 `StartReformProgram` | 83 `StopReformProgram` |
+| 84 `RunReformScheduler` | 85 `ScheduleProgram` | 86 `SetProgramManual` | 87 `LandPurchaseRequest` |
+| 88 `TriggerSoundEvent` | 89 `TriggerPositionedSoundEvent` | 90 `TriggerObjectSoundEvent` | 91 `TriggerObjectCustomSoundEvent` |
+| 92 `WiredObjectConnect` | 93 `WiredObjectClear` | 94 `WireDataRequested` | 95 `StopAllSounds` |
+| 96 `GameSpeedChange` | 97 `TreeAgeChange` | 98 `DeliveryStopSetAllowed` | 99 `DeliveryStopSetOverall` |
+| 100 `DeliveryStopAssignZone` | 101 `DeliveryStopClearAllZones` | 102 `FarmingPolicy` | 103 `AddRoomCropDist` |
+| 104 `RemoveRoomCropDist` | 105 `LockPercentagesCropDist` | 106 `ChangePercentagesCropDist` | 107 `RoomConnectionToggled` |
+| 108 `LogicCircuitChange` | 109 `LabourManagementChanged` | 110 `SpawnObject` | 111 `CoveragePlanChanged` |
+| 112 `CoveragePlanEmergencyChanged` | 113 `WaterCellFrozen` | 114 `WaterCellInsulated` | 115 `WaterCellFlood` |
+| 116 `PrisonerWageChanged` | 117 `NewSpeechAdded` | 118 `TransactionAdded` | 119 `TransactionAppended` |
+| 120 `CommitBuildPlanning` | 121 `VisitationRateChange` | 122 `IntakeNumPerDayChange` | 123 `LightningStrike` |
+| 124 `ToggleFogOfWar` | 125 `IntakeTogglePrisonerReplacement` | 126 `RemovePrisoner` | 127 `AssignGuardToPrisoner` |
+| 128 `UnassignGuardFromPrisoner` | 129 `MarkingTypeChanged` | 130 `RestrictAccessSettingsChanged` | 131 `PrisonerCategoryChanged` |
+| 132 `QuickCellChange` | 133 `CrisisCustomSearchArea` | 134 `CrisisCustomSaveSchedule` | 135 `RegisterInformant` |
+| 136 `ChangeRank` | 137 `ToggleStaffKeys` | 138 `Distortion` | 139 `ToggleAllowStunBatons` |
+| 140 `ControlAdvancedSearchLight` | 141 `AimAdvancedSearchLight` | 142 `EquipPrisonerTrackingBelt` | 143 `LastQueued` |
+
+Checks against the captures:
+
+- **13 `ObjectAdded`**, **14 `ObjectRemoved`**: match run4's "spawn" `[uId,
+  ObjectData index, type]` and run2's `[8427316, 8]` ("despawn" guess was
+  right). Note 110 `SpawnObject` is a *different* id; the "SpawnObject" label in
+  run4 should be `ObjectAdded`.
+- **118 `TransactionAdded`**: the cashflow event `[amount, ledger key, ?, ?]`
+  (`119 TransactionAppended` probably extends one).
+- **9 `DirectoryData`**: our `SystemState` (`[system name, snapshot]`).
+  Plausible (it carries the per-system state), less certain than the others.
+- 0..8 look like the join handshake (`SetNumSaveDataChunks`,
+  `SaveDataChunk(Ack)`, `AuthoriseConnection`, `SendingSaveGame`...);
+  `96 GameSpeedChange` is probably what run3's speed changes *should* have
+  used, but run3 saw none (speed is in `ClientData.gt`), so it may be unused.
+  `143 LastQueued` / `12 FirstQueued` bracket the ids that go through the
+  queue.
+- Ids above 143 don't exist (`UnknownRPC(%d)`).
+
+### Where they're registered
+
+- `PhotonInterfaceOld::registerRPC` (`0x14012B8B0`) / `unregisterRPC`
+  (`0x14012B9C0`) insert/erase in the map; `PhotonInterfaceNew` has queued
+  twins (`0x1401262C0` / `0x1401263E0`).
+- Each handler is a small typed wrapper (e.g. `sub_1403D5030`) around the real
+  callback: it checks the payload shape, calls the callback via a
+  `std::function`, and otherwise logs `ERROR: Failed to unserialise remote call
+  to %s (%d)`. About 50 of them sit between `0x1403BE7E0` and `0x1403DD020`,
+  one per RPC. Next: map each wrapper to its id (its `a1+8`) to get the payload
+  shapes (e.g. what `ObjectAdded` carries) straight from the code.
+
+## Mistakes log (Claude Sonnet 5.5, IDA session)
+
+What went wrong, so we don't repeat it:
+
+- **Assumed the `SystemState` names were a dispatch table** (user's idea, I
+  went along). They are save-file section names; I spent several steps on
+  xrefs before checking what the strings were used for. *Look at the first
+  1-2 decompiled users of a string before building theories on its order.*
+- **Assumed a `switch` on the event code existed** and wrote an immediate-value
+  scanner for `0x76`/`9`. It found one unrelated function. The real design is a
+  runtime `std::map` (RPC registration). *Read the receiver's decompile before
+  scanning for patterns.*
+- **Wrongly read `onEvent`'s `case 9`** as "code 9 is a Photon built-in" and put
+  that in this journal (now corrected above). Hex-Rays prints the switch *index*
+  after subtracting a base; Photon built-ins are 224-255. *Check the
+  subtraction before quoting case labels as wire values.*
+- **Environment guesses**: expected the module to be `idapro` (it is `ida` in
+  this 9.0 build); expected Python 3.14 to work (idalib bindings need 3.11);
+  trusted `py -0` for 3.12, which wasn't actually installed. *Run
+  `py -V:x -c ...` before relying on a listed interpreter.*
+- **Tool slips**: called `Grep` from PowerShell; put a quoted Python one-liner
+  through PowerShell (quote error; use a script file); dumped ~25 full vtables
+  to the terminal (use a filter).
+- **First type scan matched demangled `RPC<`, but the names are stored
+  mangled** (`??_7?$RPC@`); found 0 vtables. Then my id regex expected bare
+  digits but IDA prints `65LL`, and some ids sit in `vNN` variables. *Print
+  three raw samples before writing the regex.* Also not using IDA's demangler
+  (`idc.demangle_name`) from the start cost a round trip (user pointed it out).
+- **Overclaiming in the summary**: said "I'll map each wrapper to its id" as
+  if wrappers carried ids; the id is stored by the `RPC<...>` constructor and
+  passed at the registration call site, so the unit of work was the
+  *registrar*, not the wrappers.
+
+### Argument shapes (how the handlers are typed)
+
+Each id is registered with an `RPC<T1, T2, ...>` template instantiation
+(`sub_1403C11D0` is the registrar: 118 constructor calls, `RPC<...>` ctor
+takes `this+8 = id`). The template arguments are the payload types, in wire
+order. Result, now in `pa_rpc_data.py` (generated; 141 of 144 ids have a shape,
+the other three are the sentinels `None`, `FirstQueued`, `LastQueued`):
+
+| id | name | argument types |
+| -- | ---- | -------------- |
+| 0 | `None` | (none) |
+| 1 | `SetNumSaveDataChunks` | int, int |
+| 2 | `SaveDataChunkAck` | (none) |
+| 3 | `SaveDataChunk` | MemoryBlock |
+| 4 | `ProcessingStarted` | (none) |
+| 5 | `AuthoriseConnection` | string |
+| 6 | `KickPlayer` | (none) |
+| 7 | `IncorrectPassword` | (none) |
+| 8 | `SendingSaveGame` | (none) |
+| 9 | `DirectoryData` | string, MemoryBlock |
+| 10 | `LandPurchased` | (none) |
+| 11 | `LogObjectsFromIndex` | int |
+| 12 | `FirstQueued` | (none) |
+| 13 | `ObjectAdded` | ObjectId, int |
+| 14 | `ObjectRemoved` | ObjectId |
+| 15 | `CreateRoom` | ObjectId, int |
+| 16 | `RemoveRoom` | ObjectId |
+| 17 | `PowerCellModified` | int, int, int |
+| 18 | `WaterCellModified` | int, int, int, bool |
+| 19 | `WaterCellCleared` | int, int, bool |
+| 20 | `RPCWaterValveChanged` | int, int, bool |
+| 21 | `ObjectiveRemoved` | string, bool |
+| 22 | `MarkerCreatedId` | ObjectId, int |
+| 23 | `MarkerCreatedPos` | WorldPosition, int |
+| 24 | `SectorZoneChange` | int, int, CustomSectorNetworkData |
+| 25 | `GangSegregationChange` | int, int |
+| 26 | `SectorAccessOnlyChange` | int, bool |
+| 27 | `SectorJobCountChange` | int, int |
+| 28 | `SectorAddTarget` | int, int |
+| 29 | `SectorClearTargets` | int |
+| 30 | `ChosenScheduleChange` | int, int |
+| 31 | `GuardDeploymentChange` | int, int, int, int |
+| 32 | `PlanningJobChange` | int, int, int, int, Vector2, int, int |
+| 33 | `PlayerSetsTarget` | int, Vector2, bool, ObjectId |
+| 34 | `ElectricalSwitch` | int, bool |
+| 35 | `PerformAction` | ObjectId, int |
+| 36 | `BeginResearch` | int |
+| 37 | `ToggleResearchDesired` | int |
+| 38 | `ApplyPrisonerCategory` | ObjectId, int |
+| 39 | `ApplyPunishment` | ObjectId, int, int |
+| 40 | `ClearAllPunishments` | ObjectId |
+| 41 | `ActivateInformant` | ObjectId, bool |
+| 42 | `DeactivateInformant` | ObjectId, bool |
+| 43 | `NewVehicleCallout` | int |
+| 44 | `SquadDismissal` | ObjectId |
+| 45 | `SackStaff` | ObjectId |
+| 46 | `ApporveTransfer` | ObjectId |
+| 47 | `AcceptGrant` | string |
+| 48 | `CancelGrant` | string |
+| 49 | `IncreaseLoan` | (none) |
+| 50 | `DecreaseLoan` | (none) |
+| 51 | `SellShares` | int |
+| 52 | `BuyBackShares` | int |
+| 53 | `SetRegime` | int, int, int |
+| 54 | `EvictGangTerritory` | ObjectId |
+| 55 | `CrisisButtonClicked` | int, int, bool |
+| 56 | `FiremanAimHose` | ObjectId, Vector2 |
+| 57 | `FireInformant` | ObjectId |
+| 58 | `TransferAllowedChange` | bool, int |
+| 59 | `TransferChange` | int, bool, int |
+| 60 | `TransferAmountChange` | int, int, int |
+| 61 | `PolicyChange` | int, MisconductPolicy, int |
+| 62 | `PrivilegePolicyChange` | int, int, bool |
+| 63 | `MealPolicyChange` | int, int, int |
+| 64 | `ParoleRateChange` | int, int |
+| 65 | `UseCellQualityChange` | bool |
+| 66 | `StaffPayModifierChange` | float |
+| 67 | `StaffMaxBreakChange` | int, int |
+| 68 | `SentencesEnabledChange` | bool |
+| 69 | `ExtensionCriteriaChange` | int, bool |
+| 70 | `ExtensionCriteriaValueChange` | int, int |
+| 71 | `ExtensionCriteriaMetChange` | int |
+| 72 | `ReductionCriteriaChange` | int, bool |
+| 73 | `ReductionCriteriaValueChange` | int, int |
+| 74 | `ReductionCriteriaMetChange` | int |
+| 75 | `NeedsDistributionUpdate` | bool, int |
+| 76 | `EntityUpdateRequest` | ObjectId |
+| 77 | `IntakeRatioChange` | int, float |
+| 78 | `IntakeTypeChange` | int |
+| 79 | `IntakeNumTotalChange` | int |
+| 80 | `IntakeTimeChange` | int |
+| 81 | `IntakeRestrictionsChange` | bool |
+| 82 | `StartReformProgram` | int, bool |
+| 83 | `StopReformProgram` | int |
+| 84 | `RunReformScheduler` | (none) |
+| 85 | `ScheduleProgram` | int, int, int, ObjectId |
+| 86 | `SetProgramManual` | int, bool |
+| 87 | `LandPurchaseRequest` | int, int, int, int, bool, bool |
+| 88 | `TriggerSoundEvent` | SoundConstraint, string, string, NetworkSoundId |
+| 89 | `TriggerPositionedSoundEvent` | SoundConstraint, string, string, Vector3, NetworkSoundId |
+| 90 | `TriggerObjectSoundEvent` | SoundConstraint, SoundObjectId, string, NetworkSoundId |
+| 91 | `TriggerObjectCustomSoundEvent` | SoundConstraint, SoundObjectId, string, string, NetworkSoundId |
+| 92 | `WiredObjectConnect` | ObjectId, ObjectId |
+| 93 | `WiredObjectClear` | ObjectId |
+| 94 | `WireDataRequested` | (none) |
+| 95 | `StopAllSounds` | NetworkSoundId |
+| 96 | `GameSpeedChange` | int |
+| 97 | `TreeAgeChange` | ObjectId, int |
+| 98 | `DeliveryStopSetAllowed` | ObjectId, int, bool |
+| 99 | `DeliveryStopSetOverall` | ObjectId, int, bool |
+| 100 | `DeliveryStopAssignZone` | ObjectId, ObjectId, int |
+| 101 | `DeliveryStopClearAllZones` | ObjectId |
+| 102 | `FarmingPolicy` | bool, int, int, int, int, float |
+| 103 | `AddRoomCropDist` | ObjectId, ObjectId |
+| 104 | `RemoveRoomCropDist` | ObjectId, ObjectId |
+| 105 | `LockPercentagesCropDist` | ObjectId, int, int |
+| 106 | `ChangePercentagesCropDist` | ObjectId, int, int, float |
+| 107 | `RoomConnectionToggled` | ObjectId, ObjectId |
+| 108 | `LogicCircuitChange` | ObjectId, int |
+| 109 | `LabourManagementChanged` | ObjectId, int, int |
+| 110 | `SpawnObject` | int, int, int, int, int |
+| 111 | `CoveragePlanChanged` | int, bool, bool |
+| 112 | `CoveragePlanEmergencyChanged` | int, int, bool, int, int, int |
+| 113 | `WaterCellFrozen` | int, int, bool, bool |
+| 114 | `WaterCellInsulated` | int, int, bool |
+| 115 | `WaterCellFlood` | int, int, int, float |
+| 116 | `PrisonerWageChanged` | int, float |
+| 117 | `NewSpeechAdded` | int, string |
+| 118 | `TransactionAdded` | int, string, signed char, string |
+| 119 | `TransactionAppended` | int, string, signed char, string |
+| 120 | `CommitBuildPlanning` | int, int |
+| 121 | `VisitationRateChange` | int, int |
+| 122 | `IntakeNumPerDayChange` | int |
+| 123 | `LightningStrike` | int, Vector2, float |
+| 124 | `ToggleFogOfWar` | bool |
+| 125 | `IntakeTogglePrisonerReplacement` | (none) |
+| 126 | `RemovePrisoner` | ObjectId |
+| 127 | `AssignGuardToPrisoner` | ObjectId |
+| 128 | `UnassignGuardFromPrisoner` | ObjectId |
+| 129 | `MarkingTypeChanged` | ObjectId, int, int |
+| 130 | `RestrictAccessSettingsChanged` | ObjectId, bool, bool |
+| 131 | `PrisonerCategoryChanged` | ObjectId, int |
+| 132 | `QuickCellChange` | ObjectId, ObjectId |
+| 133 | `CrisisCustomSearchArea` | int, int, bool |
+| 134 | `CrisisCustomSaveSchedule` | int, int, int, int, int |
+| 135 | `RegisterInformant` | ObjectId |
+| 136 | `ChangeRank` | ObjectId, int |
+| 137 | `ToggleStaffKeys` | bool |
+| 138 | `Distortion` | ObjectId |
+| 139 | `ToggleAllowStunBatons` | bool |
+| 140 | `ControlAdvancedSearchLight` | ObjectId |
+| 141 | `AimAdvancedSearchLight` | ObjectId, Vector2 |
+| 142 | `EquipPrisonerTrackingBelt` | ObjectId |
+| 143 | `LastQueued` | (none) |
+
+Notes:
+
+- `ObjectId` = **two** wire values (uId, ObjectData index): `ObjectAdded` is
+  `ObjectId, int` = `[uId, index, type]`, as seen in run4.
+- `TransactionAdded` is `int, string, signed char, string`: amount, ledger key,
+  a small int, a string (both were `0, ''` in the captures).
+- `DirectoryData` (our `SystemState`) is `string, MemoryBlock`: system name +
+  the zlib snapshot, so `MemoryBlock` = one byte string.
+- Composite arities for `Vector2`, `WorldPosition`, `Vector3`,
+  `NetworkSoundId`... are *not read from the binary yet*; they are being
+  measured from the captures (see `pa_rpc.COMPOSITE_ARITY`).
+- Deserialisers come in two flavours: old ones check raw tags (e.g. tag 26 =
+  int32, `<= 1` for bool) and newer ones use a reader that returns the compact
+  tagged ints our `decode_args` handles. Both appear in the same table.
+
+### Plan: bot actor
+
+`../photon-realtime-py` already has `RealtimeClient.op_raise_event(code, data,
+...)` with an e2e test, so a bot = connect, join the room, then
+`op_raise_event(code, pa_rpc.build(code, ...))`. Steps: (1) `pa_rpc`
+(parse/build/format) - in progress; (2) show typed RPCs in the proxy view;
+(3) `bot.py`: join a room as a second actor and send e.g. `GameSpeedChange`,
+`ObjectAdded`... Check first that `Data` goes out as a byte array
+(`Int8SliceParameter`), not a Photon dict/string.
+
+### `pa_rpc.py`: typed codec (Haiku agent, reviewed)
+
+`pa_rpc.parse / build / format_rpc / encode_args` (+ `tests/test_pa_rpc.py`).
+`encode_args` is the exact inverse of `decode_args` on every captured payload
+(1,485 event payloads over run1-run4). The captures only contain **4 of the 144
+codes** (9, 13, 14, 118), and every observed value count matches the declared
+types. Everything else is from the binary, not yet seen on the wire.
+
+Measured / pinned arities: int, string, signed char, MemoryBlock = 1 value,
+ObjectId = 2. Left unknown (`None`, so `build`/`parse` refuse them rather than
+guess): `Vector2`, `Vector3`, `WorldPosition`, `MisconductPolicy`,
+`SoundConstraint`, `SoundObjectId`, `NetworkSoundId`, `CustomSectorNetworkData`.
+That blocks building the RPCs that use them (e.g. `ObjectAdded` is fine, but
+`FiremanAimHose` (`ObjectId, Vector2`), `MarkerCreatedPos`, the sound RPCs and
+`SectorAddTarget` are not).
+
+Finding: `TransactionAdded`'s last argument is declared `string` but arrives as
+int `0` in all 8 captures, so an **empty string is sent as `0x00`** (not
+`0x10`). I changed the encoder to match after the agent guessed `0x10`.
+
+Review notes: the agent's tests initially encoded `0x10` for an empty string
+(unverified guess, now fixed); `parse`/`build` check value *counts* and
+composite shapes but not per-kind types, because a strict check would have
+rejected real 118 payloads.
+
+### Mistakes log (continued)
+
+- **Briefed the agent with `build(118, ..., b'')`** from the declared type
+  without checking the capture, where the slot was `0`. The agent caught it;
+  I should have read the captured bytes myself before writing the brief.
+- **Expected agent 1 to be able to pin Vector2 etc.** from the captures; only
+  4 of 144 codes appear in them. The unknown arities need either IDA (read the
+  `RPC<...>` serialisers for those types) or new captures that exercise those
+  actions.
+
+### Wire format of `bool` (from the binary, not in any capture)
+
+The deserialiser of an RPC with a bool (`sub_1403DB5D0`, `bool,int`) reads the
+first byte raw: `0` = false, `1` = true, anything else (incl. -1) = error
+("Failed to unserialise remote call"). It then reads the int with the usual
+tagged reader (`sub_140134870`). So a bool is a single byte `00` / `01`.
+Consequence: `decode_args` reads tag `0x01` as an integer in 0 bytes = **0**,
+so `true` decodes as 0, and `encode_args(True)` (-> `02 01`) would be rejected
+by the game. Fix must be typed (decide by the declared type), because `01` as
+a *non-bool* is not valid anyway. Float: tag `0x1a` + float32 (the `float`
+deserialiser checks tag 26 = 0x1a and reads 4 bytes after it).
+
+Also: the first attempt to tie each `RPC<...>` type to its wrapper by "the
+function its vtable slot calls" was wrong for several types (the slot-4 target
+of `RPC<ObjectId,Vector2>` turned out to be the `bool,int` wrapper). Wrappers
+are shared/templated by argument *kind*, so wrapper -> type is not 1:1; only
+the `RPC<...>` ctor + id registration is reliable.
+
+### Status after the first implementation round
+
+- `pa_rpc_data.py` (generated table), `pa_rpc.py` (typed `parse` / `build` /
+  `format_rpc`, bool as a raw byte), `pa_events.py` (proxy view uses the game's
+  names; `SystemState` / `SpawnObject` / `Cashflow` kept as filter aliases).
+  39 tests, ruff format + the CI lint selection clean.
+- Checked end to end: all 1,475 captured events (run1-run4: code 9 x1461,
+  13 x5, 14 x1, 118 x8) pass through `format_event`, `packet_label` and
+  `log_lines` with no "unparsed" fallback.
+- Cash-flow line now reads `amount +35 (int 0, string '')`.
+- **Still unknown / blocking some `build()` calls**: arities of `Vector2`,
+  `Vector3`, `WorldPosition`, `MisconductPolicy`, `SoundConstraint`,
+  `SoundObjectId`, `NetworkSoundId`, `CustomSectorNetworkData` (the code refuses
+  rather than guesses). Float/bool encodings come from the binary only; no
+  capture exercises them.
+- **Not done**: the bot (`bot.py`). Needs (1) the arities above for the RPCs we
+  want to send, (2) confirmation that `op_raise_event` sends `Data` as a byte
+  array, and (3) a live game room to try it against.
+
+### Mistakes log (continued)
+
+- **Delegated before reading the evidence**: the brief for agent 1 asserted
+  `build(118, ..., b'')`, which the captures contradict (that slot is int `0`).
+  The agent caught it.
+- **Let two agents touch related files in one window**: agent 1's rewrite of
+  `pa_rpc.py` broke agent 2's tests for a few seconds (a removed import).
+  Harmless here, but sequence them next time, or give each a disjoint module
+  with a frozen interface.
+- **My own bool bug report came from reading one wrapper**; I only found it
+  because I read a deserialiser body instead of trusting a type table. The
+  codec had round-tripped every capture and still had a latent wire bug, so
+  *capture round trips don't prove coverage; check which codes they exercise.*
+
+## Bot TUI (Claude Sonnet 5.5 work)
+
+**Built**: `bot.py` (typer + InquirerPy + a prompt_toolkit slider) and
+`tests/test_bot.py` (28 tests, no network). 67 tests pass in the repo.
+
+**Run**: `python bot.py` (interactive: region -> lobby -> game -> menu),
+`python bot.py regions` (read-only list), options `--region`, `--app-id`
+(env/.env `PHOTON_APP_ID`), `--app-version` (default `the_slammer_1.0`, read from
+the Authenticate packets in `captures/run1.sqlite`), `--name-server` (env
+`PHOTON_NAME_SERVER`; `host[:port]` or `auto`), `--speed-index`, `--verbose`.
+The local proxy's hosts redirect makes the default name server unusable, so pass
+the real IP. The game's real name server is `ns.exitgames.com`
+(`prison_architect.resolve_upstream`, which `auto` calls), not
+`ns.photonengine.io`, which is only the library default. The game's own App ID is
+`prison_architect.PRISON_ARCHITECT_APP_ID`; only that id lists the game's rooms.
+
+**Design**: `Session` runs `client.service()` in a daemon thread; every client
+call takes one `RLock`; prompts run in the main thread. Ctrl-C anywhere ->
+`Session.stop()` (disconnect, brief flush, join). Regions: the library
+auto-pings and auto-picks when no `fixed_region` is set, so `on_region_list_received`
+sets `client.cloud_region` to a sentinel to suppress the pinger, we read the list,
+disconnect, and use a second client with `fixed_region` for the real session.
+Lobbies come from `enable_lobby_statistics` (default lobby always offered);
+games from `client.room_list` after `op_join_lobby`. `ACTIONS` is the registry of
+`(label, handler(Context))` for more RPCs. Handshake RPCs 0..9 are only tagged
+`[handshake]` in the event stream; DirectoryData (9) is one line unless `--verbose`.
+
+**How bytes are sent**: `op_raise_event(96, data)` with `data: bytes` works as is.
+`to_param(bytes)` gives `Int8SliceParameter`, the code goes as `Int8Parameter`
+under key 244 and the data under 245. Verified against the library's local
+`PhotonServer` (scripts in `ida-work/scripts/bot_local_*.py`): a second client got
+back `b'\x02\x05'` for `build(96, 5)` and the captured events 13 and 9 formatted
+correctly. Default receivers are "Others"; which receiver group the game wants is
+unknown.
+
+**UNVERIFIED**: the int in `GameSpeedChange(96)`. Default sends the multiplier
+(0/1/2/5/10, the same values as `ClientData.gt`); `--speed-index` sends the stop
+index 0..4. One mapping function, `speed_wire_value`, and the UI prints what was
+sent. No capture contains code 96 and I never talked to a live game.
+
+**Surprises**: the library README says `SerializationProtocol.V16`, the enum is
+`V6/V7/V8`. The game speaks 1.6 (capture `protocol` column is 6); the bot keeps the
+library default 1.8, which the README says can share a room. Not tested against the
+game. The captures show the game on TCP ports 4533/4530/4531. The group callback of
+a typer app runs before `regions --help`, so the App ID check lives in the commands.
+
+**Not verified**: the InquirerPy menus (no console in my shell; only the slider was
+driven, with a pipe input), the real Photon cloud (no App ID in env), the join
+handshake (RPCs 0..8 not implemented; the bot just joins the Photon room).
+
+**Mistakes / dead ends**
+- Used `console.print` with `[label]` text: rich ate it as markup. Use `markup=False`
+  for anything that is data.
+- Wrote the slider with separate dot and label spacing, so the dots drifted off
+  their labels; rebuilt it as equal-width cells (dot centred in the cell).
+- Patched files with Python heredocs containing `\n` escapes through the shell: the
+  escapes became real newlines and broke the file. Use the editor tool.
+- The group callback validated the App ID, which broke `regions --help`.
+- First local test used a fake app id; the library's server wants 32 characters.
+- `render_slider` first took the (label, value) tuples and a list of labels; keep
+  it to labels only.
+
+## Live test: mini bot joins a hosted game (run5)
+
+Setup: real client hosted room `A` (region `au`, password `123`, actor `Noob`)
+through the proxy with `--record captures/run5.sqlite`; the live capture was
+readable while recording (1,418 packets seen within a minute).
+
+- **What the game sends to create a room** (CreateGame, op 227): name `A`;
+  room props `{MAS: 'Noob' (master/host name), PA: True}`, listed in the lobby
+  (`250 = [MAS, PA]`), max players `4` (`255` in the room-options map); player
+  props `{255: 'Noob', P: 300 (ping), C: '0xe5bc7eff' (colour)}`. App version
+  `the_slammer_1.0`, region `au`, auth with the game's app id (not recorded
+  here). The Name Server reply lists regions `eu us usw asia au` and per-region
+  Master addresses.
+- **Mini bot** (`../ida-work/scripts/minibot.py`, built on the new
+  `pyPhotonRealtime` client): connected through the proxy (hosts redirect ->
+  127.0.0.1), joined the lobby, saw `'A' 1/4 open=True props={'PA': True,
+  'MAS': 'Noob'}`, joined the room with player prop `255 = 'Bot'` and received
+  the host's stream of `RPC 9 DirectoryData` (`Intake`, `MisconductSystem`,
+  `World`, `CellData`, `ObjectData`, `ConstructionSystem`, `NetworkSoundSystem`,
+  `Contraband`...) decoded by `pa_rpc`. **No password was needed at the Photon
+  level**; if the game checks `123`, it does so in its own RPCs
+  (`AuthoriseConnection`/`IncorrectPassword`) - not exercised yet.
+- Not sent yet: any game RPC (speed etc.).
+- Observed: joining without the handshake did not get the bot kicked within
+  ~8-15 s, and the host kept broadcasting state to it.
+
+### Mistakes log (continued)
+
+- Ran the bot script with `python -I`, which ignores the editable install path
+  (`ModuleNotFoundError: pyphotonrealtime`). `-I` is for *untrusted* data
+  scripts; for our own tooling that imports the repo, run plain `python`.
+
+### Bot identity and ping (live-tested on run5)
+
+- **Name**: the actor name is player property `255` with an **`Int8Parameter`
+  key**. Passing `{255: "Claude"}` in `EnterRoomParams.player_properties` sent an
+  `Int32Parameter(255)` key, so the game showed a nameless player. Setting
+  `client.local_player.nick_name` makes the library build the right key (and
+  `bot.py` now has `--name`, default `Claude`).
+- **Colour**: property `C`, a *string* `0xRRGGBBAA` (alpha `ff`). The bot sends
+  Claude's orange `0xd97757ff` in the join properties (`--colour`).
+- **Ping**: the game shows `?` until it receives `SetProperties` (op 252) with
+  `{P: <ms>}` for the actor (`ActorNr` = our actor number, `Broadcast` = True).
+  The real client sends one ~1.3 s after joining, then every ~4.0 s. The value is
+  Photon's smoothed round-trip time (~335 ms to the AU Game Server from the
+  user's machine; the bot measured 339-355 ms to the same server).
+  Gotchas: the library only measures a round trip from keep-alive pings, which
+  it sends when idle (every 2 s by default), so `peer.round_trip_time` was `0`
+  and the first `P` was `0`. `bot.Session` now sets `keep_alive_interval = 1.0`
+  and holds the first `P` until `last_round_trip_time` exists
+  (`Session.report_ping`, unit-tested).
+- Verified live through the real `Session` code path (not only the mini bot):
+  `SetProperties` `{P: 340..355}` for actor 4 every 4 s in run5.
+- Not verified: the real client also sends ~1,800 tiny (5-byte) client -> server
+  packets with no op code in run5's Game Server session, ~50 per second at
+  times. I did not decode them or try to reproduce them (possibly transport
+  keep-alive/ack framing). If the game turns out to expect more from a "real"
+  client, start there.
+
+### Mistakes log (continued)
+
+- **Wrong key type for a Photon property**: `255` as a Python int became
+  `Int32Parameter`; the protocol wants `Int8Parameter` for the well-known actor
+  property keys. The captured packet (`Int8Parameter(255)`) showed it; I only
+  looked after the user reported the missing name. *Diff our packet's parameter
+  *types* against the real client's, not just the values.*
+- **Missed the periodic `P`**: the journal already said `P` is sent every ~4 s
+  (run2 section), and I wrote the bot without it. *Re-read what the real client
+  sends repeatedly before declaring a bot "joined".*
+- **Printed ~65 identical `P` rows** while checking cadence; cap output (use
+  `head`/counts) when scanning a capture.
