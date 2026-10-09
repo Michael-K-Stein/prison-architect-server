@@ -11,7 +11,11 @@ from typing import Annotated, Optional
 import typer
 from rich.logging import RichHandler
 
-from prison_architect import PrisonArchitectServer
+from prison_architect import (
+    NAME_SERVER_PORT,
+    PrisonArchitectServer,
+    resolve_upstream,
+)
 
 LOG_LEVELS = ("debug", "info", "warning", "error", "critical")
 
@@ -48,6 +52,7 @@ class CommonOptions:
     verbose: str
     listen: str = "0.0.0.0"
     ip: str = "127.0.0.1"
+    timeout: int = 60
     region: str = "local"
     max_players: int = 4
 
@@ -84,9 +89,15 @@ IpOpt = Annotated[
         show_default="127.0.0.1",
     ),
 ]
-# Still accepted so existing Docker/Pterodactyl start commands keep working,
-# but ignored: pyPhotonRealtime's server has no keep-alive timeout setting.
-TimeoutOpt = Annotated[Optional[int], typer.Option("--timeout", hidden=True)]
+TimeoutOpt = Annotated[
+    Optional[int],
+    typer.Option(
+        "--timeout",
+        help="Grace period between client keep alives before closing sockets "
+        "(silent clients are dropped after max(4x this, 120) seconds).",
+        show_default="60",
+    ),
+]
 RegionOpt = Annotated[
     Optional[str],
     typer.Option(
@@ -121,35 +132,127 @@ def _merge_common(ctx: typer.Context, **overrides) -> CommonOptions:
     return replace(base, **given)
 
 
-def _start_local(opts: CommonOptions) -> None:
-    if not 1 <= opts.max_players <= 16:
-        raise typer.BadParameter("max_players must be between 1 and 16")
-    ip_address(opts.listen)
-    ip_address(opts.ip)
+def _setup_logging(opts: CommonOptions) -> None:
     logging.basicConfig(
         level=opts.verbose.upper(),
         format="%(message)s",
         datefmt="%H:%M:%S",
         handlers=[RichHandler(markup=False, rich_tracebacks=True)],
     )
+
+
+def _serve_forever() -> None:
+    try:
+        while True:
+            sleep(1)
+    except KeyboardInterrupt:
+        print("\nShutting down servers...")
+
+
+def _start_local(opts: CommonOptions, upstream: Optional[str] = None) -> None:
+    if not 1 <= opts.max_players <= 16:
+        raise typer.BadParameter("max_players must be between 1 and 16")
+    if opts.timeout < 3:
+        raise typer.BadParameter("timeout must be >= 3 seconds")
+    ip_address(opts.listen)
+    ip_address(opts.ip)
+    _setup_logging(opts)
+    passthrough = resolve_upstream(upstream)
     server = PrisonArchitectServer(
         opts.listen,
         public_host=opts.ip,
         region=opts.region,
         max_players=opts.max_players,
+        upstream=passthrough,
+        # The old in-repo server's hard limit: generous, so loading screens
+        # and short network stalls don't drop players.
+        idle_timeout=max(opts.timeout * 4, 120),
     )
     with server:
         logging.info(
-            "Prison Architect server up: name server on %s:%d, region %r",
+            "Prison Architect server up: name server on %s:%d, region %r; "
+            "other Photon games relayed to %s:%d",
             opts.listen,
             server.name_server_port,
             opts.region,
+            *passthrough,
         )
-        try:
-            while True:
-                sleep(1)
-        except KeyboardInterrupt:
-            print("\nShutting down servers...")
+        _serve_forever()
+
+
+def _start_proxy(
+    opts: CommonOptions, upstream: Optional[str], port: int, follow: bool = True
+) -> None:
+    # Imported here: only the proxy command needs them.
+    from contextlib import ExitStack
+
+    from pyphotonrealtime.protocol.packet.operation_packet import (
+        PhotonOperationPacket,
+    )
+    from pyphotonrealtime.protocol.param.parameter_key import ParameterKey
+    from pyphotonrealtime.protocol.param.slice_param import SliceParameter
+    from pyphotonrealtime.protocol.param.string_param import StringParameter
+    from pyphotonrealtime.server import Direction, PhotonProxy
+
+    _setup_logging(opts)
+
+    stack = ExitStack()
+    hops: dict[tuple[str, int], int] = {}
+
+    def local_port_for(address: str) -> str:
+        """Proxy ``address`` (a Master/Game Server) and return our own."""
+        host, _, raw_port = address.rpartition(":")
+        target = (host, int(raw_port))
+        if target not in hops:
+            hop = stack.enter_context(
+                PhotonProxy(target, opts.listen, 0, on_packet=on_packet)
+            )
+            hops[target] = hop.port
+            logging.info(
+                "Proxying %s:%d -> %s:%d", opts.listen, hop.port, host, target[1]
+            )
+        return f"{opts.ip}:{hops[target]}"
+
+    def hijack_addresses(packet: PhotonOperationPacket) -> None:
+        # Name/Master/Game Server addresses travel in responses; point them
+        # at ourselves so the client's next hop is proxied too.
+        params = packet.get_payload().params
+        value = params.get(ParameterKey.Address)
+        if isinstance(value, StringParameter) and value.value:
+            params[ParameterKey.Address] = StringParameter(local_port_for(value.value))
+        elif isinstance(value, SliceParameter):
+            value.value[:] = [
+                StringParameter(local_port_for(a.value)) if a.value else a
+                for a in value.value
+            ]
+
+    def on_packet(session, direction, packet):
+        if isinstance(packet, PhotonOperationPacket):
+            if follow and direction == Direction.ToClient:
+                hijack_addresses(packet)
+            return show(session, direction, packet)
+        return packet
+
+    def show(_session, direction, packet):
+        if isinstance(packet, PhotonOperationPacket):
+            arrow = (
+                "client -> server"
+                if direction == Direction.ToServer
+                else "server -> client"
+            )
+            logging.info("%s\n  %s", arrow, "\n  ".join(packet.log()))
+        return packet
+
+    with (
+        stack,
+        PhotonProxy(
+            resolve_upstream(upstream), opts.listen, port, on_packet=on_packet
+        ) as tunnel,
+    ):
+        logging.info(
+            "Proxying %s:%d -> %s:%d", opts.listen, tunnel.port, *tunnel.upstream
+        )
+        _serve_forever()
 
 
 @app.callback(invoke_without_command=True)
@@ -176,6 +279,7 @@ def cli(
                 verbose=verbose,
                 listen=listen,
                 ip=ip,
+                timeout=timeout,
                 region=region,
                 max_players=max_players,
             ).items()
@@ -194,6 +298,16 @@ def cli(
 @app.command()
 def local(
     ctx: typer.Context,
+    upstream: Annotated[
+        Optional[str],
+        typer.Option(
+            "--upstream",
+            help="Upstream Photon name server (host or host:port) that "
+            "non-Prison Architect clients are transparently proxied to. "
+            "If omitted, the current IP of ns.exitgames.com is resolved "
+            "automatically.",
+        ),
+    ] = None,
     verbose: VerboseOpt = None,
     listen: ListenOpt = None,
     ip: IpOpt = None,
@@ -207,16 +321,60 @@ def local(
         verbose=verbose,
         listen=listen,
         ip=ip,
+        timeout=timeout,
         region=region,
         max_players=max_players,
     )
-    _start_local(opts)
+    _start_local(opts, upstream)
+
+
+@app.command()
+def proxy(
+    ctx: typer.Context,
+    port: Annotated[
+        int, typer.Option("-p", "--port", help="Port to listen on.")
+    ] = NAME_SERVER_PORT,
+    upstream: Annotated[
+        Optional[str],
+        typer.Option(
+            "-u",
+            "--upstream",
+            help="Server to proxy (host or host:port). If omitted, the real "
+            "Photon name server.",
+        ),
+    ] = None,
+    follow: Annotated[
+        bool,
+        typer.Option(
+            "--follow/--no-follow",
+            help="Also proxy the Master and Game Server traffic, by rewriting "
+            "the addresses in the server's responses to point at this proxy "
+            "(so --ip must be reachable by the client). Use --no-follow to "
+            "proxy only the name server.",
+        ),
+    ] = True,
+    verbose: VerboseOpt = None,
+    listen: ListenOpt = None,
+    ip: IpOpt = None,
+) -> None:
+    """Proxy traffic to a Photon server, logging every packet both ways."""
+    opts = _merge_common(ctx, verbose=verbose, listen=listen, ip=ip)
+    _start_proxy(opts, upstream, port, follow)
 
 
 def _interactive(defaults: CommonOptions) -> None:
     # Imported lazily: only needed for the wizard, and keeps --help snappy.
     from InquirerPy import inquirer
     from InquirerPy.validator import NumberValidator
+
+    def ask_int(message: str, default: int) -> int:
+        return int(
+            inquirer.text(
+                message=message,
+                default=str(default),
+                validate=NumberValidator(message="Enter a whole number"),
+            ).execute()
+        )
 
     typer.secho("Prison Architect server setup", fg=typer.colors.CYAN, bold=True)
     opts = CommonOptions(
@@ -229,14 +387,9 @@ def _interactive(defaults: CommonOptions) -> None:
         ip=inquirer.text(
             message="Redirect IP (127.0.0.1 or your public IP):", default=defaults.ip
         ).execute(),
+        timeout=ask_int("Keep-alive timeout (seconds):", defaults.timeout),
         region=inquirer.text(message="Region name:", default=defaults.region).execute(),
-        max_players=int(
-            inquirer.text(
-                message="Max players per room:",
-                default=str(defaults.max_players),
-                validate=NumberValidator(message="Enter a whole number"),
-            ).execute()
-        ),
+        max_players=ask_int("Max players per room:", defaults.max_players),
     )
     _print_equivalent(opts)
     _start_local(opts)
@@ -247,6 +400,7 @@ def _print_equivalent(opts: CommonOptions) -> None:
         "verbose": "-v",
         "listen": "-l",
         "ip": "-i",
+        "timeout": "--timeout",
         "region": "-r",
         "max_players": "--max-players",
     }
