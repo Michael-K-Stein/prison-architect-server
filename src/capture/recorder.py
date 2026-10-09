@@ -83,6 +83,9 @@ class Recorder:
         db.commit()
         last = db.execute("SELECT max(id) FROM sessions").fetchone()[0]
         self._next_session = (last or 0) + 1
+        self._next_id = (
+            db.execute("SELECT max(id) FROM packets").fetchone()[0] or 0
+        ) + 1
 
         self._db = db
         self._thread = threading.Thread(
@@ -94,19 +97,33 @@ class Recorder:
         self, session: ProxySession, direction: Direction, packet: PhotonPacket
     ) -> PhotonPacket:
         """Record ``packet`` and return it unchanged (a ``PacketHook``)."""
+        self.record(session, direction, packet)
+        return packet
+
+    def record(
+        self, session: ProxySession, direction: Direction, packet: PhotonPacket
+    ) -> int | None:
+        """Queue ``packet`` and return its capture id, or None if not recorded.
+
+        The id is assigned here, in arrival order, so it can be shown right
+        away; it is the ``packets.id`` the writer thread stores.
+        """
         if self._closed:
             self.dropped += 1
             log.warning("packet arrived after the capture was closed; not recorded")
-            return packet
+            return None
         now = time.time_ns()
         try:
             row = self._row(session, direction, packet, now)
         except Exception:  # never let recording break the proxied connection
             self.dropped += 1
             log.exception("could not record a packet; skipped")
-            return packet
-        self._queue.put(("packet", row))
-        return packet
+            return None
+        with self._lock:  # id order must match queue order
+            packet_id = self._next_id
+            self._next_id += 1
+            self._queue.put(("packet", (packet_id, *row)))
+        return packet_id
 
     def _session_id(self, session: ProxySession, now: int) -> int:
         with self._lock:
@@ -192,9 +209,9 @@ class Recorder:
                         "INSERT INTO sessions VALUES (?,?,?,?)", sessions
                     )
                     self._db.executemany(
-                        "INSERT INTO packets (ts_ns, session, dir, command, format,"
+                        "INSERT INTO packets (id, ts_ns, session, dir, command, format,"
                         " code, encrypted, protocol, return_code, size, payload)"
-                        " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                         packets,
                     )
             except sqlite3.Error:

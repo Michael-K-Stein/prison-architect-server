@@ -81,16 +81,17 @@ def start_proxy(
             ]
 
     def on_packet(session, direction, packet):
+        packet_id = None
         if recorder is not None:
             # Before the address rewrite: keep what the real server said.
-            recorder.on_packet(session, direction, packet)
+            packet_id = recorder.record(session, direction, packet)
         if isinstance(packet, PhotonOperationPacket):
             if follow and direction == Direction.ToClient:
                 hijack_addresses(packet)
-            return show(session, direction, packet)
+            return show(packet_id, direction, packet)
         return packet
 
-    def show(_session, direction, packet):
+    def show(packet_id, direction, packet):
         if isinstance(packet, PhotonOperationPacket):
             if hide and is_hidden(packet_label(packet), hide):
                 return packet
