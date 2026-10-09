@@ -20,9 +20,11 @@ from pyphotonrealtime.protocol.packet.operation_payload import (  # noqa: E402
 )
 
 from pa_events import (  # noqa: E402
+    Node,
     decode_args,
     decompress,
     format_event,
+    format_tree,
     is_hidden,
     log_lines,
     packet_label,
@@ -95,6 +97,13 @@ def main() -> None:
 
     # Anything that doesn't parse is shown raw rather than raising.
     assert "unparsed" in format_event(9, b"\xff")[0]
+
+    # gt is the game speed (run3 packets 1021 and 847).
+    world = Node("World", children=[Node("ClientData", [("gt", 10.0)])])
+    assert format_tree(world)[1] == "  ClientData {gt=10 (speed 10x)}"
+    assert format_tree(Node("ClientData", [("gt", 0.0)])) == [
+        "ClientData {gt=0 (paused)}"
+    ]
     print("ok")
 
 

@@ -186,9 +186,21 @@ def _show(value: Any) -> str:
     return repr(value) if isinstance(value, str) else str(value)
 
 
+def _field(key: str, value: Any) -> str:
+    """``key=value``, with a hint for fields whose meaning is known."""
+    text = f"{key}={_show(value)}"
+    if key == "gt" and isinstance(value, (int, float)):
+        text += " (paused)" if value == 0 else f" (speed {value:g}x)"
+    return text
+
+
 def format_tree(node: Node, indent: str = "") -> list[str]:
-    """One line per node: ``name {field=value, ...}``, children indented."""
-    fields = ", ".join(f"{k}={_show(v)}" for k, v in node.fields)
+    """One line per node: ``name {field=value, ...}``, children indented.
+
+    ``gt`` (``World``'s ``ClientData``/``UniformColourData``) is the game
+    speed: 0 when paused, else the multiplier (1, 2, 5 or 10).
+    """
+    fields = ", ".join(_field(k, v) for k, v in node.fields)
     lines = [f"{indent}{node.name}" + (f" {{{fields}}}" if fields else "")]
     for child in node.children:
         lines.extend(format_tree(child, indent + "  "))

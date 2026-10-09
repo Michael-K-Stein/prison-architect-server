@@ -183,3 +183,63 @@ appears, and whether `Finance.tr.b` / `v.6` then go *down* by `X`.
 `[8427316, 8]` (`8427316 = 0x809734`). It comes in the middle of a `World` /
 `ObjectData` loop. Unknown; it could be an object id and a type or a
 position packed into one integer. Needs more samples.
+
+## `captures/run3.sqlite`: game speed (Claude Opus 5.5 work)
+
+> **Written by Claude Opus 5.5** from `captures/run3.sqlite`. Not verified by
+> hand; items marked *guess* are inference, not observation.
+
+### The capture
+
+19 sessions; the game sessions (`:4531`) are 3, 10, 13, 16 and 19. Session 19
+is the last (~36 s) and holds the speed-button spam the user did at the end
+(Pause / 1 / 2 / 3 / 4). No new event codes appear anywhere: only 9
+(`SystemState`), 118 (once, at join, as in run2) and `SetProperties`.
+
+### Speed is `gt` in the `World` snapshot
+
+The game speed is **not a separate event**. It rides in the `World` system
+snapshot (event 9, sent every ~0.35 s), as a field `gt` on two nodes,
+`ClientData` and `UniformColourData` (always equal). Session 19, `World` only:
+
+| Packet | t (s) | `gt` | `WorldData.TimeIndex` |
+| ------ | ----- | ---- | --------------------- |
+| 589-830 | 0.0-10.3 | (absent) | +~0.34 per snapshot |
+| 847 | 10.6 | `0` | 701.459 |
+| 852-995 | 11.0-16.4 | (absent) | (absent -- frozen) |
+| 1007 | 16.8 | `1` | 701.675 |
+| 1012 | 17.1 | `2` | 702.225 |
+| 1017 | 17.5 | `5` | 703.392 |
+| 1021 | 17.8 | `10` | 705.641 |
+| 1025 | 18.1 | `5` | 708.815 |
+| 1029 | 18.5 | `1` | 710.565 |
+| 1037 | 19.2 | `0` | 710.965 |
+| 1063-1323 | 19.5-30.3 | `1`/`2`/`5`/`10`, flipping | +0.3 .. +3.5 per snapshot |
+| 1342 | 30.5 | `0` | 753.364 |
+| 1352-1453 | 30.9-35.6 | (absent) | (absent -- frozen) |
+
+Reading:
+
+- **`gt` is the time multiplier**: `0` = paused, and the four speed buttons
+  are **1x, 2x, 5x, 10x** (not 1/2/3/4). `TimeIndex` (game seconds) advances
+  by ~0.34 per 0.35 s snapshot at `gt=1`, ~3.0-3.5 at `gt=10`, and stops at
+  `gt=0`. `SecondsPlayed` stays real-time (1 per ~1 s) regardless.
+  `ObjectId.next` also grows faster at high speed (more objects spawned per
+  real second), consistent with "speed only scales the tick rate".
+- The snapshot is a **delta**: a field is only written when it changed. Before
+  packet 847 `gt` is absent because it never changed from its initial value
+  (1 *guess*); while paused, `World` snapshots still go out every ~0.35 s but
+  carry no `TimeIndex` (it didn't move) and no `gt` (it didn't change). That
+  matches the user's note that packets keep flowing while paused.
+- Snapshots are sampled every ~0.35 s, so clicks faster than that are lost:
+  the capture only shows the speed at each snapshot, not every click.
+  E.g. 17.1 -> 17.5 s jumps `2 -> 5` with no visible `gt` between.
+- Why `UniformColourData` carries `gt` too is unclear; it is otherwise the
+  prisoner uniform colour table. *guess*: both nodes are client-side UI
+  state the host mirrors, and the speed is copied into each.
+- The `Intake`, `ObjectData` and `ConstructionSystem` snapshots keep being
+  sent at the same rate while paused (each 105x in session 19).
+
+So to **set** the speed from a proxy/bot, one would have to send a `World`
+`SystemState` with `ClientData.gt` changed -- there is no dedicated command.
+Whether a non-host client can do that (or the host ignores it) is untested.
