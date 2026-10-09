@@ -4,13 +4,13 @@
     "version": "PTDL_v2",
     "update_url": null
   },
-  "exported_at": "2026-06-04T00:00:00+00:00",
+  "exported_at": "2026-10-09T00:00:00+00:00",
   "name": "Prison Architect Local Server",
   "author": "local@prison-architect-server",
-  "description": "Prison Architect reverse-engineered local multiplayer server.",
+  "description": "Prison Architect reverse-engineered local multiplayer server. Requires TCP ports 4530-4533 to be allocated to the server (the ports are fixed, so only one server per IP).",
   "features": null,
   "docker_images": {
-    "ghcr.io/OWNER/REPO:latest": "GHCR image built from this repository"
+    "ghcr.io/michael-k-stein/prison-architect-server:latest": "ghcr.io/michael-k-stein/prison-architect-server:latest"
   },
   "file_denylist": [],
   "startup": "python main.py local -l 0.0.0.0 -i {{PUBLIC_IP}} --timeout {{TIMEOUT}} -r {{REGION}} --max-players {{MAX_PLAYERS}}",
@@ -22,17 +22,17 @@
   },
   "scripts": {
     "installation": {
-      "script": "#!/bin/bash\nset -e\nif [ -n \"${GIT_REPO}\" ]; then\n  git clone \"${GIT_REPO}\" .\n  if [ -n \"${GIT_BRANCH}\" ]; then\n    git checkout \"${GIT_BRANCH}\"\n  fi\nfi\npython -m pip install --upgrade pip\npip install -r requirements.txt\n",
-      "container": "python:3.12-slim",
-      "entrypoint": "bash"
+      "script": "#!/bin/sh\n# Nothing to install: the code and dependencies ship in the Docker image.\necho \"Prison Architect server: nothing to install.\"\n",
+      "container": "alpine:3.20",
+      "entrypoint": "sh"
     }
   },
   "variables": [
     {
       "name": "Public IP",
-      "description": "IP advertised by MasterServer/GameServer redirection.",
+      "description": "Public IP of this node that game clients connect to. Must be reachable by players.",
       "env_variable": "PUBLIC_IP",
-      "default_value": "127.0.0.1",
+      "default_value": "",
       "user_viewable": true,
       "user_editable": true,
       "rules": "required|ip"
@@ -41,7 +41,7 @@
       "name": "Timeout",
       "description": "Keep-alive timeout in seconds.",
       "env_variable": "TIMEOUT",
-      "default_value": "10",
+      "default_value": "60",
       "user_viewable": true,
       "user_editable": true,
       "rules": "required|integer|min:3|max:120"
@@ -63,24 +63,6 @@
       "user_viewable": true,
       "user_editable": true,
       "rules": "required|integer|min:1|max:16"
-    },
-    {
-      "name": "Git Repository",
-      "description": "Optional: repository URL for install script clone.",
-      "env_variable": "GIT_REPO",
-      "default_value": "",
-      "user_viewable": true,
-      "user_editable": true,
-      "rules": "nullable|string"
-    },
-    {
-      "name": "Git Branch",
-      "description": "Optional: branch/tag used by install script.",
-      "env_variable": "GIT_BRANCH",
-      "default_value": "master",
-      "user_viewable": true,
-      "user_editable": true,
-      "rules": "nullable|string|max:64"
     }
   ]
 }
