@@ -46,6 +46,7 @@ jobs:
         run: |
           python tests/test_prison_architect.py
           python tests/test_capture.py
+          python tests/test_pa_events.py
 
   build-and-push:
     needs: test

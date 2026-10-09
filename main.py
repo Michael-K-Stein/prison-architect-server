@@ -198,6 +198,8 @@ def _start_proxy(
     from pyphotonrealtime.protocol.param.string_param import StringParameter
     from pyphotonrealtime.server import Direction, PhotonProxy
 
+    from pa_events import log_lines
+
     _setup_logging(opts)
 
     stack = ExitStack()
@@ -254,7 +256,7 @@ def _start_proxy(
                 if direction == Direction.ToServer
                 else "server -> client"
             )
-            logging.info("%s\n  %s", arrow, "\n  ".join(packet.log()))
+            logging.info("%s\n  %s", arrow, "\n  ".join(log_lines(packet)))
         return packet
 
     with (
