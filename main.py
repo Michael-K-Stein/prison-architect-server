@@ -9,6 +9,7 @@ from time import sleep
 from typing import Annotated, Optional
 
 import typer
+from dotenv import load_dotenv
 from rich.logging import RichHandler
 
 from prison_architect import (
@@ -18,28 +19,6 @@ from prison_architect import (
 )
 
 LOG_LEVELS = ("debug", "info", "warning", "error", "critical")
-
-
-def _load_dotenv(dotenv_path: Path) -> None:
-    if not dotenv_path.exists():
-        return
-
-    for raw_line in dotenv_path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if "=" not in line:
-            continue
-
-        key, value = line.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-
-        if key == "":
-            continue
-
-        if key not in environ:
-            environ[key] = value
 
 
 def _resolve_log_level_default() -> str:
@@ -454,5 +433,5 @@ def _print_equivalent(opts: CommonOptions) -> None:
 
 
 if __name__ == "__main__":
-    _load_dotenv(Path(__file__).resolve().parent / ".env")
+    load_dotenv(Path(__file__).resolve().parent / ".env", override=False)
     app(prog_name="main.py")

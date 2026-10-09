@@ -86,6 +86,11 @@ Captures contain auth tokens and player data: don't commit or share them (`captu
 
 The server itself is [pyPhotonRealtime](https://github.com/Michael-K-Stein/pyPhotonRealtime)'s self-hosted Photon server; `prison_architect.py` only adds the game's rules.
 
+### Bot (join a game as a client)
+`python bot.py` connects to Photon as a client, lists regions, lobbies and games, joins the game you pick, and opens a menu. From the menu you can change the game speed with a slider, or watch incoming events. Useful flags: `--region` skips the region picker, `--name` and `--colour` set the actor shown in the game, `--name-server` points at a Name Server (`auto` resolves `ns.exitgames.com`), and `--verbose` shows full DirectoryData events. `python bot.py regions` lists the regions and exits.
+
+The app ID is read from `--app-id`, or from `PHOTON_APP_ID` in the environment or a `.env` file next to `bot.py` and `main.py` (copy `.env.example`). Variables already set in the environment win over `.env`. `.env` is loaded with [python-dotenv](https://pypi.org/project/python-dotenv/), which is in `requirements.txt`.
+
 ## Docker & CI/CD
 This repository includes a Docker image workflow for GitHub Container Registry (GHCR).
 

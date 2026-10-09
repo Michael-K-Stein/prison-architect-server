@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Annotated, Any
 
 import typer
+from dotenv import load_dotenv
 from InquirerPy import inquirer
 from prompt_toolkit import Application
 from prompt_toolkit.formatted_text import FormattedText
@@ -177,14 +178,7 @@ def split_address(spec: str) -> tuple[str, int]:
 
 def _load_dotenv(path: Path) -> None:
     """Put ``KEY=value`` lines of ``path`` into the environment (not overriding)."""
-    if not path.exists():
-        return
-    for raw in path.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, value = line.split("=", 1)
-            if key.strip():
-                environ.setdefault(key.strip(), value.strip().strip("\"'"))
+    load_dotenv(path, override=False)
 
 
 # -- slider UI ------------------------------------------------------------------
