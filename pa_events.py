@@ -41,7 +41,8 @@ if TYPE_CHECKING:
         PhotonOperationPacket,
     )
 
-EVENT_NAMES = {9: "SystemState"}
+CASHFLOW_EVENT = 118
+EVENT_NAMES = {9: "SystemState", CASHFLOW_EVENT: "Cashflow"}
 """Names for event codes whose meaning is known (our own, not the game's)."""
 
 
@@ -240,9 +241,44 @@ def is_hidden(label: str, hidden: list[str]) -> bool:
     return any(label == h or label.startswith(h + ":") for h in hidden)
 
 
+def _actor_property(key: str, value: Any) -> str:
+    """Readable ``SetProperties`` entry: ``C`` is a colour, ``P`` the ping."""
+    if key == "P":
+        return f"ping = {value} ms"
+    if key == "C" and isinstance(value, str) and value.lower().startswith("0x"):
+        rgba = value[2:].rjust(8, "0")
+        return f"colour = #{rgba[:6]} (alpha {rgba[6:]})"
+    return f"{key} = {value!r}"
+
+
+def _set_properties_lines(packet: PhotonOperationPacket) -> list[str] | None:
+    """One line for an actor ``SetProperties`` request, else None."""
+    params = packet.get_payload().params
+    props = params.get(ParameterKey.Properties)
+    actor = params.get(ParameterKey.ActorNr)
+    if props is None or actor is None or not isinstance(props.value, dict):
+        return None
+    entries = ", ".join(
+        _actor_property(str(getattr(k, "value", k)), getattr(v, "value", v))
+        for k, v in props.value.items()
+    )
+    broadcast = params.get(ParameterKey.Broadcast)
+    suffix = " (broadcast)" if broadcast is not None and broadcast.value else ""
+    return [f"Actor {actor.value}: {entries}{suffix}"]
+
+
 def log_lines(packet: PhotonOperationPacket) -> list[str]:
     """``packet.log()``, with a game event's ``Data`` parsed."""
     lines = packet.log()
+    summary = _set_properties_lines(packet)
+    if summary is not None:
+        shown = {
+            f"  {get_parameter_key_name(key)}: {value}"
+            for key, value in packet.get_payload().params.items()
+        }
+        return [line for line in lines if line not in shown] + [
+            "  " + line for line in summary
+        ]
     event = event_payload(packet)
     if event is None:
         return lines
@@ -257,6 +293,12 @@ def format_event(code: int, data: bytes) -> list[str]:
     title = f"Event {code}" + (f" ({EVENT_NAMES[code]})" if code in EVENT_NAMES else "")
     try:
         args = decode_args(data)
+        if code == CASHFLOW_EVENT and len(args) == 4 and isinstance(args[1], bytes):
+            name = args[1].decode("utf-8", "replace")
+            return [
+                f"{title}:",
+                f"  {name}: amount {args[0]} (unknown: {args[2]}, {args[3]})",
+            ]
         lines = []
         for value in args:
             if isinstance(value, bytes) and value[:1] == b"\x78":
