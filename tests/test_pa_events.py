@@ -30,6 +30,7 @@ from pa_events import (  # noqa: E402
     log_lines,
     packet_label,
 )
+from pa_rpc import build, encode_args, rpc_name  # noqa: E402
 
 # Whole RaiseEvent operation payloads (packets 31 and 35).
 CASHFLOW = bytes.fromhex(
@@ -61,7 +62,7 @@ def decode_and_get(body: bytes) -> bytes:
     return bytes(packet(body).get_payload().params[245].value)
 
 
-def main() -> None:
+def test_payloads() -> None:
     data = bytes(packet(CASHFLOW).get_payload().params[245].value)
     assert decode_args(data) == [35, b"finance_cost_cashflow", 0, 0]
 
@@ -73,7 +74,7 @@ def main() -> None:
     assert tree.name == "Finance"
     assert tree.fields == [("tr.b", 30075), ("v.6", 30110)]
     assert format_event(9, data) == [
-        "Event 9 (SystemState):",
+        "Event 9 (DirectoryData):",
         "  'Finance'",
         "  snapshot: 40 B zlib -> 31 B",
         "    Finance {tr.b=30075, v.6=30110}",
@@ -84,16 +85,16 @@ def main() -> None:
     assert not any(line.startswith("  Data/") for line in lines), lines
 
     label = packet_label(packet(FINANCE))
-    assert label == "RaiseEvent:SystemState:Finance", label
-    assert is_hidden(label, ["RaiseEvent:SystemState"])
-    assert is_hidden(label, ["RaiseEvent:SystemState:Finance"])
-    assert not is_hidden(label, ["RaiseEvent:SystemState:Fin", "RaiseEvent:Other"])
+    assert label == "RaiseEvent:DirectoryData:Finance", label
+    assert is_hidden(label, ["RaiseEvent:DirectoryData"])
+    assert is_hidden(label, ["RaiseEvent:DirectoryData:Finance"])
+    assert not is_hidden(label, ["RaiseEvent:DirectoryData:Fin", "RaiseEvent:Other"])
 
     assert format_event(118, decode_and_get(CASHFLOW)) == [
-        "Event 118 (Cashflow):",
-        "  finance_cost_cashflow: amount +35 (unknown: 0, 0)",
+        "Event 118 (TransactionAdded):",
+        "  finance_cost_cashflow: amount +35 (int 0, string '')",
     ]
-    assert packet_label(packet(CASHFLOW)) == "RaiseEvent:Cashflow"
+    assert packet_label(packet(CASHFLOW)) == "RaiseEvent:TransactionAdded"
 
     lines = log_lines(packet(COLOUR))
     assert lines[-1] == "  Actor 1: colour = #8479f4 (alpha ff) (broadcast)", lines
@@ -105,11 +106,11 @@ def main() -> None:
     data = decode_and_get(FOUNDATIONS)
     assert decode_args(data) == [-5280, b"finance_cost_foundations", 0, 0]
     assert format_event(118, data)[1] == (
-        "  finance_cost_foundations: amount -5280 (unknown: 0, 0)"
+        "  finance_cost_foundations: amount -5280 (int 0, string '')"
     )
     # The delivery truck spawning (run4 packet 327).
     assert format_event(13, decode_and_get(SPAWN)) == [
-        "Event 13 (SpawnObject):",
+        "Event 13 (ObjectAdded):",
         "  uId 8427316 as object 17, type 139",
     ]
     # Float tag 0x1a (a sound's position) and a null string (length 0xff, -1).
@@ -127,8 +128,48 @@ def main() -> None:
     assert format_tree(Node("ClientData", [("gt", 0.0)])) == [
         "ClientData {gt=0 (paused)}"
     ]
-    print("ok")
+
+
+def test_legacy_names_still_filter() -> None:
+    # Old filters (our own names for 9, 13, 118) match the game's names.
+    finance = "RaiseEvent:DirectoryData:Finance"
+    assert is_hidden(finance, ["RaiseEvent:SystemState"])
+    assert is_hidden(finance, ["RaiseEvent:SystemState:Finance"])
+    assert is_hidden("RaiseEvent:TransactionAdded", ["RaiseEvent:Cashflow"])
+    assert is_hidden("RaiseEvent:ObjectAdded:x", ["RaiseEvent:SpawnObject"])
+    # New filters work too, and the old label form matches a new filter.
+    assert is_hidden(finance, ["RaiseEvent:DirectoryData"])
+    assert is_hidden("RaiseEvent:TransactionAdded", ["RaiseEvent:Cashflow"])
+    assert is_hidden("RaiseEvent:SystemState:x", ["RaiseEvent:DirectoryData"])
+    # Other events and partial names are not hidden.
+    assert not is_hidden(finance, ["RaiseEvent:Dir"])
+    assert not is_hidden("RaiseEvent:ObjectRemoved", ["RaiseEvent:ObjectAdded"])
+    assert not is_hidden(finance, ["RaiseEvent:DirectoryData:Fin"])
+
+
+def test_object_removed_typed() -> None:
+    data = build(14, (8427316, 8))
+    assert decode_args(data) == [8427316, 8]
+    assert format_event(14, data) == [
+        "Event 14 (ObjectRemoved):",
+        "  ObjectId: uId 8427316, index 8",
+    ]
+    assert rpc_name(14) == "ObjectRemoved"
+
+
+def test_unknown_code_falls_back_to_flat_values() -> None:
+    data = encode_args([1, b"ab"])
+    assert format_event(200, data) == ["Event 200:", "  1", "  'ab'"]
+    # A known code whose argument count does not match also falls back.
+    assert format_event(14, encode_args([1])) == [
+        "Event 14 (ObjectRemoved):",
+        "  1",
+    ]
 
 
 if __name__ == "__main__":
-    main()
+    test_payloads()
+    test_legacy_names_still_filter()
+    test_object_removed_typed()
+    test_unknown_code_falls_back_to_flat_values()
+    print("ok")

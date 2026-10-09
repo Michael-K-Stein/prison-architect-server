@@ -10,21 +10,29 @@ That byte array is a list of tagged values (:func:`decode_args`):
 * tag ``0x1N``: a byte string whose length is in ``N - 1`` little-endian
   bytes (``0x12`` = 1-byte length, ``0x13`` = 2-byte length).
 
-Observed event codes:
+Event names and argument types come from the game's binary: the table is
+generated into ``pa_rpc_data.py`` and read through :mod:`pa_rpc`. Event
+codes seen in the captures:
 
-* ``9`` -- a simulation system's state, ``[system name, snapshot]``. The
-  snapshot is zlib-compressed and followed by the uncompressed size, written
-  backwards (big-endian bytes, then their count + 1) so it can be read from
-  the end. Uncompressed, it is a binary form of the save-file tree
+* ``9`` -- ``DirectoryData``, ``[system name, snapshot]``. The snapshot is
+  zlib-compressed and followed by the uncompressed size, written backwards
+  (big-endian bytes, then their count + 1) so it can be read from the end.
+  Uncompressed, it is a binary form of the save-file tree
   (:func:`decode_tree`).
-* ``13`` -- ``[uId, index, type]``: an object was spawned (it then appears
-  in ``ObjectData`` as node ``index`` with ``uId`` and ``t=type``). Seen for
-  a delivery truck (type 139) and the materials it carries (type 2).
-* ``118`` -- ``[amount, ledger key, 0, 0]``: a cash-flow item added to the
-  balance (``World.Balance``, ``Finance.v.6``). ``35`` /
-  ``finance_cost_cashflow`` at game start; ``-5280`` /
-  ``finance_cost_foundations`` for a 17x14 concrete foundation. The last two
-  arguments are unknown.
+* ``13`` -- ``ObjectAdded``, ``[ObjectId (uId, index), type]``: an object was
+  spawned (it then appears in ``ObjectData`` as node ``index`` with ``uId``
+  and ``t=type``). Seen for a delivery truck (type 139) and the materials it
+  carries (type 2).
+* ``14`` -- ``ObjectRemoved``, ``[ObjectId]``.
+* ``118`` -- ``TransactionAdded``, ``[amount, ledger key, signed char,
+  string]``: a cash-flow item added to the balance (``World.Balance``,
+  ``Finance.v.6``). ``35`` / ``finance_cost_cashflow`` at game start;
+  ``-5280`` / ``finance_cost_foundations`` for a 17x14 concrete foundation.
+  The last two are 0 in every capture (the string is sent as 0, i.e. empty).
+
+Filters and labels may use our earlier names for 9, 13 and 118
+(``SystemState``, ``SpawnObject``, ``Cashflow``); see
+:data:`LEGACY_EVENT_NAMES`.
 
 Unknown tags or field types raise :class:`ValueError`; callers that only
 display payloads should fall back to the raw bytes.
@@ -49,10 +57,21 @@ if TYPE_CHECKING:
     )
 
 FLOAT_TAG = 0x1A
+SNAPSHOT_EVENT = 9
 SPAWN_EVENT = 13
 CASHFLOW_EVENT = 118
-EVENT_NAMES = {9: "SystemState", SPAWN_EVENT: "SpawnObject", CASHFLOW_EVENT: "Cashflow"}
-"""Names for event codes whose meaning is known (our own, not the game's)."""
+LEGACY_EVENT_NAMES = {
+    # Our own guesses, used before the game's names were known. Old filters
+    # such as ``RaiseEvent:SystemState`` keep matching: labels and filters
+    # are compared after mapping these to the game's names (see is_hidden).
+    "SystemState": "DirectoryData",  # 9
+    "SpawnObject": "ObjectAdded",  # 13
+    "Cashflow": "TransactionAdded",  # 118
+}
+"""Old event name -> the game's name (``pa_rpc_data``), for filters."""
+
+# pa_rpc imports decode_args from this module, so it is imported inside the
+# functions below rather than at the top (which would be circular).
 
 
 @dataclass
@@ -248,6 +267,8 @@ def packet_label(packet: PhotonOperationPacket) -> str:
     Parts: the operation, then (for game events) the event name or code and
     the first argument when it is text (a system's name for ``SystemState``).
     """
+    from pa_rpc import rpc_name  # late import: see the note above
+
     op = packet.get_payload().operation_code
     try:
         parts = [OperationCode(op).name]
@@ -256,7 +277,7 @@ def packet_label(packet: PhotonOperationPacket) -> str:
     event = event_payload(packet)
     if event is not None:
         code, data = event
-        parts.append(EVENT_NAMES.get(code, str(code)))
+        parts.append(rpc_name(code))
         try:
             args = decode_args(data)
         except ValueError:
@@ -266,9 +287,22 @@ def packet_label(packet: PhotonOperationPacket) -> str:
     return ":".join(parts)
 
 
+def _canonical(label: str) -> str:
+    """``label`` with an old event name in its event part mapped to the game's."""
+    parts = label.split(":")
+    if len(parts) > 1:
+        parts[1] = LEGACY_EVENT_NAMES.get(parts[1], parts[1])
+    return ":".join(parts)
+
+
 def is_hidden(label: str, hidden: list[str]) -> bool:
-    """Whether ``label`` equals, or is nested under, one of ``hidden``."""
-    return any(label == h or label.startswith(h + ":") for h in hidden)
+    """Whether ``label`` equals, or is nested under, one of ``hidden``.
+
+    Old event names work on either side: ``RaiseEvent:SystemState`` hides
+    ``RaiseEvent:DirectoryData:World`` and vice versa.
+    """
+    label = _canonical(label)
+    return any(label == h or label.startswith(h + ":") for h in map(_canonical, hidden))
 
 
 def _actor_property(key: str, value: Any) -> str:
@@ -319,19 +353,36 @@ def log_lines(packet: PhotonOperationPacket) -> list[str]:
 
 
 def format_event(code: int, data: bytes) -> list[str]:
-    """Readable lines for one event's ``Data``; raw hex if it won't parse."""
-    title = f"Event {code}" + (f" ({EVENT_NAMES[code]})" if code in EVENT_NAMES else "")
+    """Readable lines for one event's ``Data``; raw hex if it won't parse.
+
+    Codes 9, 13 and 118 have their own rendering. Other codes use the typed
+    parser in :mod:`pa_rpc`; if that fails (unknown code, wrong shape) the
+    flat values are shown one per line.
+    """
+    from pa_rpc import RpcShapeError, format_rpc, lookup, parse
+
+    rpc = lookup(code)
+    title = f"Event {code}" + (f" ({rpc.name})" if rpc is not None else "")
     try:
         args = decode_args(data)
         if code == CASHFLOW_EVENT and len(args) == 4 and isinstance(args[1], bytes):
             name = args[1].decode("utf-8", "replace")
             return [
                 f"{title}:",
-                f"  {name}: amount {args[0]:+} (unknown: {args[2]}, {args[3]})",
+                f"  {name}: amount {args[0]:+} (int {args[2]}, string {(args[3] or '')!r})",
             ]
         if code == SPAWN_EVENT and len(args) == 3:
             uid, index, kind = args
             return [f"{title}:", f"  uId {uid} as object {index}, type {kind}"]
+        if code != SNAPSHOT_EVENT:
+            try:
+                parsed = parse(code, data)
+            except RpcShapeError:
+                pass
+            else:
+                # format_rpc's first line repeats the title, and its argument
+                # lines are already indented by two spaces.
+                return [f"{title}:", *format_rpc(parsed)[1:]]
         lines = []
         for value in args:
             if isinstance(value, bytes) and value[:1] == b"\x78":
