@@ -15,7 +15,9 @@ Observed event codes:
   backwards (big-endian bytes, then their count + 1) so it can be read from
   the end. Uncompressed, it is a binary form of the save-file tree
   (:func:`decode_tree`).
-* ``118`` -- seen once at game start: ``[35, "finance_cost_cashflow", 0, 0]``.
+* ``118`` -- ``[35, "finance_cost_cashflow", 0, 0]``: a cash-flow item of 35 added
+  to the balance (the next ``Finance`` snapshot's ``v.6`` is ``tr.b + 35``).
+  Sent at game start and once more mid-game; the other arguments are unknown.
 
 Unknown tags or field types raise :class:`ValueError`; callers that only
 display payloads should fall back to the raw bytes.
