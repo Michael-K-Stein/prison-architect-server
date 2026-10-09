@@ -65,16 +65,20 @@ The workflow is in `.github/workflows/docker-image.yml`.
 - On pull request: build-only validation (no push).
 
 ## Pterodactyl Egg
-An importable egg is provided at:
+An importable egg is provided at `deploy/pterodactyl/egg-prison-architect-server.json`.
+It uses the prebuilt image `ghcr.io/michael-k-stein/prison-architect-server:latest`;
+there is nothing to install.
 
-- `deploy/pterodactyl/egg-prison-architect-server.json`
+### Quick setup
+1) **Admin -> Nests -> Import Egg**, upload the egg JSON.
+2) **Admin -> Nodes -> (node) -> Allocation**: add ports `4530`, `4531`, `4532`, `4533`
+   on the node's public IP.
+3) **Admin -> Servers -> Create**: pick the egg, use `4530` as the primary allocation
+   and add `4531-4533` as additional allocations.
+4) Set `PUBLIC_IP` to the node's public IP, then start the server.
 
-After import:
-
-1) Set your Docker image to your built GHCR image.
-2) Configure `PUBLIC_IP`, `TIMEOUT`, `REGION`, and `MAX_PLAYERS` in the egg variables.
-3) Expose/forward TCP ports `4530-4533`.
-
+The ports are fixed, so only one server per IP. `TIMEOUT`, `REGION`, and
+`MAX_PLAYERS` are optional.
 
 ## Legal Notice
 
