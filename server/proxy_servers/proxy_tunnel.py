@@ -1,6 +1,6 @@
 from typing import Any, Callable, Dict, Optional
 
-from server.log import print_info
+from server.log import print_info, print_warning
 from server.photon.packet.base import PhotonDataPacket
 from server.photon.queue.photon_client_socket import PhotonClientSocket
 from server.proxy_servers.photon_queue_downstream import PhotonQueueDownstream
@@ -63,10 +63,11 @@ class ProxyTunnel:
                 f"Proxying {downstream_packet.get_header().get_command_name()} from Client to Server",
             )
             upstream = self._get_upstream_for_client(downstream_client)
-            upstream.push(downstream_packet)
+            if upstream is not None:
+                upstream.push(downstream_packet)
 
         # Server -> Client
-        for upstream_client, upstream in self._upstreams_entered.items():
+        for upstream_client, upstream in list(self._upstreams_entered.items()):
             for upstream_packet in upstream.process():
                 if self._upstream_recieve_callback is not None:
                     self._upstream_recieve_callback(upstream_client, upstream_packet)
@@ -75,6 +76,27 @@ class ProxyTunnel:
                     f"Proxying {upstream_packet.get_header().get_command_name()} from Server to Client",
                 )
                 upstream_client.send(upstream_packet)
+
+        self._reap_closed_sessions()
+
+    def _reap_closed_sessions(self) -> None:
+        """Tear down both ends of a session once either end has closed.
+
+        A dropped upstream can't be transparently reconnected: the new
+        connection would need a fresh handshake and AES key, which the client
+        doesn't know about. Disconnecting the client instead makes the game
+        reconnect through the proxy, which then opens a fresh upstream.
+        """
+        for client, upstream in list(self._upstreams_entered.items()):
+            if upstream.is_closed() and not client.is_disconnected():
+                print_warning(
+                    upstream.get_type(),
+                    f"Upstream for {client.get_address()} closed; disconnecting client",
+                )
+                client.disconnect("proxy_upstream_closed")
+            if client.is_disconnected():
+                upstream.__exit__(None, None, None)
+                del self._upstreams_entered[client]
 
     def __enter__(self):
         self._downstream_entered = self.downstream.__enter__()
@@ -87,10 +109,20 @@ class ProxyTunnel:
 
     def _get_upstream_for_client(
         self, client: PhotonClientSocket
-    ) -> PhotonQueueUpstream:
-
+    ) -> Optional[PhotonQueueUpstream]:
         if client not in self._upstreams_entered:
-            self._upstreams_entered[client] = PhotonQueueUpstream(
+            upstream = PhotonQueueUpstream(
                 client, self.remote_ip, self.remote_port, self._app_id
-            ).__enter__()
+            )
+            try:
+                self._upstreams_entered[client] = upstream.__enter__()
+            except OSError as ex:
+                print_warning(
+                    upstream.get_type(),
+                    f"Failed to connect upstream {self.remote_ip}:{self.remote_port}: "
+                    f"{type(ex).__name__}: {ex}",
+                )
+                upstream.close()
+                client.disconnect("proxy_upstream_connect_failed")
+                return None
         return self._upstreams_entered[client]

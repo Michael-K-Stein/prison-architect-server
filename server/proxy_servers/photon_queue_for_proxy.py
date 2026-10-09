@@ -65,13 +65,24 @@ class PhotonQueueForProxy:
             target=self._send_loop, name=f"{proxy_type.value} Send Worker"
         )
 
+    def is_closed(self) -> bool:
+        return self._closing
+
+    def close(self) -> None:
+        """Mark the queue closed and shut the socket so both workers exit."""
+        self._closing = True
+        try:
+            self._sock.close()
+        except OSError:
+            pass
+
     def _recv_loop(self) -> None:
         while not self._closing:
             try:
                 self._recv_data(self._sock)
             except ConnectionAbortedError:
                 print_error(self.get_type(), "Receive failed. ConnectionAbortedError")
-                self._closing = True
+                self.close()
 
     def _send_loop(self) -> None:
         while not self._closing:
@@ -82,19 +93,26 @@ class PhotonQueueForProxy:
             self._recrypt(outgoing_packet)
             try:
                 self._sock.sendall(outgoing_packet.serialize())
-            except (ConnectionAbortedError, ConnectionResetError) as ex:
-                print_error(self.get_type(), f"Send failed. {type(ex).__name__}")
-                self._closing = True
+            except OSError as ex:
+                if not self._closing:
+                    print_error(self.get_type(), f"Send failed. {type(ex).__name__}")
+                self.close()
 
     def _recv_data(self, client_sock: socket):
         try:
             data = client_sock.recv(0x1000)
         except ConnectionResetError:
             print_error(self.get_type(), "Failed to recieve! ConnectionResetError")
+            self.close()
             return
         except OSError:
+            # Socket closed under us (or another fatal error): retrying would
+            # spin this worker forever, so shut the queue down instead.
+            self.close()
             return
         if len(data) == 0:
+            print_info(self.get_type(), "Connection closed by peer")
+            self.close()
             return
 
         self._stream_parser.feed(data)
@@ -142,8 +160,7 @@ class PhotonQueueForProxy:
         exc_val: Optional[BaseException],
         exc_tb: Optional[TracebackType],
     ) -> None:
-        self._closing = True
-        self._sock.close()
+        self.close()
         self._recv_worker.join(5)
         self._send_worker.join(5)
 
