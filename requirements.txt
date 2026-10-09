@@ -1,5 +1,5 @@
 # Prison Architect Server dependencies
-rich==15.0.0         # server/log.py, server/proxy_servers/hijack.py (colored log output; also a typer dependency)
-pycryptodome==3.23.0 # server/photon/packet/operation_payload.py (AES for Photon encrypted ops)
+pyPhotonRealtime @ https://github.com/Michael-K-Stein/pyPhotonRealtime/archive/refs/tags/v0.1.0.tar.gz  # prison_architect.py (Photon server)
+rich==15.0.0         # main.py (log output; also a typer dependency)
 typer==0.27.3        # main.py (CLI)
 InquirerPy==0.3.4    # main.py (interactive setup wizard when run with no command)
