@@ -48,11 +48,11 @@ class PhotonStreamParser:
                 if expect_responses:
                     if len(self.buffer) - start_pos < 9:
                         break
-                    yield PhotonKeepAliveResponse.from_bytes(datastream)
+                    parsed_packet = PhotonKeepAliveResponse.from_bytes(datastream)
                 else:
                     if len(self.buffer) - start_pos < 5:
                         break
-                    yield PhotonKeepAliveRequest.from_bytes(datastream)
+                    parsed_packet = PhotonKeepAliveRequest.from_bytes(datastream)
             else:
                 assert (
                     photon_packet.get_format() == PacketFormat.Data
@@ -71,14 +71,21 @@ class PhotonStreamParser:
                     data_header.packet_length - data_header.size()
                 )
 
-                yield self._handle_data_packet(data_header, content_data, aes_key)
+                parsed_packet = self._handle_data_packet(
+                    data_header, content_data, aes_key
+                )
 
-            # Slice off the bytes we just successfully parsed from the front of the buffer
+            # Slice off the bytes we just successfully parsed from the front of
+            # the buffer BEFORE yielding. Consumers that don't exhaust this
+            # generator (e.g. `for packet in parse(): return packet`) would
+            # otherwise see the same packet again on the next call.
             bytes_consumed = datastream.tell() - start_pos
             del self.buffer[:bytes_consumed]
 
             # Reset datastream to point to the new beginning of the buffer
             datastream = BytesIO(self.buffer)
+
+            yield parsed_packet
 
     def _handle_data_packet(
         self,

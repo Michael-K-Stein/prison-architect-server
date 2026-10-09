@@ -15,11 +15,19 @@ class ServerBase(ABC):
     _dispatcher: PhotonQueueDispatcher
     _listening: bool
 
-    def __init__(self, bind_interface: str, bind_port: int):
+    def __init__(
+        self,
+        bind_interface: str,
+        bind_port: int,
+        passthrough_upstream: Optional[str] = None,
+    ):
         self.bind_ip = bind_interface
         self.bind_port = bind_port
         self._dispatcher = PhotonQueueDispatcher(
-            self.get_type(), self.bind_ip, self.bind_port
+            self.get_type(),
+            self.bind_ip,
+            self.bind_port,
+            passthrough_upstream=passthrough_upstream,
         )
         self._listening = False
 

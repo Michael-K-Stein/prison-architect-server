@@ -25,7 +25,14 @@ class InstanceState(Enum):
 
 class NameServer(ServerBase):
     def __init__(self):
-        super().__init__(Settings().get_listen_host(), 4533)
+        # Non-Prison-Architect clients are transparently relayed to the real
+        # Photon cloud, so the hosts-file redirect is effectively PA-only.
+        # Master/GameServer keep no proxying; check_app_id stays as backstop.
+        super().__init__(
+            Settings().get_listen_host(),
+            4533,
+            passthrough_upstream=Settings().get_upstream() or "auto",
+        )
 
     def __enter__(self):
         super().__enter__()

@@ -35,6 +35,14 @@ _If your friends are on a different network than you, such as at their house and
    2) Replace `[YOUR_IP_ADDRESS]` with your public IP address.
 5) _(optional)_ If your connection isn't strong, try adding `--timeout 30` to the command.
 
+### Other Photon games keep working
+The hosts-file redirect sends *every* Photon-engine game on your machine to this server. That's fine: the server reads each client's app id from its first packet (it's plaintext) and only serves Prison Architect locally. Any other game's traffic is transparently proxied byte-for-byte to the real Photon cloud, so those games keep working as if the redirect wasn't there.
+
+By default the current IP of `ns.exitgames.com` is resolved automatically. To override it:
+```powershell
+python main.py local --upstream 1.2.3.4:4533
+```
+
 
 ## Legal Notice
 
