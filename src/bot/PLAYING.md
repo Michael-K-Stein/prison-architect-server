@@ -109,3 +109,12 @@ The `Foundations` entry in `ctl state ConstructionSystem` stays listed (with
 A cell is only fully usable with water for the toilet (a `WaterPumpStation`
 with power, pipes to the toilet) and a canteen with a kitchen to eat in;
 `problems` and `alerts` say what is missing.
+
+## Green Energy Goals (the `target_*` grants)
+
+From the game text: 3 solar panels, then 3 wind turbines (each unlocks the next
+item), export 1000 / 2500 / 5000 units of power (PowerExportMeter), 25 prisoners
+pass the Solar Panel Development reform program, 10 of each green source,
+**no PowerStation running for 10 game days** (`ctl send ElectricalSwitch NAME off`;
+the prison must run on green sources), and 100 batteries fully charged. An
+object's index is reused after it is removed: check `current` in `ctl name list`.

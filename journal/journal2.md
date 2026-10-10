@@ -1618,3 +1618,37 @@ and the short net key on one member offset):
   HoldingCell #11 (the canteen has an empty `Connected` in the save; guess: no
   indoor route from the cells to the canteen), and Lights #61, #112 behind
   walls.
+
+### Correction: the Box crates are the user's dismantled stations (logs)
+
+Objects 25 and 82 were not deliveries. The user dismantled two PowerStations
+in-game: in `bot-goal-3-bot2.sqlite` event 14 `ObjectRemoved` of the station
+(25: uId 8592998, packet 2841; 82: uId 8616049, packet 2929) is followed at once
+by event 13 `ObjectAdded` of a **`Box` (type 1)** reusing the same index (25 ->
+uId 8620408 at 2927; 82 -> uId 8620424 at 2963), with `Contents='PowerStation'`
+in the save. An index is reused after a removal, so a name must be checked
+against the uId (`ctl name list` shows `current`). Earlier in the first
+session the same indices held other objects (types 139, 161, 140, 83, 2).
+
+### The `target_*` grants are the Going Green DLC's "Green Energy Goals"
+
+Text from the game's `data/language/d11.txt` (`objective_target_<name>_task`):
+
+| Objective | Goal (task) | Reward |
+| --------- | ----------- | ------ |
+| `target_SolarPanels` (1) | purchase 3 solar panels | unlocks the Wind Turbine |
+| `target_WindTurbine` (2) | purchase 3 wind turbines | unlocks the Solar/Wind Hybrid |
+| `target_ExportPower1` (3) | export 1000 units of power | export cap 1000 |
+| `target_ExportPower2` (4) | export 2500 units | cap 2500 |
+| `target_ExportPower3` (5) | export 5000 units | cap 5000 |
+| `target_PassReform` (6) | 25 inmates pass the **Solar Panel Development** program | bonus to its reform rate |
+| `target_GreenEnergySource` (7) | purchase 10 solar panels, 10 wind turbines, 10 hybrids | weather effects halved / doubled |
+| `target_PowerStation` (8) | **do not use a Power Station for 10 in-game days** (with prisoners present); save `TimePassedGreen`, deadline 14400 = 10 days of minutes | one of each green source delivered free |
+| `target_ChargeBattery` (9) | fully charge 100 batteries | green output x2 |
+
+So the station Haiku was asked to keep running is the opposite of what goal 8
+needs: **switch it off** (`ctl send ElectricalSwitch Main_Power_Station off`) once
+solar / wind / hybrid supply the prison, and keep it off for 10 days. Exporting
+power uses a `PowerExportMeter` (object 390) and the buildtoolbar text says a
+PowerStation "can also be connected to a Transformer to export power". The
+older `Grant_GreenMachine` (solar / wind / hybrid, one each) is a separate grant.
