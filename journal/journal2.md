@@ -1508,3 +1508,16 @@ no Chief/Lawyer/Accountant/Foreman existed. `src/protocol/research_rules.py`
   and `AcceptGrant` on an open grant also did nothing.
 - Open: a capture of whatever the user does on the host (or another client)
   to change the balance would settle it.
+- **Imitating the server**: not possible and not needed. Photon stamps the
+  sender actor on forwarded events, so a client cannot appear as the host. And
+  the host's `DirectoryData` receiver (`sub_1403CDDB0`) only takes two system
+  names from others: `Construction` (-> `sub_1403CDF70`, jobs + `pn`) and
+  `PlayerData` (a display mirror). `Finance` / `World` are never read from a
+  client, which is why the injected balance did nothing.
+- Round 4 (Haiku): a Capacitor placed at 42,27 and 40,27 never appeared; builds
+  are probably dropped while the balance is negative (guess, unverified).
+  `ctl demolish` on a cable cell queues a `flooring` job and leaves the cable;
+  no cable-removal job known.
+- Income idea: `finance_cost_prisonerintake` pays +800 per arriving prisoner
+  (host-side, seen at packet 29058). `RemovePrisoner(prisoner)` takes
+  `uId,index` (`ctl send RemovePrisoner 8562964,27`).
