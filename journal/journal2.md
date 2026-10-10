@@ -2751,3 +2751,13 @@ Open question: not yet resolved. The next check is the wall material of room 94'
 - Rooms are named by zone and painted with a unique floor: Cell_Red (room 12, RedCarpet),
   Cell_Blue (28, BlueCarpet), Cell_White (48, WhiteTiles), Cell_Wood (49, WoodenFloor),
   Cell_Bamboo (94, BambooFloor), Cell_DarkWood (104, DarkWoodFloor).
+
+### Idle items do not count (MKS2, Claude Haiku 5.5 work)
+
+- Room 104's Shower Head and Toilet have no water (`problems`: "no water"). The game leaves an
+  unwatered Shower Head out of the grade; the bot now does the same. Items that are not working
+  (water appliance off the pipe network, or an electrical one with no power) no longer count.
+  This also assumes unpowered electrical items do not count (not yet confirmed in-game).
+- After the change every graded cell matches the game: 94 = 7, 104 = 7, the rest 1.
+- Room 104's desk faces the wall instead of the chair. It is still counted; orientation does
+  not affect the grade (not tested beyond this room).

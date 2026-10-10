@@ -605,6 +605,7 @@ class GameState:
                 if f.get("Room.i") not in (-1, None)
             }
             placed: list[tuple[tuple[int, int], str]] = []
+            idle = self._idle_object_ids()
             for obj in objects.children.values() if objects else ():
                 f = obj.fields
                 if "Pos.x" not in f or not f.get("Type"):
@@ -612,7 +613,7 @@ class GameState:
                 cell = (int(f["Pos.x"]), int(f["Pos.y"]))
                 placed.append((cell, f["Type"]))
                 index = room_of.get(cell)
-                if index is not None:
+                if index is not None and f.get("Id.i") not in idle:
                     by_room.setdefault(index, []).append(f["Type"])
             mats = {cell: str(f.get("Mat") or "") for cell, f in self.cells.items()}
             inside_of: dict[int, set[tuple[int, int]]] = {}
@@ -1040,6 +1041,27 @@ class GameState:
             width = int(self.save.fields.get("NumCellsX", 100))
             height = int(self.save.fields.get("NumCellsY", 80))
             return connect.plan(name, cells, fields, width, height, kinds)
+
+    def _idle_object_ids(self) -> set[int]:
+        """Ids of objects that are not working: a water appliance off a pumped pipe network,
+        or an electrical one with no power. Room Quality counts only working items (the
+        game leaves an unwatered Shower Head out of a grade). Call with the lock held."""
+        assert self.save is not None
+        node = self.save.children.get(network.WATER.node)
+        cells = set()
+        for key in node.children if node else ():
+            parts = key.split()
+            if len(parts) in (2, 3) and all(p.isdigit() for p in parts[:2]):
+                cells.add((int(parts[0]), int(parts[1])))
+        objects = self.save.children.get("Objects")
+        fields = [i.fields for i in objects.children.values()] if objects else []
+        idle = {o.get("Id.i") for o in network.unserved(cells, fields, network.WATER)}
+        idle |= {
+            f.get("Id.i")
+            for f in fields
+            if f.get("Type") in ELECTRICAL and not f.get("Powered")
+        }
+        return idle
 
     def _no_water(self) -> list[str]:
         """Water appliances (sink, toilet, shower head...) off a pumped pipe network.
