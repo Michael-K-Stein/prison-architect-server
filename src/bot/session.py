@@ -24,10 +24,12 @@ from pyphotonrealtime.realtime import (
     LobbyCallbacks,
     MatchmakingCallbacks,
     OnEventCallback,
+    RaiseEventArgs,
 )
 
 from src.bot.formatting import format_event_lines
 from src.bot.recording import record_traffic
+from src.bot.savegame import SaveTransfer
 from src.bot.state import GameState
 from src.capture import Recorder
 from src.protocol import rpc
@@ -38,6 +40,7 @@ log = logging.getLogger(__name__)
 PING_INTERVAL = 4.0  # seconds between the game client's P (ping) updates
 FIRST_PING_DELAY = 1.3  # ... the first one comes this long after joining
 CLAUDE_ORANGE = "d97757"  # RRGGBB; sent as the game does: "0xRRGGBBAA"
+HOST_ACTOR = 1  # the game's "is host" test is "local actor number is 1" (IDA)
 APP_VERSION = "the_slammer_1.0"  # AppVersion in the game's Authenticate (captures)
 
 
@@ -59,6 +62,8 @@ class Options:
     colour: str = CLAUDE_ORANGE
     record: Path | None = None
     """Capture file for the bot's own traffic (``--record``); None = not recorded."""
+    password: str = ""
+    """The game's password, sent in ``AuthoriseConnection`` after joining."""
 
 
 class Session(
@@ -83,6 +88,8 @@ class Session(
         self.master = self.joined = self.lobby_joined = False
         self.state = GameState()
         """What the host's events say about the game (merged snapshots)."""
+        self.save = SaveTransfer(self.raise_event)
+        """The join handshake: the host's save game, once requested."""
         self.disconnected: object | None = None
         self.join_error = ""
         self._stop = threading.Event()
@@ -140,6 +147,18 @@ class Session(
                 log.debug("event %s", line)
         self.events.append((event.sender, event.code, value))
         self.state.apply(event.code, value)
+        try:
+            line = self.save.on_event(event.code, value)
+        except (ValueError, rpc.RpcShapeError) as exc:
+            line = f"handshake event {event.code} unreadable: {exc}"
+        if line:
+            self.state.note(f"handshake: {line}")
+            if self.save.tree is not None and self.state.save is None:
+                self.state.load_save(self.save.tree)
+
+    def request_save(self, password: str = "") -> None:
+        """Ask the host for the full game (``AuthoriseConnection``)."""
+        self.save.request(password)
 
     @property
     def objectives(self) -> dict[str, str]:
@@ -198,9 +217,14 @@ class Session(
         return done()
 
     def raise_event(self, code: int, data: bytes) -> bool:
-        """Send a game RPC. ``bytes`` go out as an Int8Slice under key Data (245)."""
+        """Send a game RPC to the host, as a client does (actor 1 only).
+
+        ``bytes`` go out as an Int8Slice under key Data (245).
+        """
         with self.lock:
-            sent = self.client.op_raise_event(code, data)
+            sent = self.client.op_raise_event(
+                code, data, RaiseEventArgs(target_actors=[HOST_ACTOR])
+            )
             actor = self.client.local_player.actor_number
         log.info(
             "sent RPC %d %s (%d B): %s",

@@ -44,7 +44,7 @@ def served() -> Iterator[tuple[ControlServer, FakeSession]]:
     session.state.systems["World"] = world
     objects = session.state.systems.setdefault("ObjectData", StateNode())
     objects.children["17"] = StateNode(fields={"uId": 8427316, "t": 3})
-    session.state.feed.append("before start")
+    session.state.note("before start")
     server = ControlServer(session, port=0)
     server.start()
     yield server, session
@@ -102,8 +102,8 @@ def test_events_are_numbered(served: tuple[ControlServer, FakeSession]) -> None:
     server, session = served
     _, body = call("GET", "/events", port=server.port)
     assert [e["line"] for e in body["events"]] == ["before start"]
-    session.state._note("object added: #1")
-    session.state._note("money +5 x")
+    session.state.note("object added: #1")
+    session.state.note("money +5 x")
     _, body = call("GET", "/events?since=1", port=server.port)
     assert [(e["seq"], e["line"]) for e in body["events"]] == [
         (2, "object added: #1"),

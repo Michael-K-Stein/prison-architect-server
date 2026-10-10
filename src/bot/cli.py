@@ -103,6 +103,13 @@ def main(
             "this capture file, for `capture tail` and `capture sessions`.",
         ),
     ] = None,
+    password: Annotated[
+        str,
+        typer.Option(
+            help="The game's password; sent after joining to ask the host for the "
+            "full save (env: PA_PASSWORD).",
+        ),
+    ] = "",
 ) -> None:
     """Prison Architect bot (no subcommand: interactive)."""
     load_env(ENV_PATH)
@@ -123,6 +130,7 @@ def main(
         name=name,
         colour=colour,
         record=record,
+        password=password or environ.get("PA_PASSWORD", ""),
     )
     ctx.obj = opts
     if ctx.invoked_subcommand is None:
@@ -173,6 +181,7 @@ def run(opts: Options) -> None:
                 )
             log.info("region: %s", region)
             session = join_flow(opts, region, recorder)
+            session.request_save(opts.password)
             run_hud(session, opts)
         except KeyboardInterrupt:
             log.info("interrupted by the user")
@@ -210,6 +219,7 @@ def serve(
     with recording(opts) as recorder:
         try:
             session = join_room(opts, opts.region, room, recorder)
+            session.request_save(opts.password)
             server = ControlServer(session, port)
             server.start()
             console.print(f"control server: {server.url}", markup=False)

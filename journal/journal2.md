@@ -1129,3 +1129,35 @@ Read from the decompile (`../ida-work/db/pa.i64`); scripts in
   manager's vtable (`0x140ad8310` is).
 - I sent `AuthoriseConnection("")` live before checking how the game writes an
   empty string, although this journal already said `00`.
+
+### Join handshake, live (room `A`, Claude Opus 5.5)
+
+Sent from the bot (`src/bot/savegame.py`), to actor 1 only:
+
+- `AuthoriseConnection("")` -> host replies `IncorrectPassword` (7) at once:
+  the room has a password, and the RPC reaches the host.
+- `AuthoriseConnection("123")` -> `ProcessingStarted` (4), `SendingSaveGame`
+  (8), `SetNumSaveDataChunks(2, 192020)`, two `SaveDataChunk`s (32770 and
+  30002 bytes of `Data`: tag + size + a 0x7FFF chunk), each acked by us with
+  `SaveDataChunkAck`. Joined: 62766 B, `decompress` gives a 512790 B tree
+  `FullSave` with 57 sections: `Cells Objects Rooms WorkQ Regime SupplyChain
+  Finance Patrols Electricity Water Research Construction Penalties Sectors
+  Grants Misconduct Visitation ... Objectives ... UniformColourData
+  ScriptZones CrisisSectorData FirstTimeBuiltObjectDir
+  FirstTimeBuiltRoomDir DescDir`. So the IDA reading of the handshake is right.
+- The root has the world fields: `NumCellsX=100, NumCellsY=80, TimeIndex,
+  SecondsPlayed, ObjectId.next, Balance=48342.0, CeoLetterRead=True...`.
+- `Objects` items: `{Id.i, Id.u, Type='Light', SubType, Pos.x, Pos.y, ...}`:
+  the same index and uId as `ObjectData`/`ObjectAdded`, **with the type name**.
+  This is the way to finish the object type id table (journal "Object type
+  ids"): match `Id.i` against `ObjectData`'s `t` for the same index.
+- `Finance {Balance=48415, BankLoan, StartingFunds=30000, tr.b...}`,
+  `Grants {target_SolarPanels {Status='InProgress', CancelCost, ResetTime},
+  ...}`, `Objectives {SelectedObjectives {FirstGrant=1, PrisonerIntake=1,
+  ReadCeosLetter=1}}`, `Rooms [i n] {Id.i, Id.u, RoomType, Name}`.
+- The bot now sends this right after joining (`--password` / `PA_PASSWORD`),
+  keeps the tree as the `Save` system and seeds `ObjectData` (uId, `name`,
+  position) from `Objects`; balance and time fall back to the save's values
+  until a delta arrives.
+- Every RPC the bot sends now goes to actor 1 only (`TargetActors`), like the
+  game's client.

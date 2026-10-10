@@ -11,10 +11,8 @@ and send RPCs. Listens on 127.0.0.1 only. Endpoints::
     POST /wait   {"seconds"}         sleep (max 30 s), then /state
     POST /quit                       disconnect and stop the server
 
-Events: ``GameState.feed`` is a bounded deque without sequence numbers, so the
-server swaps it for a same-sized deque subclass that also hands every appended
-line to its own numbered log. Lines appended before the server started are
-numbered on start-up.
+Events are `GameState.log`'s numbered lines (the last 2000).
+
 """
 
 from __future__ import annotations
@@ -22,9 +20,6 @@ from __future__ import annotations
 import json
 import logging
 import threading
-import time
-from collections import deque
-from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib import error, request
@@ -37,20 +32,6 @@ log = logging.getLogger(__name__)
 
 DEFAULT_PORT = 8765
 MAX_WAIT = 30.0
-EVENT_LOG_SIZE = 2000
-
-
-class _ObservedFeed(deque):
-    """A deque that also reports every appended item to ``on_append``."""
-
-    def __init__(self, items: Any, maxlen: int | None, on_append: Callable) -> None:
-        super().__init__(items, maxlen)
-        self.on_append = on_append
-
-    def append(self, item: Any) -> None:
-        """Append and report ``item``."""
-        super().append(item)
-        self.on_append(item)
 
 
 class ControlServer:
@@ -60,10 +41,7 @@ class ControlServer:
         """Bind to ``port`` (0: any free port); call :meth:`start` to serve."""
         self.session = session
         self.stopped = threading.Event()
-        self.events: deque[dict[str, Any]] = deque(maxlen=EVENT_LOG_SIZE)
-        self.total = 0
-        self._events_lock = threading.Lock()
-        self._install_feed()
+
         handler = type("Handler", (_Handler,), {"control": self})
         self.httpd = ThreadingHTTPServer(("127.0.0.1", port), handler)
         self.httpd.daemon_threads = True
@@ -78,19 +56,6 @@ class ControlServer:
     def url(self) -> str:
         """``http://127.0.0.1:PORT``."""
         return f"http://127.0.0.1:{self.port}"
-
-    def _install_feed(self) -> None:
-        state = self.session.state
-        with state.lock:
-            old = state.feed
-            for line in old:
-                self._log_event(line)
-            state.feed = _ObservedFeed(old, old.maxlen, self._log_event)
-
-    def _log_event(self, line: Any) -> None:
-        with self._events_lock:
-            self.total += 1
-            self.events.append({"seq": self.total, "at": time.time(), "line": line})
 
     def start(self) -> None:
         """Serve in a background thread."""
@@ -187,9 +152,12 @@ class ControlServer:
 
     def recent(self, since: int, limit: int) -> dict[str, Any]:
         """``/events``: logged lines with ``seq > since`` (at most ``limit``)."""
-        with self._events_lock:
-            items = [e for e in self.events if e["seq"] > since][:limit]
-            return {"events": items, "last": self.total}
+        state = self.session.state
+        items = state.since(since, limit)
+        return {
+            "events": [{"seq": s, "at": at, "line": line} for s, at, line in items],
+            "last": state.seq,
+        }
 
 
 class _Handler(BaseHTTPRequestHandler):

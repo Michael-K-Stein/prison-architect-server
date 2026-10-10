@@ -282,7 +282,7 @@ class _FakeEventClient(_FakeClient):
         super().__init__()
         self.raised: list[tuple[int, bytes]] = []
 
-    def op_raise_event(self, code: int, content: bytes) -> bool:
+    def op_raise_event(self, code: int, content: bytes, args: object = None) -> bool:
         self.raised.append((code, content))
         return True
 

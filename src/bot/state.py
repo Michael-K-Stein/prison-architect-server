@@ -35,6 +35,8 @@ OBJECTIVE_REMOVED = 21
 TRANSACTION_ADDED = 118
 OBJECTIVE_SYSTEM = "Objective"
 LIST_ITEM = "[i "
+SAVE_SYSTEM = "Save"
+"""Where the join handshake's full save tree is kept in ``systems``."""
 
 
 @dataclass
@@ -118,10 +120,18 @@ class GameState:
     transactions: deque[Transaction] = field(default_factory=lambda: deque(maxlen=200))
     feed: deque[str] = field(default_factory=lambda: deque(maxlen=200))
     """Readable notable happenings (objects, objectives, money), newest last."""
+    log: deque[tuple[int, float, str]] = field(
+        default_factory=lambda: deque(maxlen=2000)
+    )
+    """The same lines numbered: ``(seq, time, line)``, for polling."""
+    seq: int = 0
+    """Number of the last line added."""
     updates: Counter[str] = field(default_factory=Counter)
     """Snapshots merged per system."""
     errors: int = 0
     last_update: float = 0.0
+    save: StateNode | None = None
+    """The host's full save game, once the join handshake delivered it."""
     lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     # feeding
@@ -151,7 +161,7 @@ class GameState:
                     known = fields["Name"] in self.objectives
                     self.objectives.setdefault(fields["Name"], {}).update(fields)
                     if not known:
-                        self._note(f"objective added: {fields['Name']}")
+                        self.note(f"objective added: {fields['Name']}")
                 return
             self.systems.setdefault(name, StateNode()).merge(tree)
             return
@@ -167,25 +177,62 @@ class GameState:
             (uid, index), type_id = args
             node = self._objects().children.setdefault(str(index), StateNode())
             node.fields.update({"uId": uid, "t": type_id})
-            self._note(f"object added: #{index} type {type_id} (uId {uid})")
+            self.note(f"object added: #{index} type {type_id} (uId {uid})")
         elif code == OBJECT_REMOVED:
             uid, index = args[0]
             self._objects().children.pop(str(index), None)
-            self._note(f"object removed: #{index} (uId {uid})")
+            self.note(f"object removed: #{index} (uId {uid})")
         elif code == OBJECTIVE_REMOVED:
             name = _text(args[0])
             self.objectives.pop(name, None)
-            self._note(f"objective removed: {name}")
+            self.note(f"objective removed: {name}")
         else:
             amount, key = int(args[0]), _text(args[1])
             self.transactions.append(Transaction(amount, key, time.time()))
-            self._note(f"money {amount:+d} {key}")
+            self.note(f"money {amount:+d} {key}")
+
+    def load_save(self, tree: Node) -> None:
+        """Keep the host's full save tree (the join handshake's result).
+
+        Its sections are the save file's (``Objects``, ``Finance``,
+        ``Grants``...), not the snapshots' layout, so it is kept whole as the
+        ``Save`` system; its objects (``Id.i``/``Id.u``, ``Type`` name,
+        ``Pos``) seed ``ObjectData`` by index.
+        """
+        with self.lock:
+            self.save = StateNode()
+            self.save.merge(tree)
+            self.systems[SAVE_SYSTEM] = self.save
+            objects = self.save.children.get("Objects")
+            for item in objects.children.values() if objects else ():
+                f = item.fields
+                if "Id.i" not in f:
+                    continue
+                node = self._objects().children.setdefault(str(f["Id.i"]), StateNode())
+                node.fields.update(
+                    {"uId": f.get("Id.u"), "name": f.get("Type")}
+                    | {k: f[k] for k in ("Pos.x", "Pos.y") if k in f}
+                )
+            self.note(f"save game loaded: {len(tree.children)} sections")
+
+    def _save_value(self, path: str, key: str) -> Any:
+        node = self.save.find(path) if self.save else None
+        return node.fields.get(key) if node else None
 
     def _objects(self) -> StateNode:
         return self.systems.setdefault("ObjectData", StateNode())
 
-    def _note(self, text: str) -> None:
-        self.feed.append(text)
+    def note(self, text: str) -> None:
+        """Add a line to :attr:`feed` and to the numbered :attr:`log`."""
+        with self.lock:
+            self.seq += 1
+            self.feed.append(text)
+            self.log.append((self.seq, time.time(), text))
+
+    def since(self, seq: int, limit: int = 100) -> list[tuple[int, float, str]]:
+        """Numbered lines after ``seq`` (oldest first, at most ``limit``)."""
+        with self.lock:
+            return [item for item in self.log if item[0] > seq][:limit]
 
     # reading
     def value(self, system: str, path: str, key: str) -> Any:
@@ -197,13 +244,37 @@ class GameState:
 
     @property
     def balance(self) -> int | None:
-        """The bank balance (``Finance.v.6``)."""
-        return self.value("Finance", "", "v.6")
+        """The bank balance (``Finance.v.6``, else the save's ``Finance.Balance``)."""
+        live = self.value("Finance", "", "v.6")
+        return live if live is not None else self._save_value("Finance", "Balance")
 
     @property
     def time_index(self) -> float | None:
-        """Game time (``World.WorldData.TimeIndex``)."""
-        return self.value("World", "WorldData", "TimeIndex")
+        """Game time (``World.WorldData.TimeIndex``, else the save's)."""
+        live = self.value("World", "WorldData", "TimeIndex")
+        return live if live is not None else self._save_value("", "TimeIndex")
+
+    def grants(self) -> dict[str, str]:
+        """The save's grants: name -> ``Status`` (``InProgress``...)."""
+        with self.lock:
+            node = self.save.children.get("Grants") if self.save else None
+            if node is None:
+                return {}
+            return {
+                k: str(v.fields.get("Status", "")) for k, v in node.children.items()
+            }
+
+    def object_names(self) -> Counter[str]:
+        """How many known objects there are of each type name (from the save)."""
+        with self.lock:
+            objects = self.systems.get("ObjectData")
+            if objects is None:
+                return Counter()
+            return Counter(
+                c.fields["name"]
+                for c in objects.children.values()
+                if c.fields.get("name")
+            )
 
     @property
     def speed(self) -> int | None:
@@ -252,6 +323,9 @@ class GameState:
                 "objectives": sorted(self.objectives),
                 "objects": len(self.systems.get("ObjectData", StateNode()).children),
                 "object_types": dict(sorted(self.object_types().items())),
+                "object_names": dict(sorted(self.object_names().items())),
+                "grants": self.grants(),
+                "save_loaded": self.save is not None,
                 "systems": dict(sorted(self.updates.items())),
                 "recent": list(self.feed)[-10:],
                 "errors": self.errors,
