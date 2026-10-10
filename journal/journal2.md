@@ -1347,3 +1347,11 @@ trees in `bot-goal.sqlite`); `src/bot/build.py` makes the jobs.
   letters; the guide now says door first, and how to check each step.
 - Gotcha for agents: Git Bash rewrites `/Construction`-like arguments into
   Windows paths; use PowerShell.
+- **Attempt 2** (Haiku 5.5, fixed guide, ~25 `ctl` calls, no help): foundation
+  at (24,17) -> JailDoor at (26,21) -> walls up -> `room 25 18 3 3 Cell`, Bed,
+  Toilet -> `room created: #5 Cell` -> next 08:00 intake brought prisoner #75
+  -> `ctl refresh`: **Cell room 5, occupant 75**. Verified by me on a fresh
+  save (`ctl area 24 17 5 5`: `WWWWW / WFFFW x3 / WWFWW`, rooms [5]). Goal of
+  "an agent builds a foundation and a cell and gets a prisoner into it" met.
+- Its notes: say how much game time a `ctl wait 30` covers (~300 game
+  minutes at 10x); the door cell reads `F` in `ctl area`.
