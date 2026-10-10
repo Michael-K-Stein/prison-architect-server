@@ -32,10 +32,25 @@ RESEARCH: dict[int, str] = dict(
 """BeginResearch / ToggleResearchDesired id -> name: static array at
 ``0x140DF4A20`` filled by ``sub_140096B10`` (IDA). Spelling is the game's."""
 
+ADVISERS: dict[int, str] = {
+    0: "Unknown",
+    1: "The CEO",
+    2: "The Warden",
+    3: "The Governor",
+    4: "The Chief",
+    5: "The Doctor",
+    6: "The KingPin",
+}
+"""``NewSpeechAdded`` first argument: the adviser who speaks, in the order of the
+game's ``adviser_name_*`` language keys (``base-language.txt``). Only 1 = The CEO
+is confirmed (``help_warning_prisonerreleased`` came with 1 and the user saw it as
+a call from "The CEO", MKS2 packet 7372); the rest follow the same key order."""
+
 STAFF = frozenset({"Workman", "Guard", "Doctor", "Cook", "Warden"})
 """Object type names that are staff. Partial (journal2, IDA object table)."""
 
 __all__ = [
+    "ADVISERS",
     "ELECTRICAL",
     "FOUNDATION_MATERIALS",
     "ROOM_ERRORS",

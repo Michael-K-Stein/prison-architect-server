@@ -29,6 +29,7 @@ from src.bot.names import ObjectNames
 from src.protocol.net_keys import label
 from src.protocol.room_rules import ROOM_RULES
 from src.protocol.enums import (
+    ADVISERS,
     ELECTRICAL,
     OBJECT_TYPES,
     ROOM_ERRORS,
@@ -262,6 +263,8 @@ class GameState:
             )
         elif code == NEW_SPEECH:
             text = TEXT.get(_text(args[1]), _text(args[1]))
+            who = ADVISERS.get(args[0])
+            text = f"{who}: {text}" if who else text
             self.alerts.append(text)
             self.note(f"alert: {text}")
         elif code == CREATE_ROOM:

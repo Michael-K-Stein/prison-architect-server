@@ -1789,3 +1789,17 @@ Type, Material, Pos, Size, Or, Status=1.
   `Status=16, Cost=-2000, BatchId=2`; `Status=16` is the state of an accepted
   object job waiting for its delivery (the real client's reads 1 -> 2 for
   foundations, 16 for objects).
+
+### The CEO's "call" (MKS2, `mks2-bot.sqlite` packet 7372)
+
+The call the user saw is an advisor speech: `NewSpeechAdded(1, 'help_warning_prisonerreleased')`
+(a prisoner had been released). The text (`d11.txt`): "Reform Programs are key to
+prisoners successfully reintegrating into society... Reformed prisoners bring an
+additional cash reward; those who reoffend can return, cost a fine for the failed
+rehabilitation and may bring extra bad habits." The first argument is the adviser
+index: 1 = "The CEO" (matches the user's "incoming call from The CEO"); the
+`adviser_name_*` key order (unknown, ceo, warden, governer, chief, doctor,
+kingpin) is recorded as `ADVISERS`. There is no dismiss RPC: the speech is
+host -> clients only and closing it is local to the client. `ObjectiveRemoved(
+"ReadCeosLetter", False)` (the CEO letter) did not remove it. The bot now shows
+`The CEO: ...` in its alerts.
