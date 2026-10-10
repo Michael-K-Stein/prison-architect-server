@@ -70,6 +70,8 @@ PowerStation on completely separate cables: crossing lines short-circuit.
 matching staff member is hired (`ctl hire Chief|Lawyer|Accountant|Foreman|
 Psychologist`) and sits in his office. Research (`BeginResearch`) is charged up front, is not refunded, and the balance
 can go negative: read `balance` and the cost first and start one at a time.
+A negative balance silently blocks ALL building (jobs never reach the host);
+keep `balance` above 0.
 Staff are hired with `ctl hire Guard 2`.
 
 ## Recipe: a prisoner cell

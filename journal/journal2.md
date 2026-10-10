@@ -1530,3 +1530,11 @@ no Chief/Lawyer/Accountant/Foreman existed. `src/protocol/research_rules.py`
   where MKS runs. Theory to test: the host's `TransactionAdded` handler (118)
   only moves the balance when it comes from the server/host actor, which would
   explain why a client's copy only showed up in the transaction list.
+- **Construction is refused at a negative balance** (strong evidence, balance
+  about -111,800): a 4x4 `foundation` on empty ground at (5,70), a Light and a
+  Capacitor inside a finished room, and a Toilet were all accepted by the bot
+  but never reached the host's `ConstructionSystem` (`Jobs Size=0`, no error
+  event). Before the research spree the same calls worked. `SellFlooring` (material
+  6) over a finished 7x6 room did nothing visible either. So: **never let the
+  balance go below 0**; it blocks every grant that needs building (the power
+  targets, `FeedAllPrisoners`).

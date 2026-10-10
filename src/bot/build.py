@@ -149,7 +149,14 @@ def line(obj: str, x: int, y: int, width: int = 1, height: int = 1) -> Job:
 TOOLS["line"] = (line, ("x", "y", "width", "height"), "object")
 
 
-DEMOLITION = ("Demolish", "DemolishWalls", "ClearIndoorArea", "RemoveTunnels")
+DEMOLITION = (
+    "Demolish",
+    "DemolishWalls",
+    "ClearIndoorArea",
+    "RemoveTunnels",
+    "SellFlooring",
+    "SellMaterial",
+)
 """Material ids 2-5 of the ``flooring`` tool: bulldoze, demolish walls, clear the
 indoor flag, remove tunnels (journal2: the host's own jobs in bot-goal-2)."""
 
