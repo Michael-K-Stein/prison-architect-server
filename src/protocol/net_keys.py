@@ -119,6 +119,13 @@ KEYS: dict[str, dict[str, str]] = {
         "rep": "? (member +1184)",
         "ft": "? (member +1200)",
     },
+    "PlayerData": {
+        # PlayerData/<actor number>: that player's current tool use, mirrored by
+        # the host (observed with a real client in MKS2; no save long names).
+        "jp": "JobPosition: the cell under the tool (jp.x, jp.y)",
+        "js": "JobStart: cell where a drag began (-1 when not dragging)",
+        "p": "Pointer: cursor position in world coordinates (p.x, p.y)",
+    },
     "EventLog": {
         # LoggedEvents/i, fn 0x14057E610. No save long names exist: these
         # are descriptive names for what the fields hold.

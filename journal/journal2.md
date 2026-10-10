@@ -1769,3 +1769,23 @@ host adds it to `ConstructionSystem` as `Status=2`, `Counter`/`Counter2`
 per placed cell). The preview fields `Cost`, `Speed`, `QRWallType=46` are
 host-computed; the bot's own `Construction` jobs (which it sends) carry only
 Type, Material, Pos, Size, Or, Status=1.
+
+### A real client hires a warden and builds an office (MKS2, `mks2-bot.sqlite`)
+
+- **Hire** (packets 4326-4361): the host mirrors the client's tool as
+  `PlayerData/2 {jp.x, jp.y, js.x=-1, js.y=-1}` + `Job {Type='Staff', Material=132,
+  PosX, PosY, Status=1, Cost=-1000, Speed=60}`. `PlayerData/<n>` is the player's
+  **actor number** (2 = RealClient); `jp` = the cell under the tool, `js` = where a
+  drag started (-1 = none), `p` = cursor in world coordinates. Unlike the bot's
+  `Staff` job (PosX/PosY 0,0, which also works) the client sends the **cell where
+  the new staff member appears**; price 1000 for a Warden. Then `ObjectAdded`
+  (271628, 17) type 132 at 4369.
+- **Office**: `Designation` Material 17 (Office) -> `CreateRoom` (271714, 2)
+  type 17 at 4667; objects `OfficeDesk` (231, `Status=-2` first when refused
+  at (71,35), then placed), `FilingCabinet` 233 (-30 each), id 214 etc.
+  ObjectAdded OfficeDesk (271997, 54) at 5265, FilingCabinet (272069, 55) at 5428.
+- The agent's own jobs in this capture, for comparison: `Construction` jobs
+  `Objects Material=387` (SolarPanels) at (10,10) became `ConstructionSystem`
+  `Status=16, Cost=-2000, BatchId=2`; `Status=16` is the state of an accepted
+  object job waiting for its delivery (the real client's reads 1 -> 2 for
+  foundations, 16 for objects).
