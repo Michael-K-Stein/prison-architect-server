@@ -224,6 +224,22 @@ def alert_texts(key: str) -> dict[str, Any]:
     }
 
 
+def _condition(fields: dict[str, Any]) -> str:
+    """An objective's ``Requirement`` as text: ``CriticalNeedsPercent Hygiene 30 (inverted)``."""
+    category = fields.get("Requirement.category")
+    if not category:
+        return ""
+    parts = [str(category)]
+    for key in ("Requirement.property", "Requirement.value"):
+        if fields.get(key) is not None:
+            parts.append(str(fields[key]))
+    if fields.get("RequiredId") is not None:
+        parts.append(f"id {fields['RequiredId']}")
+    return " ".join(parts) + (
+        " (inverted: done while this is false)" if fields.get("Invert") else ""
+    )
+
+
 @dataclass(frozen=True)
 class Transaction:
     """One ``TransactionAdded``: signed amount and ledger key."""
@@ -421,6 +437,11 @@ class GameState:
                 grant = GRANTS.get(name)
                 if not title and grant:
                     title = str(grant.get("title") or "")
+                texts = alert_texts(f"d11_staffalert_title_{name}")
+                if not title and texts.get("title"):
+                    title = str(
+                        texts["title"]
+                    )  # an advisor objective: NEEDS08, DOCTOR01...
                 tasks = [
                     str(f.get("Name"))
                     for f in self.objectives.values()
@@ -433,6 +454,13 @@ class GameState:
                 }
                 if tasks:
                     item["tasks"] = tasks
+                if texts.get("title"):
+                    item["kind"] = "advice"
+                    item["why"] = texts.get("why", "")
+                    item["advice"] = texts.get("advice", "")
+                condition = _condition(fields)
+                if condition:
+                    item["when"] = condition
                 extra = {
                     k: v
                     for k, v in fields.items()

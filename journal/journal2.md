@@ -2663,3 +2663,16 @@ zone-only room (Forestry, Exports, Storage...) no longer draws walls (the player
   `orX/orY`, e.g. `orY -1` for deck chairs facing up toward a screen. `ctl room build --obj Name:dx:dy:facing`
   (up/down/left/right; left/right turn the footprint by 90 degrees) and `["Name", dx, dy, "up"]` in building specs.
   The bot's plain `--auto` layout ignores facing, so directional rooms (Cinema, Gymnasium, Classroom, Restaurant) need a designed layout.
+- **Door swap verified live** (`ctl door swap 47 57 JailDoor`): the Cell door at (47,57) read `Door`; after the client's
+  `ObjectRemoved` and a `place JailDoor` the objects list shows a `JailDoor` at 47.5,57.5 and the wall cell still reads
+  `F` (a door cell) in `ctl area`: removing a door leaves the opening, so the new door fits at once.
+- **Todo advice objectives**: names like `NEEDS08` are `Objective` snapshots, not only `StaffAlert`: `{Name='NEEDS08',
+  Type='AnyChild', Invert=True, Requirement.category='CriticalNeedsPercent', Requirement.property='Hygiene',
+  Requirement.value=30}` is the Todo item "Our prisoners aren't very clean." (title `d11_staffalert_title_NEEDS08`); more:
+  `NEEDS01` HighNeedsPercent Bladder 50, `NEEDS02` Bowels 50, `NEEDS04` CriticalNeedsPercent Food 30, `NEEDS06`
+  HighNeedsPercent Environment 40, `PRISONERS02` PrisonersPerGuard Above 8, `PRISONERS03` PrisonerCellQualityPercent Below 25,
+  `STAFF01` ExhaustedStaffPercent AtLeast 50, `DOCTOR01` / `OBJECTS0n` TypeObjects (`RequiredId` = object type), `DEATHROW01`
+  TypeRoom. `ctl todo` lists them with the game's title, details, advice and the condition. The other Todo items ("Incident
+  Reports: N require medical attention", "Prisoners due for release / N prisoners up for parole", visitors, exhausted
+  staff, punishments, Feed all Prisoners with its Prisoners / Meals counters) are computed by the client; a sub-agent
+  is reading the IDA database for their sources.
