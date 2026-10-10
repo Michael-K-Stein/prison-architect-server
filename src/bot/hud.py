@@ -23,10 +23,21 @@ from src.bot.actions import (
     FIRST_GRANT,
     OBJECTIVE_REMOVED,
 )
-from src.bot.catalog import ACTIONS, Action, ArgError, parse_args
+from src.bot.catalog import (
+    ACTIONS,
+    SPEEDS,
+    Action,
+    Arg,
+    ArgError,
+    Choice,
+    choices,
+    parse_args,
+    source,
+)
 from src.bot.session import Options, Session
-from src.bot.speed import GAME_SPEED_CHANGE, SPEED_STOPS, speed_wire_value
+from src.bot.speed import GAME_SPEED_CHANGE
 from src.protocol import rpc
+from src.protocol.enums import VEHICLES
 
 REFRESH = 0.25  # seconds between HUD redraws
 LOG_LINES = 500
@@ -34,7 +45,8 @@ BROWSE_DEPTH = 2
 HELP = {
     "list": "type: filter  up/down/PgUp/PgDn: move  Enter: run  F2: state  "
     "Esc: clear  Ctrl-Q: quit",
-    "args": "Tab/Enter: next field  Shift-Tab: previous  Esc: cancel",
+    "args": "type: filter/raw value  up/down: pick  Tab/Enter: next field  "
+    "Shift-Tab: previous  Esc: cancel",
     "browse": "type: System/child/path  up/down: scroll  F2/Esc: back  Ctrl-Q: quit",
 }
 
@@ -80,18 +92,36 @@ def format_speed(gt: Any) -> str:
     return "paused" if gt == 0 else f"{gt}x"
 
 
-def quick_items(objectives: Iterable[Any], speed_index: bool = False) -> list[Item]:
-    """The quick actions: speeds, the CEO letter, accept/cancel per grant."""
+CALL_VEHICLE = 43  # NewVehicleCallout(vehicle)
+DISMISS_SQUAD = 44  # SquadDismissal(squad: ObjectId)
+
+
+def quick_items(
+    objectives: Iterable[Any], speed_index: bool = False, state: Any = None
+) -> list[Item]:
+    """Quick actions: speeds, vehicles, squads, the CEO letter, grants."""
     speed, removed = ACTIONS[GAME_SPEED_CHANGE], ACTIONS[OBJECTIVE_REMOVED]
     items = [
-        Item(
-            f"Set speed {label}",
-            "quick",
-            speed,
-            (speed_wire_value(i, speed_index=speed_index),),
-        )
-        for i, (label, _) in enumerate(SPEED_STOPS)
+        Item(f"Set speed {label}", "quick", speed, (i if speed_index else value,))
+        for i, (value, label) in enumerate(SPEEDS.items())
     ]
+    items += [
+        Item(f"Call vehicle {name}", "quick", ACTIONS[CALL_VEHICLE], (value,))
+        for value, name in sorted(VEHICLES.items())
+        if value  # 0 is "None"
+    ]
+    if state is not None:
+        with state.lock:
+            squads = state.squads()
+        items += [
+            Item(
+                f"Dismiss squad {o.label}",
+                "quick",
+                ACTIONS[DISMISS_SQUAD],
+                (o.object_id,),
+            )
+            for o in squads
+        ]
     items.append(
         Item("Read the CEO's letter", "quick", removed, (CEO_LETTER_OBJECTIVE, False))
     )
@@ -113,10 +143,12 @@ def catalog_items() -> list[Item]:
     return [Item(a.signature, a.kind, a) for a in actions]
 
 
-def all_items(objectives: Iterable[Any], speed_index: bool = False) -> list[Item]:
+def all_items(
+    objectives: Iterable[Any], speed_index: bool = False, state: Any = None
+) -> list[Item]:
     """Quick actions, the catalog, and quit."""
     return [
-        *quick_items(objectives, speed_index),
+        *quick_items(objectives, speed_index, state),
         *catalog_items(),
         Item("Leave / quit", "view", special="quit"),
     ]
@@ -125,6 +157,16 @@ def all_items(objectives: Iterable[Any], speed_index: bool = False) -> list[Item
 def _fuzzy(query: str, text: str) -> bool:
     it = iter(text)
     return all(ch in it for ch in query)
+
+
+def filter_choices(found: Sequence[Choice], query: str) -> list[Choice]:
+    """Choices whose label matches ``query``: substring first, then fuzzy."""
+    q = query.strip().lower()
+    if not q:
+        return list(found)
+    exact = [c for c in found if q in c.label.lower()]
+    fuzzy = [c for c in found if c not in exact and _fuzzy(q, c.label.lower())]
+    return exact + fuzzy
 
 
 def filter_items(items: Sequence[Item], query: str) -> list[Item]:
@@ -226,6 +268,8 @@ class HudState:
     item: Item | None = None
     values: list[str] = field(default_factory=list)
     filter: str = ""
+    choice: int = 0
+    """Highlighted row of the current argument's (filtered) choices."""
 
 
 class Hud:
@@ -251,8 +295,33 @@ class Hud:
     # data
     def items(self) -> list[Item]:
         """The current rows, filtered."""
-        rows = all_items(self.session.objectives, self.opts.speed_index)
+        rows = all_items(
+            self.session.objectives, self.opts.speed_index, self.session.state
+        )
         return filter_items(rows, self.ui.filter)
+
+    def current_arg(self) -> Arg | None:
+        """The argument being entered in the form, or None."""
+        item = self.ui.item
+        if self.ui.mode != "args" or item is None or item.action is None:
+            return None
+        args = item.action.args
+        return args[len(self.ui.values)] if len(self.ui.values) < len(args) else None
+
+    def all_choices(self) -> list[Choice]:
+        """The current argument's choices from the live state (unfiltered)."""
+        arg = self.current_arg()
+        if arg is None:
+            return []
+        state = self.session.state
+        with state.lock:
+            return choices(arg, state)
+
+    def arg_choices(self) -> list[Choice]:
+        """The current argument's choices, filtered by the typed text."""
+        shown = filter_choices(self.all_choices(), self.buffer.text)
+        self.ui.choice = min(self.ui.choice, max(len(shown) - 1, 0))
+        return shown
 
     def _pull_feed(self) -> None:
         state = self.session.state
@@ -315,6 +384,21 @@ class Hud:
             )
             style = "reverse" if i == current else ""
             out.append((style, f"  {arg.name} ({arg.type}, {arg.hint}): {value}\n"))
+        arg = self.current_arg()
+        if arg is None or not source(arg):
+            return out
+        dim = "fg:ansibrightblack"
+        out.append(("bold", f"\n{arg.name} ({arg.type}): pick one\n"))
+        if not self.all_choices():
+            out.append((dim, f"  (no {source(arg)} available yet; type a value)\n"))
+            return out
+        shown = self.arg_choices()
+        for i, choice in enumerate(shown):
+            mark = ">" if i == self.ui.choice else " "
+            style = "reverse" if i == self.ui.choice else ""
+            out.append((style, f"{mark} {choice.label}\n"))
+        if not shown:
+            out.append((dim, "  (no match; Enter uses the typed value)\n"))
         return out
 
     def _prompt(self) -> StyleAndTextTuples:
@@ -357,16 +441,21 @@ class Hud:
             self.ui.selected = 0
         elif self.ui.mode == "browse":
             self.ui.scroll = 0
+        else:
+            self.ui.choice = 0
 
     def _reset(self, mode: str = "list") -> None:
         self.ui.mode, self.ui.item, self.ui.values = mode, None, []
-        self.ui.scroll = 0
+        self.ui.scroll, self.ui.choice = 0, 0
         self.buffer.text = self.ui.filter if mode == "list" else ""
 
     def move(self, delta: int) -> None:
-        """Move the selection (list) or scroll (browse)."""
+        """Move the selection (list, argument choices) or scroll (browse)."""
         if self.ui.mode == "browse":
             self.ui.scroll = max(self.ui.scroll + delta, 0)
+        elif self.ui.mode == "args":
+            count = len(self.arg_choices())
+            self.ui.choice = max(min(self.ui.choice + delta, count - 1), 0)
         elif self.ui.mode == "list":
             count = len(self.items())
             self.ui.selected = max(min(self.ui.selected + delta, count - 1), 0)
@@ -393,14 +482,18 @@ class Hud:
         else:
             self.ui.mode, self.ui.item, self.ui.values = "args", item, []
             self.buffer.text = ""
+            self.ui.choice = 0
 
     def next_field(self) -> None:
-        """Keep the current field's value; send when it was the last."""
+        """Keep the highlighted choice's label (or the typed text); send at the end."""
         item = self.ui.item
         if item is None or item.action is None:
             return
-        self.ui.values.append(self.buffer.text)
+        shown = self.arg_choices()
+        value = shown[self.ui.choice].label if shown else self.buffer.text
+        self.ui.values.append(value)
         self.buffer.text = ""
+        self.ui.choice = 0
         if len(self.ui.values) >= len(item.action.args):
             self.add_log(send(self.session, item.action, self.ui.values))
             self._reset()

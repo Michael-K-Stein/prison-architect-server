@@ -27,6 +27,8 @@ from pyphotonrealtime.realtime import (
     RaiseEventArgs,
 )
 
+from src.bot import build
+from src.bot.build import Job
 from src.bot.formatting import format_event_lines
 from src.bot.recording import record_traffic
 from src.bot.savegame import SaveTransfer
@@ -155,6 +157,13 @@ class Session(
             self.state.note(f"handshake: {line}")
             if self.save.tree is not None and self.state.save is None:
                 self.state.load_save(self.save.tree)
+
+    def build(self, jobs: list[Job]) -> bool:
+        """Send build jobs to the host (``DirectoryData("Construction")``)."""
+        actor = self.client.local_player.actor_number
+        return self.raise_event(
+            build.DIRECTORY_DATA, build.construction_data(jobs, actor)
+        )
 
     def request_save(self, password: str = "") -> None:
         """Ask the host for the full game (``AuthoriseConnection``)."""

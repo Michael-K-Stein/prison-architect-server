@@ -76,7 +76,22 @@ def test_actions(served: tuple[ControlServer, FakeSession]) -> None:
     _, everything = call("GET", "/actions?all=1", port=server.port)
     assert any(a["blocked"] for a in everything)
     speed = next(a for a in body if a["code"] == 96)
-    assert speed["args"] == [{"name": "speed", "type": "int", "hint": "whole number"}]
+    assert speed["args"] == [
+        {"name": "speed", "type": "int", "hint": "whole number", "source": "speed"}
+    ]
+
+
+def test_action_choices(served: tuple[ControlServer, FakeSession]) -> None:
+    server, _ = served
+    status, body = call("GET", "/actions/NewVehicleCallout", port=server.port)
+    assert status == 200 and body["code"] == 43
+    (arg,) = body["args"]
+    assert arg["source"] == "vehicle"
+    assert {"value": 3, "label": "RiotPolice"} in arg["choices"]
+    _, body = call("GET", "/actions/45", port=server.port)
+    assert body["name"] == "SackStaff"
+    assert all(isinstance(c["value"], list) for c in body["args"][0]["choices"])
+    assert call("GET", "/actions/Nope", port=server.port)[0] == 404
 
 
 def test_send(served: tuple[ControlServer, FakeSession]) -> None:
@@ -145,6 +160,9 @@ def test_ctl_commands(served: tuple[ControlServer, FakeSession]) -> None:
     assert runner.invoke(app, [*port, "state", "Nope"]).exit_code == 1
     result = runner.invoke(app, [*port, "actions", "--kind", "player"])
     assert result.exit_code == 0 and "GameSpeedChange" in result.output
+    result = runner.invoke(app, [*port, "action", "GameSpeedChange"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["args"][0]["choices"][0]["label"] == "paused"
     result = runner.invoke(app, [*port, "send", "GameSpeedChange", "2"])
     assert result.exit_code == 0, result.output
     assert session.sent[-1][0] == 96

@@ -1,60 +1,63 @@
 """Names for the game's magic numbers (RPC arguments, snapshot type ids).
 
-Each table maps a wire value to the game's name. A value is listed only with
-evidence: a capture (journal2) or the binary / data files (IDA). Tables are
-partial where marked.
+The full tables are the game's own, read from the binary
+(:mod:`src.protocol.game_tables`); every capture pair checked so far matches
+(journal2 "Object, material and room tables (IDA)").
 """
 
 from __future__ import annotations
 
-VEHICLES: dict[int, str] = {
-    # NewVehicleCallout (43): captures/bot-goal.sqlite, a Squads entry of this
-    # Type appears right after each callout (journal2 "Bot actions, live").
-    1: "FireEngine",
-    3: "RiotPolice",
-}
+from src.protocol.game_tables import (
+    INTAKE_TYPES,
+    JOB_TYPES,
+    MATERIALS,
+    OBJECTS,
+    ROOMS,
+    VEHICLES,
+)
 
-OBJECT_TYPES: dict[int, str] = {
-    # ObjectData ``t`` / ObjectAdded type. Partial: ids are assigned at load,
-    # these pairs come from the captures (save ``Objects.Type`` by uId).
-    5: "Bed",  # cell build (bot-goal ~#70291): Job Material=5 -> InstallObject Bed
-    9: "Toilet",  # ... Material=9 -> InstallObject Toilet
-    14: "Chair",
-    26: "JailDoor",  # ... Material=26 -> InstallObject JailDoor
-    41: "StaffDoor",
-    132: "Warden",
-    231: "OfficeDesk",
-    233: "FilingCabinet",
-    241: "PowerStation",
-}
+OBJECT_TYPES = OBJECTS
+ROOM_TYPES = ROOMS
 
 RESEARCH: dict[int, str] = {}
-"""BeginResearch / ToggleResearchDesired id -> research name."""
+"""BeginResearch / ToggleResearchDesired id -> research name (not extracted yet)."""
 
-ROOM_TYPES: dict[int, str] = {
-    # CreateRoom type = the Designation job's Material (bot-goal: an office
-    # at #39987, a cell at #69245 after Job {Type='Designation', Material=1}).
-    1: "Cell",
-    17: "Office",
-}
-"""CreateRoom type -> room name. Partial."""
+STAFF = frozenset({"Workman", "Guard", "Doctor", "Cook", "Warden"})
+"""Object type names that are staff. Partial (journal2, IDA object table)."""
 
-WALL_MATERIALS: dict[int, str] = {
-    # Job {Type='flooring', Material=46} -> Construct jobs MatType='ConcreteWall'
-    46: "ConcreteWall",
-}
-"""``flooring`` (wall) tool materials. Partial."""
+__all__ = [
+    "FOUNDATION_MATERIALS",
+    "INTAKE_TYPES",
+    "JOB_TYPES",
+    "MATERIALS",
+    "OBJECT_TYPES",
+    "OBJECTS",
+    "RESEARCH",
+    "ROOM_TYPES",
+    "ROOMS",
+    "STAFF",
+    "VEHICLES",
+    "WALL_MATERIALS",
+    "id_of",
+    "name_of",
+]
 
-FOUNDATION_MATERIALS: dict[int, str] = {
-    59: "Concrete",  # run4: Job {Type='Foundations', Material=59}; *guess* name
-}
-"""``Foundations`` tool materials. Partial."""
+WALL_MATERIALS = {i: MATERIALS[i] for i in (46, 47)}
+"""Wall materials seen or named for walls: ConcreteWall, BrickWall. Partial."""
 
-STAFF = frozenset({"Workman", "Warden", "Guard", "Cook"})
-"""Object type names that are staff (save ``Objects.Type``). Partial: from the
-captures (``Workman``, ``Warden``) and the first grant's ``RequiredId``s."""
+FOUNDATION_MATERIALS = {59: MATERIALS[59]}
+"""BuildingConcrete: run4's foundation job used Material 59."""
 
 
 def name_of(table: dict[int, str], value: int) -> str:
     """``table[value]``, or ``#value`` when the name is unknown."""
     return table.get(value, f"#{value}")
+
+
+def id_of(table: dict[int, str], name: str) -> int:
+    """The id whose name is ``name`` (case-insensitive); KeyError if none."""
+    wanted = name.lower()
+    for ident, text in table.items():
+        if text.lower() == wanted:
+            return ident
+    raise KeyError(name)

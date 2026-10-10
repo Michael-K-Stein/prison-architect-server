@@ -10,7 +10,7 @@ from prompt_toolkit.output import DummyOutput
 
 from src.bot import hud
 from src.bot.actions import ACCEPT_GRANT, CANCEL_GRANT, FIRST_GRANT
-from src.bot.catalog import ACTIONS
+from src.bot.catalog import ACTIONS, choices
 from src.bot.session import Options
 from src.bot.speed import GAME_SPEED_CHANGE
 from src.bot.state import GameState, StateNode
@@ -140,3 +140,35 @@ def test_app_browse_and_disconnect() -> None:
     assert "object added: #1" in app.ui.log
     session.disconnected = "bye"
     run_keys(session, "")  # exits on its own
+
+
+def test_quick_items_vehicles_and_squads() -> None:
+    state = GameState()
+    sqd = StateNode()
+    sqd.children["0"] = StateNode(fields={"Id.u": 77, "Id.i": 5, "Type": 3})
+    state.systems["Squads"] = StateNode(children={"sqd": sqd})
+    items = hud.quick_items([], state=state)
+    labels = [i.label for i in items]
+    assert "Set speed paused" in labels
+    vehicles = {i.label: i.values for i in items if i.action and i.action.code == 43}
+    assert vehicles["Call vehicle RiotPolice"] == (3,)
+    dismiss = [i for i in items if i.label.startswith("Dismiss squad")]
+    assert [(i.action and i.action.code, i.values) for i in dismiss] == [
+        (44, ((77, 5),))
+    ]
+
+
+def test_app_argument_choices() -> None:
+    session = FakeSession()
+    name = ACTIONS[43].signature
+    labels = [c.label for c in choices(ACTIONS[43].args[0])]
+    down = "\x1b[B" * labels.index("RiotPolice")
+    app = run_keys(session, f"{name}\r{down}\r\x11")  # open, Down..., Enter, Ctrl-Q
+    assert session.sent == [(43, rpc.build(43, 3))]
+    assert app.ui.mode == "list"
+
+
+def test_app_argument_choices_filter() -> None:
+    session = FakeSession()
+    run_keys(session, f"{ACTIONS[43].signature}\rriot\r\x11")  # typing filters
+    assert session.sent == [(43, rpc.build(43, 3))]  # RiotPolice

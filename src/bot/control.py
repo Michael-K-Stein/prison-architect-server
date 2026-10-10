@@ -6,6 +6,7 @@ and send RPCs. Listens on 127.0.0.1 only. Endpoints::
     GET  /state                      summary, room, players, connection
     GET  /state/<System>[/<path>]    one StateNode (?depth=N)
     GET  /actions                    the RPC catalog (?kind=player&all=0)
+    GET  /actions/<name-or-code>     one action, each arg's choices from live state
     POST /send   {"action", "args"}  parse, build and raise an RPC
     GET  /events                     numbered feed lines (?since=N&limit=M)
     POST /wait   {"seconds"}         sleep (max 30 s), then /state
@@ -23,7 +24,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib import error, request
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from src.bot import catalog
 from src.protocol import rpc
@@ -117,14 +118,39 @@ class ControlServer:
                 "code": a.code,
                 "name": a.name,
                 "kind": a.kind,
-                "args": [
-                    {"name": x.name, "type": x.type, "hint": x.hint} for x in a.args
-                ],
+                "args": [_arg(x) for x in a.args],
                 "blocked": a.blocked,
             }
             for a in catalog.ACTIONS.values()
             if (kind is None or a.kind == kind) and (show_all or not a.blocked)
         ]
+
+    def action(self, key: str) -> tuple[int, dict[str, Any]]:
+        """``/actions/<name-or-code>``: one action, args with their live choices."""
+        try:
+            a = catalog.find(key)
+        except KeyError:
+            return 404, {"error": f"unknown action {key!r}"}
+        state = self.session.state
+        with state.lock:
+            args = [
+                {
+                    **_arg(x),
+                    "choices": [
+                        {"value": _plain(c.value), "label": c.label}
+                        for c in catalog.choices(x, state)
+                    ],
+                }
+                for x in a.args
+            ]
+        return 200, {
+            "code": a.code,
+            "name": a.name,
+            "kind": a.kind,
+            "signature": a.signature,
+            "args": args,
+            "blocked": a.blocked,
+        }
 
     def send(self, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         """``/send``: parse, build and raise one RPC."""
@@ -158,6 +184,24 @@ class ControlServer:
             "events": [{"seq": s, "at": at, "line": line} for s, at, line in items],
             "last": state.seq,
         }
+
+
+def _arg(arg: catalog.Arg) -> dict[str, Any]:
+    return {
+        "name": arg.name,
+        "type": arg.type,
+        "hint": arg.hint,
+        "source": catalog.source(arg),
+    }
+
+
+def _plain(value: Any) -> Any:
+    """``value`` as JSON: tuples as lists, bytes as hex."""
+    if isinstance(value, (list, tuple)):
+        return [_plain(v) for v in value]
+    if isinstance(value, bytes):
+        return value.hex()
+    return value
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -195,6 +239,8 @@ class _Handler(BaseHTTPRequestHandler):
             elif url.path == "/actions":
                 show_all = query.get("all", "0").lower() in ("1", "true", "yes")
                 self._reply(200, c.actions(query.get("kind") or None, show_all))
+            elif url.path.startswith("/actions/"):
+                self._reply(*c.action(unquote(url.path[9:])))
             elif url.path == "/events":
                 since = int(query.get("since", 0))
                 self._reply(200, c.recent(since, int(query.get("limit", 100))))

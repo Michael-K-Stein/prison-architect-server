@@ -295,6 +295,15 @@ def ctl_actions(
     _show(ctx, "GET", "/actions" + query)
 
 
+@ctl.command("action")
+def ctl_action(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Argument(help="Action name or RPC code.")],
+) -> None:
+    """One action's arguments with their choices from the live state."""
+    _show(ctx, "GET", f"/actions/{quote(name)}")
+
+
 @ctl.command("send")
 def ctl_send(
     ctx: typer.Context,

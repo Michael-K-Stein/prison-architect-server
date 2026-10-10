@@ -174,6 +174,57 @@ def decode_tree(raw: bytes) -> Node:
     return node
 
 
+def _str8(text: str | None) -> bytes:
+    if text is None:
+        return b"\xff" + struct.pack("<i", -1)
+    raw = text.encode("utf-8")
+    if len(raw) < 0xFF:
+        return bytes([len(raw)]) + raw
+    return b"\xff" + struct.pack("<i", len(raw)) + raw
+
+
+def _count(n: int) -> bytes:
+    return bytes([n]) if n < 0xFF else b"\xff" + struct.pack("<i", n)
+
+
+def _encode_value(value: Any) -> bytes:
+    if isinstance(value, bool):
+        return b"\x05" + bytes([int(value)])
+    if isinstance(value, int):
+        return b"\x01" + struct.pack("<i", value)
+    if isinstance(value, float):
+        return b"\x02" + struct.pack("<f", value)
+    if value is None or isinstance(value, str):
+        return b"\x04" + _str8(value)
+    msg = f"cannot encode a {type(value).__name__} tree field"
+    raise TypeError(msg)
+
+
+def encode_tree(node: Node) -> bytes:
+    """The inverse of :func:`decode_tree`.
+
+    Field types follow the Python value: ``bool`` -> bool (05), ``int`` ->
+    int32 (01), ``float`` -> float32 (02), ``str``/``None`` -> string (04).
+    """
+    out = bytearray(b"<" + _str8(node.name) + _count(len(node.fields)))
+    for key, value in node.fields:
+        out += _str8(key) + _encode_value(value)
+    out += _count(len(node.children))
+    for child in node.children:
+        out += encode_tree(child)
+    return bytes(out + b">")
+
+
+def compress(raw: bytes) -> bytes:
+    """The inverse of :func:`decompress`: zlib, then the size and its length.
+
+    The trailer is the uncompressed size, big-endian in as few bytes as fit,
+    followed by the trailer's own length (IDA ``0x14011FCB0``).
+    """
+    size = len(raw).to_bytes(max(1, (len(raw).bit_length() + 7) // 8), "big")
+    return zlib.compress(raw) + size + bytes([len(size) + 1])
+
+
 def show_value(value: Any) -> str:
     """A decoded value as readable text; non-text bytes as their length."""
     if isinstance(value, bytes):

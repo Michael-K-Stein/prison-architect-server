@@ -350,7 +350,7 @@ def choices(arg: Arg, state: Any = None) -> list[Choice]:
     if kind == "speed":
         return [Choice(v, label) for v, label in SPEEDS.items()]
     if kind == "vehicle":
-        return [Choice(v, name) for v, name in sorted(VEHICLES.items())]
+        return [Choice(v, n) for v, n in sorted(VEHICLES.items()) if v]
     if kind == "research":
         known = state.research() if state is not None else {}
         ids = sorted(set(RESEARCH) | set(known))
