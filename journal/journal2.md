@@ -1491,3 +1491,20 @@ no Chief/Lawyer/Accountant/Foreman existed. `src/protocol/research_rules.py`
 - Money cheat attempt on the dummy game: `IncreaseLoan` (49) x3 and `AcceptGrant`
   on an in-progress / completed grant changed nothing (balance moved only by
   cashflow). No RPC credits money; a client cannot send `TransactionAdded`.
+
+### Money cheat attempts (dummy game, client -> host)
+
+- `TransactionAdded(1000000, 'finance_cost_grantadvance'|'finance_cost_cashflow',
+  0, '')` sent to the host actor: the **host's transaction list shows the
+  amount** (user), but the bank balance does not change.
+- The balance is in the live state in three places: `Finance.v.6` (bank
+  balance; `Finance.tr.b` is the balance at the last transaction, `tr.tI` / `tr.tO`
+  total in / out), the save's `Finance.Balance`, and `World/WorldData.Balance`
+  (float).
+- `DirectoryData` sent from the bot with `Finance {v.6}`, `Finance {tr.b, v.6}`,
+  `Finance {Balance}` (float) and `World/WorldData {Balance}` (float): all
+  ignored by the host (the next fresh state shows only cashflow). So the host
+  does not take a client's Finance / World directory data; `IncreaseLoan` (49)
+  and `AcceptGrant` on an open grant also did nothing.
+- Open: a capture of whatever the user does on the host (or another client)
+  to change the balance would settle it.
