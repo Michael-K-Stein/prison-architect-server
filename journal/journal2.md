@@ -1547,3 +1547,29 @@ accepts any int as the multiplier but clamps it at 10x (the extra scatter is
 the host's frame rate), so 10 is the ceiling; there is no way to go faster
 from a client. `World.ClientData` shows `gt=2.0` (a unit unknown here) while the
 speed is 10.
+
+### More short keys (offset pairing, `SectorSystem`, electrical, `Thermometer`)
+
+Same method as "Short snapshot keys" (constructor registers the long save name
+and the short net key on one member offset):
+- **SectorSystem** (`Sectors/<id>/<list>`, lists of ids): `s` Stations, `ds`
+  DogStations, `as` ArmedGuardStations, `os` OrderlyStations, `cs`
+  CookStations, `docs` DoctorStations, `js` JanitorStations, `gs`
+  GardenerStations, `fs` FarmerStations, `j` Jobs, `cr` ContainedRooms, `l`
+  Targets. The order is the save's `Sectors/<n>` order, and values match
+  (sector 46: `cr`=[8], `l`=[33]; sector 66: `l`=[75], equal to the save's
+  `Targets`). Children are labelled too now: `/ContainedRooms (cr)`.
+- **Electrical** objects (`0x14052C720`, `0x140694BE0`): `sw` Switch (+568),
+  `pow` Powered, `on` On, `ep` ExternalPower, `mo` Moved, `dem` Demand (+608),
+  `cap` Capacity (+612), `pt` Powertype. **Crates/mail**: `qua` Quantity, `mt`
+  MailType, `con` Contents.
+- **Thermometer** (`0x140739A80`): `t` Temperature, `roc` RateOfChange, `sm`
+  StaffMorale, `sroc` StaffMoraleRateOfChange, `ru` RiotUnderway.
+- **VictorySystem** (`0x14074F160`): `fc` FailureCondition, `rdt`
+  RecentDeathTimer, `ret` RecentEscapeTimer, `sp` StaffPayBeforeDemand; `npg`,
+  `rdp`, `rep`, `ft` have no save name.
+- Still unnamed in `ctl state`: `Finance.v.<n>` / `tr.*` (6 = bank balance; `tr.b` the
+  balance at the last transaction, `tr.tI` / `tr.tO` total in / out, `tv` a
+  target value), `Intake` (`i`, `cat`), `Contraband` (`d0`, `s1`...),
+  `NeedsDistribution` (`c`/`h`/`l`/`m` + need id), `Visitation.w`, `WorkQueue`
+  (`i` items, `ri`), `EffectsSystem`, `EventLog`, `VictorySystem` (`c`, `l`).
