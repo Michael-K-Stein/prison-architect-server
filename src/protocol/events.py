@@ -207,7 +207,9 @@ def format_event(code: int, data: bytes) -> list[str]:
                     f"snapshot: {snap.compressed_size} B zlib -> {len(snap.raw)} B"
                 )
                 if snap.tree is not None:
-                    lines.extend("  " + line for line in format_tree(snap.tree))
+                    lines.extend(
+                        "  " + line for line in format_tree(snap.tree, system=system)
+                    )
                 else:
                     lines.append(f"  {snap.raw.hex(' ')}")
             else:

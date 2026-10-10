@@ -1573,3 +1573,23 @@ and the short net key on one member offset):
   target value), `Intake` (`i`, `cat`), `Contraband` (`d0`, `s1`...),
   `NeedsDistribution` (`c`/`h`/`l`/`m` + need id), `Visitation.w`, `WorkQueue`
   (`i` items, `ri`), `EffectsSystem`, `EventLog`, `VictorySystem` (`c`, `l`).
+
+### Switching a PowerStation (user switched it on in `MKS`; `bot-goal-3`, `-bot`)
+
+- The host's own switch-on is not an RPC on the wire: in the proxy capture
+  (`bot-goal-3.sqlite`, packet 26201) it is only an `ObjectData` change on the
+  station, `52 {sw=True, on=True}` (`sw` Switch, `on` On), and in the bot's
+  capture (packet 15499) the same, followed at 15520 by `pow=True, on=True` on
+  every consumer (Lights 31-54, Cooker 70/96, Fridge 75...) and the station's
+  `dem=68.0` (demand). Before it the station had been `sw=False, on=False`
+  (proxy packet 11212).
+- **Client side: `ElectricalSwitch(34, int, bool)` takes the object *index*,
+  not the uId** (an earlier try with the uId 8444868 did nothing). Sent from
+  the bot: `ctl send ElectricalSwitch 52 false` -> station 52 `sw=False, on=False,
+  dem=0`; `... 52 true` -> `sw=True, on=True, dem=68`. (`bot-goal-3-bot`.)
+- Haiku's round 5 had meanwhile built four Capacitors (type 242; objects 93,
+  37, 80, 88): each raised the station's `cap` 100 -> 150 -> 200 -> 250 in
+  `ObjectData` (packets 4744-4997), so the "overloaded" state is cleared by
+  capacity, and the station only needed to be switched on.
+- Not the station's fault: the bot said "dead end" because it looked for a
+  switch object (`PowerSwitch`, 244) and passed a uId.

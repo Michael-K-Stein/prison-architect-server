@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.protocol import rpc
-from src.protocol.net_keys import long_name
+from src.protocol.net_keys import label
 from src.protocol.room_rules import ROOM_RULES
 from src.protocol.enums import (
     ELECTRICAL,
@@ -116,8 +116,7 @@ class StateNode:
 
 def _labelled(system: str | None, key: str) -> str:
     """``key``, as ``Long name (key)`` when the system's short keys are known."""
-    long = long_name(system, key) if system else None
-    return f"{long} ({key})" if long and long != key else key
+    return label(system, key)
 
 
 def _jsonable(value: Any) -> Any:

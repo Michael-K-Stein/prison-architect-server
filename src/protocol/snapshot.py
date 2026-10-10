@@ -22,6 +22,8 @@ import zlib
 from dataclasses import dataclass, field
 from typing import Any
 
+from src.protocol.net_keys import EVENT_LOG_TYPES, label
+
 FLOAT_TAG = 0x1A
 ONE_TAG = 0x01
 """Tag ``01`` is the number 1 (no bytes follow); IDA ``0x140134870``."""
@@ -240,22 +242,27 @@ def show_value(value: Any) -> str:
     return repr(value) if isinstance(value, str) else str(value)
 
 
-def _field(key: str, value: Any) -> str:
+def _field(key: str, value: Any, system: str | None = None) -> str:
     """``key=value``, with a hint for fields whose meaning is known."""
-    text = f"{key}={show_value(value)}"
+    text = f"{label(system, key)}={show_value(value)}"
+    if system == "EventLog" and key == "t" and isinstance(value, (bytes, str)):
+        code = value.decode("utf-8", "replace") if isinstance(value, bytes) else value
+        meaning = EVENT_LOG_TYPES.get(code)
+        text += f" ({meaning})" if meaning else ""
     if key == "gt" and isinstance(value, (int, float)):
         text += " (paused)" if value == 0 else f" (speed {value:g}x)"
     return text
 
 
-def format_tree(node: Node, indent: str = "") -> list[str]:
+def format_tree(node: Node, indent: str = "", system: str | None = None) -> list[str]:
     """One line per node: ``name {field=value, ...}``, children indented.
 
     ``gt`` (``World``'s ``ClientData``/``UniformColourData``) is the game
     speed: 0 when paused, else the multiplier (1, 2, 5 or 10).
     """
-    fields = ", ".join(_field(k, v) for k, v in node.fields)
-    lines = [f"{indent}{node.name}" + (f" {{{fields}}}" if fields else "")]
+    fields = ", ".join(_field(k, v, system) for k, v in node.fields)
+    name = node.name if system is None else label(system, node.name)
+    lines = [f"{indent}{name}" + (f" {{{fields}}}" if fields else "")]
     for child in node.children:
-        lines.extend(format_tree(child, indent + "  "))
+        lines.extend(format_tree(child, indent + "  ", system))
     return lines

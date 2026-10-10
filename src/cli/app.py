@@ -6,6 +6,7 @@ import sys
 from dataclasses import replace
 
 import typer
+from typing import Annotated
 
 from src.bot.cli import app as bot_app
 from src.capture.cli import app as capture_app
@@ -22,6 +23,7 @@ from src.cli.options import (
 from src.cli.proxy import proxy
 from src.cli.wizard import interactive
 from src.logs import default_log_level
+from src.protocol.net_keys import set_raw
 
 app = typer.Typer(
     help="Prison Architect multiplayer server.",
@@ -44,11 +46,21 @@ def cli(
     timeout: TimeoutOpt = None,
     region: RegionOpt = None,
     max_players: MaxPlayersOpt = None,
+    raw_keys: Annotated[
+        bool,
+        typer.Option(
+            "--raw-keys",
+            envvar="PA_RAW_KEYS",
+            help="Show snapshot keys as the game sends them (st, ci, ts...) "
+            "instead of their long names.",
+        ),
+    ] = False,
 ) -> None:
     """Prison Architect multiplayer server.
 
     Run without a command in a terminal for an interactive setup wizard.
     """
+    set_raw(raw_keys)
     if verbose is not None:
         verbose = verbose.value
     ctx.obj = replace(

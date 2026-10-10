@@ -43,7 +43,10 @@ ARG_NAMES: dict[int, tuple[str, ...]] = {
     28: ("sector", "target"),
     29: ("sector",),
     30: ("sector?", "schedule?"),
-    34: ("switch?", "on"),
+    34: (
+        "object_index",
+        "on",
+    ),  # ElectricalSwitch: the object index (not uId), journal2
     35: ("object", "action"),
     36: ("research",),
     37: ("research",),
