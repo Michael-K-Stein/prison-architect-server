@@ -1355,3 +1355,49 @@ trees in `bot-goal.sqlite`); `src/bot/build.py` makes the jobs.
   "an agent builds a foundation and a cell and gets a prisoner into it" met.
 - Its notes: say how much game time a `ctl wait 30` covers (~300 game
   minutes at 10x); the door cell reads `F` in `ctl area`.
+
+## Haiku completes grants (`captures/bot-goal-2.sqlite`, Claude Sonnet 5.5 work)
+
+Game `MKS` (password `123`, host `RealHost`), bot joined with `-o captures/bot-goal-2.sqlite`.
+Grants in the save: `Grant_bootstraps` plus eight `target_*` objectives, all
+`InProgress`. Only `target_PowerStation` has a progress task (`TimePassedGreen`,
+quantity 5); `Grant_bootstraps` shows no requirements in the save, so they come
+from the capture in "Accepting the first grant".
+
+- **Round 1 (Haiku 5.5, ~55 `ctl` calls)** built five 3x3 rooms (HoldingCell,
+  Shower, Yard, Kitchen, Canteen; each foundation + JailDoor + `build room`),
+  and stopped on the staff: nothing in the bot could hire.
+- **Hiring** is a `Construction` job `{Type='Staff', Material=<staff object
+  type>}` (Guard 105, Cook 113, Warden 132). `ctl hire Guard 2` sends it and two
+  `Guard` objects appeared within seconds (balance fell as wages/hire cost).
+- **The user's note: the rooms did not meet the minimum requirements.** They
+  are in the game's own `data/materials.txt` (`BEGIN Room`, in `main.dat`):
+  `MinimumSize`, `Enclosed`, `Indoor`, `Secure` and required objects with
+  alternatives. HoldingCell 5x5 + Toilet + Bench; Yard 5x5 + Secure; Kitchen
+  Cooker + Fridge + Sink; Canteen ServingTable + Table + Bench/DiningChair;
+  Shower ShowerHead; Cell 2x3 + Bed + Toilet. Generated into
+  `src/protocol/room_rules.py`; `state.problems` now says e.g. `HoldingCell #6:
+  lacks size 3x3, needs 5x5, Toilet, Bench`; `ctl rules [Room]` prints them.
+  Round 1's rooms: HoldingCell and Yard too small, Kitchen lacked Fridge and
+  Sink, Canteen lacked a ServingTable. (Round 1's Fridge/Sink "were accepted
+  but never appeared": the rooms were too small or unpowered; see round 2.)
+
+### Short snapshot keys (IDA, offset pairing)
+
+`ctl state` showed keys like `st`, `ci`, `ts`, `twi` unexplained. The game
+registers each synced member twice in its constructor: under the long save
+name and under the short network key, both bound to the same offset in the
+object (`sub_1407D1E10` WorldObject: `SubType` at +68 and `st` at +68, `Walls`
++92 / `wa`, `Damage` +104 / `da`, `Dryness` +560 / `dry`; `sub_14052F7B0`
+Person: `Carrying` +792 / `ci`, `Energy` +812 / `el`, `RestState` +816 / `rs`,
+`Dest` +748 / `d`, ...). Pairing them by offset (script kept outside the repo)
+gives `src/protocol/net_keys.py`; `ctl state` now prints `SubType (st)` (use
+`--raw` for the short key), and `ctl keys [System]` lists them.
+- Corrects an earlier note: `ci` is **Carrying** (the object a person carries),
+  not a cell link; `uId` is the object's `Id`; `sl0`-`sl19` are `Slot0`-`19`.
+- Keys that mean one thing per class (`ObjectData` mixes them): `ct` Contents
+  (container) / Target (needs), `op` Opened / Open (door), `s` State (vehicle)
+  / Shakedown, `ts` TargetSector / TunnelSearch.
+- Still unknown (registered without a save name): `a`, `ttt`, `inst`, `cr`,
+  `la`, `esr`, `sc`, `sj`, `si`, `tun`, `tdc`, `pil`, `pis`, `prs`, `o`, `p`,
+  `v`; marked `?` in the table.
