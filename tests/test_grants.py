@@ -70,3 +70,14 @@ def test_staff_needs_flags_exhausted_workmen():
         "Workman": {"count": 2, "exhausted": 1, "tired": 0, "ok": 1},
     }
     assert [p["status"] for p in needs["staff"]] == ["tired", "exhausted", "ok"]
+
+
+def test_foundation_and_room_replies_carry_the_entrance_hint():
+    from src.bot import hints
+
+    for tool in ("foundation", "room"):
+        found = hints.for_jobs([{"tool": tool, "x": 1, "y": 1}])
+        assert any("VALID entrance" in h for h in found), tool
+    assert any(
+        "prisoners cannot open a StaffDoor" in h for h in hints.TOPICS["entrance"]
+    )

@@ -134,3 +134,9 @@ with the rules that matter for that command; `ctl hints` prints them all (topics
 power, people, grants, build). Read them before building: workmen cannot open JailDoors,
 a building needs a Door or StaffDoor first, Batteries are indoor only, unhoused prisoners
 die (pause intake with `ctl send IntakeTypeChange Closed`).
+
+Entrances: every foundation or room needs a door that works for everyone it serves. Workmen
+(to build it) need a Door or StaffDoor, never only a JailDoor. Staff rooms take a
+StaffDoor or Door. Rooms prisoners must reach (cells, dormitories, canteen, shower, yard)
+need a Door or JailDoor; prisoners cannot open StaffDoors. `ctl hints entrance` repeats this
+and it is attached to `ctl build foundation|room` replies.

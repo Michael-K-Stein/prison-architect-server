@@ -16,6 +16,18 @@ DOORS = (
     "Staff and prisoners cannot pass through walls (the 'Super Guards' toggle that allows it "
     "is off by default); walls only go up once a building has a door.",
 )
+ENTRANCE = (
+    "Every foundation/room needs a VALID entrance, placed right after it: a door in its "
+    "edge, reachable from outside (not blocked by another building, fence or object). A "
+    "building with no usable door is 'Requires Entrance' and nothing gets built or used.",
+    "Choose the door for who it serves: workmen building it need a Door or StaffDoor "
+    "(never only a JailDoor); staff rooms (offices, kitchens, staffrooms, power halls) a "
+    "StaffDoor or Door; rooms where PRISONERS must go (cells, dormitories, canteen, "
+    "shower, yard) a Door or JailDoor, and prisoners cannot open a StaffDoor; guards open "
+    "any door. A mixed room needs one door each group can open, or two doors.",
+    "After the first door the walls go up; check with `ctl area X Y W H` that the edge is "
+    "W (wall) with the door cell open, and that `ctl staff`/workmen are not queuing at it.",
+)
 POWER = (
     "A cable must touch each device; only Lights work a few cells from a cable, and walls "
     "cut that reach but doors do not. Cables pass under walls.",
@@ -51,6 +63,7 @@ BUILD = (
 
 TOPICS: dict[str, tuple[str, ...]] = {
     "doors": DOORS,
+    "entrance": ENTRANCE,
     "power": POWER,
     "people": PEOPLE,
     "grants": GRANTS,
@@ -76,9 +89,9 @@ ACTION_HINTS: dict[str, tuple[str, ...]] = {
 }
 
 OBJECT_HINTS: dict[str, tuple[str, ...]] = {
-    "JailDoor": DOORS[:1],
-    "Door": DOORS[1:2],
-    "StaffDoor": DOORS[1:2],
+    "JailDoor": DOORS[:1] + ENTRANCE[1:2],
+    "Door": DOORS[1:2] + ENTRANCE[1:2],
+    "StaffDoor": DOORS[1:2] + ENTRANCE[1:2],
     "Battery": POWER[2:],
     "Transformer": POWER[2:],
     "SolarPanels": POWER[1:2],
@@ -94,8 +107,8 @@ OBJECT_HINTS: dict[str, tuple[str, ...]] = {
 }
 
 TOOL_HINTS: dict[str, tuple[str, ...]] = {
-    "foundation": DOORS + BUILD,
-    "room": BUILD[:1],
+    "foundation": ENTRANCE + DOORS + BUILD,
+    "room": ENTRANCE[:2] + BUILD[:1],
     "place": BUILD,
     "line": POWER[:1] + BUILD[:1],
     "hire": PEOPLE[1:]

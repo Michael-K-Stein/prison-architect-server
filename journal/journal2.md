@@ -1941,3 +1941,10 @@ on the way.
   commands (`ctl hire`, BeginResearch, ToggleResearchDesired, reform/guard actions)
   attach a compact `staff_status` to every third reply, and the hire hint tells the
   agent to check `ctl staff` and build a Staffroom.
+
+Entrance hint (user): `ctl build foundation` and `room` replies, the door objects and `ctl hints
+entrance` now tell the agent to give every building a valid, reachable entrance right away
+and to match the door to who it serves: workmen need a Door or StaffDoor to build it (never
+only a JailDoor); staff rooms a StaffDoor or Door; prisoner rooms (cells, dormitories,
+canteen, shower, yard) a Door or JailDoor, since prisoners cannot open StaffDoors; guards
+open any door. Source of the rules: the game owner's notes above and the MKS2 stall.

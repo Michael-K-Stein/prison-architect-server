@@ -447,7 +447,8 @@ def ctl_raw(
 def ctl_hints(
     ctx: typer.Context,
     topic: Annotated[
-        str | None, typer.Argument(help="doors, power, people, grants or build.")
+        str | None,
+        typer.Argument(help="doors, entrance, power, people, grants or build."),
     ] = None,
 ) -> None:
     """Game rules to remember (also shown in action details and command replies)."""
