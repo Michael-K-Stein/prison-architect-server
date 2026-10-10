@@ -2627,3 +2627,9 @@ zone-only room (Forestry, Exports, Storage...) no longer draws walls (the player
   room tools now refuse it (`rooms.UNRELEASED`). Other rooms in the data files may be the same: a room that is
   missing from the client's build menu or whose label text is raw is a candidate (the user's list of
   rooms the client has: the 24 DLC rooms plus the base ones, without `SuperiorCell`).
+- Origin of `SuperiorCell` (user, a 13-year-old reddit comment on "New stuff hidden in A18"): "it's related to the new beds,
+  they talked about adding multiple objects with various quality levels; a 'superior' cell probably refers to it being
+  equipped with high quality objects". So it is a quality-tier cell from alpha 18 that never shipped as a room; the rule
+  (`SuperiorBed` or `ComfyBed`, Toilet, ShowerHead, OfficeDesk or FancyDesk, Tv, Bookshelf, Plant) is leftover data.
+  A `ComfyBed` placed in the MKS2 zone was not charged and did not appear either (no `object_ComfyBed` line, still
+  "lacks SuperiorBed"), and the `SuperiorBed` charge (-800) / refund (+800) repeated, so the host drops the job.
