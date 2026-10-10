@@ -1832,3 +1832,13 @@ the station OFF." --broadcast` (adviser 1 = The CEO, sent to every other player,
 only the host), was also seen by the user in MKS2. Which screen showed it (host
 `DHost`, client `RealClient`, or both) is still to be confirmed; if the client
 displays it, a client accepts `NewSpeechAdded` from a non-host sender.
+
+**Confirmed: both screens showed the broadcast message** (host `DHost` and client
+`RealClient`, MKS2). So a client accepts `NewSpeechAdded` (117) from a non-host
+sender (the bot, actor 3), and the host accepts it too: the sender actor is not
+checked for this RPC, and the bot's `--broadcast` reaches every player. Events
+whose handler only displays (speech, and the amount in the transaction list for
+118) can be injected; events that change authoritative host state (the bank
+balance via 118 or `Finance`/`World` directory data) were not applied.
+Untried candidates for the same effect: other display-only events (`TransactionAppended`
+119 as a text in the list, `ObjectiveRemoved` 21 on clients, `MarkerCreatedPos` 23).
