@@ -22,6 +22,7 @@ EXPOSE 4530 4531 4532 4533
 # Runtime variables can be overridden by Docker or Pterodactyl.
 ENV LISTEN_HOST=0.0.0.0 \
     PUBLIC_IP=127.0.0.1 \
+    TIMEOUT=60 \
     REGION=local \
     MAX_PLAYERS=4
 
@@ -29,4 +30,4 @@ USER container
 ENV USER=container HOME=/home/container
 
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["sh", "-c", "python main.py local -l ${LISTEN_HOST} -i ${PUBLIC_IP} -r ${REGION} --max-players ${MAX_PLAYERS}"]
+CMD ["sh", "-c", "python main.py local -l ${LISTEN_HOST} -i ${PUBLIC_IP} --timeout ${TIMEOUT} -r ${REGION} --max-players ${MAX_PLAYERS}"]
