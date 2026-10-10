@@ -58,6 +58,9 @@ python -m pytest tests -q
 python tests/test_prison_architect.py   # script-style end-to-end; prints "ok"
 ```
 
+Optional: `pre-commit install` (tool is in `requirements-dev.txt`) runs the ruff
+checks above on every commit (`.pre-commit-config.yaml`).
+
 ## Conventions
 
 - Python 3.12 (`typing.override` is used). `from __future__ import annotations` in modules.
