@@ -200,6 +200,11 @@ def format_event(code: int, data: bytes) -> list[str]:
                 # lines are already indented by two spaces.
                 return [f"{title}:", *format_rpc(parsed)[1:]]
         lines = []
+        system = (
+            args[0].decode("utf-8", "replace")
+            if code == SNAPSHOT_EVENT and args and isinstance(args[0], bytes)
+            else None
+        )
         for value in args:
             if isinstance(value, bytes) and value[:1] == b"\x78":
                 snap = decompress(value)
