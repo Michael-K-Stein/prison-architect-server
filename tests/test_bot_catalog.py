@@ -83,3 +83,15 @@ def test_wage_change_takes_a_room_type_name() -> None:
     from src.bot import catalog
 
     assert catalog.parse_args(catalog.ACTIONS[116], ["Kitchen", "0.6"]) == [8, 0.6]
+
+
+def test_priority_job_matches_the_clients_packet() -> None:
+    from src.bot import build
+    from src.protocol import events
+
+    job = build.job_from({"tool": "priority", "x": 3, "y": 87, "width": 6, "height": 4})
+    data = build.construction_data([job], 2)
+    assert events.compact_event(9, data) == [
+        "DirectoryData:Construction {pn=2} [Jobs {Size=1} "
+        "[[i 0] {Type=-11, PosX=3, PosY=87, SizeX=6, SizeY=4, Status=2}]]"
+    ]

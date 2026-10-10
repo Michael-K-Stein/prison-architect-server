@@ -2568,3 +2568,16 @@ body-armour charge in the same window). The save then has `NumCellsY 120` (`NumC
 10 false true`: `NumCellsY` 130 and the balance fell by 5088 (100 x 10 cells x 5.088). The two bools are
 unexplained (the client sent False, True). **The host sets the game speed to 1 after a purchase** (user), so a
 bot must send `GameSpeedChange 10` again (the room builder waits would otherwise crawl).
+
+### High priority jobs: Construction `Type -11` (user capture 288505, 231917, 288138, 288175)
+
+The user's client marks work jobs high priority with a `Construction` job whose `Type` is the integer
+**-11** (not a tool name), no `Material` and no orientation: `{Type=-11, PosX=3, PosY=87, SizeX=6, SizeY=4,
+Status=2}` (the client sends it as a `Jobs` entry like the others, `Status=2` instead of the preview's 1; the
+host's `WorkQueue` entries carry `HighPri` / `PlayerPri`). Single cells ((107,45), (4,91), (4,90)) and an
+area (3,87 6x4) both occur. The bot sends the same job: `ctl priority X Y [W H]` (tool `priority`,
+`build.PRIORITY_JOB`); the packet is byte-identical in shape to the client's (compact decode matches). Other
+negative job types seen in the captures: `-1` (cancel jobs: `Material 333` / `245` with `Status -2`, or
+none with `Status -6`), so negative `Type`s are editing tools, positive ones are build tools (`JOB_TYPES`).
+Not verified live: the host was frozen when this was written (game time stuck at 103778.67 for over ten
+minutes while packets still flowed; `host_stalled` true; the host process alive).

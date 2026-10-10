@@ -24,6 +24,10 @@ from src.protocol.snapshot import Node, compress, encode_tree
 DIRECTORY_DATA = 9
 CONSTRUCTION = "Construction"
 VALID = 1  # Job.Status of a valid preview (the host re-checks it)
+PRIORITY_JOB = -11
+"""``Type`` of the high priority tool (user capture packets 288505 / 231917, journal2)."""
+PRIORITY_STATUS = 2
+"""``Status`` the client sent with that job."""
 
 ORIENTATIONS = {
     "down": (0.0, 1.0),
@@ -38,7 +42,8 @@ ORIENTATIONS = {
 class Job:
     """One build job: tool name, material/object/room id, area, facing."""
 
-    type: str
+    type: str | int
+    """The tool's name, or an int for the editing tools (-11: high priority)."""
     material: int
     x: int
     y: int
@@ -48,6 +53,18 @@ class Job:
 
     def node(self, index: int) -> Node:
         """The job as an ``[i N]`` node."""
+        if isinstance(self.type, int):  # priority tool: no material, no facing
+            return Node(
+                f"[i {index}]",
+                [
+                    ("Type", self.type),
+                    ("PosX", self.x),
+                    ("PosY", self.y),
+                    ("SizeX", self.width),
+                    ("SizeY", self.height),
+                    ("Status", PRIORITY_STATUS),
+                ],
+            )
         or_x, or_y = ORIENTATIONS[self.facing]
         fields = [
             ("Type", self.type),
@@ -198,6 +215,14 @@ def hire(role: str) -> Job:
 
 
 TOOLS["demolish"] = (demolish, ("x", "y", "width", "height"), "material")
+
+
+def priority(x: int, y: int, width: int = 1, height: int = 1) -> Job:
+    """Mark the work jobs in an area high priority (the client's ``Type -11`` tool)."""
+    return Job(PRIORITY_JOB, 0, x, y, width, height)
+
+
+TOOLS["priority"] = (priority, ("x", "y", "width", "height"), "")
 
 
 def dismantle(

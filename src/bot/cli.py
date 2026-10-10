@@ -739,6 +739,25 @@ def ctl_demolish(
     _show(ctx, "POST", "/build", {"jobs": [{**spec, "material": name}]})
 
 
+@ctl.command("priority")
+def ctl_priority(
+    ctx: typer.Context,
+    x: Annotated[int | None, typer.Argument(help="Left cell.")] = None,
+    y: Annotated[int | None, typer.Argument(help="Top cell.")] = None,
+    width: Annotated[int, typer.Argument(help="Cells wide.")] = 1,
+    height: Annotated[int, typer.Argument(help="Cells high.")] = 1,
+    zone: Annotated[
+        str | None,
+        typer.Option(
+            "--zone", "-z", help="A named zone (`ctl zone`) instead of X Y W H."
+        ),
+    ] = None,
+) -> None:
+    """Make the queued work jobs in an area HIGH PRIORITY (the client's priority tool)."""
+    spec = {"tool": "priority", **_rect(x, y, width, height, zone)}
+    _show(ctx, "POST", "/build", {"jobs": [spec]})
+
+
 @ctl.command("dismantle")
 def ctl_dismantle(
     ctx: typer.Context,
