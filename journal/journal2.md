@@ -1435,3 +1435,24 @@ was wrong: `Dismantle` is a `WorkQueue` field and stays 0 here.
   In the save the station object has `Capacity=50` and `Overloaded=1` (seen on
   PowerStation #52 at 60.5,26.5 in `bot-goal-2`); `problems` reports it. A second
   PowerStation needs fully separate cables: crossing power lines short-circuit.
+
+### Bureaucracy tab (Haiku 5.5 attempt 1, `bot-goal-2`)
+
+- Tab = Research (`BeginResearch(int)` 36, `ToggleResearchDesired(int)` 37; ids
+  as in "Research ids" above), Misconduct policy (`PolicyChange` 61: `int,
+  MisconductPolicy, int`; rows Punishment, Quantity, SearchPrisoner, SearchCell,
+  CategoryChange), Reform (`StartReformProgram` 82 / `StopReformProgram` 83;
+  the save has `NextProgramId=0`, no programs), `PrivilegePolicyChange` 62,
+  `MealPolicyChange` 63, `FarmingPolicy` 102. Save `/Research` has 43 entries by
+  name (35 enum ids plus GuardTowers, ForestryLabour, Orderly, Farming,
+  RecyclingIncentive, NonLethalSniper, StaffVetting, CCTVImprovement).
+- **Mistake: the agent started 24 researches in one batch without looking at
+  the balance.** The cost is charged up front on `BeginResearch` (Cctv 2000,
+  TazersForEveryone 5000, LowerTaxes2 / LegalPrep / LegalDefense 50000 each...
+  about 219,000 in all) and **the balance went negative (-105,190)**; the game
+  allows it. `ToggleResearchDesired` off stops progress and refunds nothing.
+  Guide now says: check `balance` and the price first, research one at a time.
+- Read-back: `ctl state Save` is stale until `ctl refresh`; right after a start
+  `Progress` is `9.99999974e-05` (a 0.0001 seed, not real progress).
+- Unexplained: `CategoryChange` values None/Up/SetMax, `Grants.CancelCost` and
+  `ResetTime` (0 here), `PolicyChange` arg 2 and `MealPolicyChange` ints.

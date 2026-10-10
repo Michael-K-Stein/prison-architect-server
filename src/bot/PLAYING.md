@@ -66,6 +66,8 @@ side needs its own cable run inside.
 A PowerStation has a Capacity (50); past it the grid is overloaded and ALL power
 cuts out (`problems` says so). Remove load, add Capacitors, or add another
 PowerStation on completely separate cables: crossing lines short-circuit.
+Research (`BeginResearch`) is charged up front, is not refunded, and the balance
+can go negative: read `balance` and the cost first and start one at a time.
 Staff are hired with `ctl hire Guard 2`.
 
 ## Recipe: a prisoner cell
