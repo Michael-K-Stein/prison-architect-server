@@ -11,7 +11,9 @@ and send RPCs. Listens on 127.0.0.1 only. Endpoints::
     POST /build  {"jobs": [spec]}    build jobs (foundation/wall/floor/room/place)
     GET  /names/<table>?q=text       game ids by name (objects, materials, rooms...)
     GET  /hints?object=NAME          the full game hint for one object (any time)
-    GET  /area?x=&y=&w=&h=           what the map cells there are made of (a grid)
+    GET  /area?x=&y=&w=&h=           what the map cells there are made of (a grid);
+                                     ?zone=NAME instead of the rectangle
+    GET/POST /zone                   named map rectangles (list; set / remove)
     POST /refresh {"seconds"}        re-fetch the full save (rooms, problems), then /state
     GET  /events                     numbered feed lines (?since=N&limit=M)
     POST /wait   {"seconds"}         sleep (max 30 s), then /state
@@ -32,6 +34,8 @@ from urllib import error, request
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from src.bot import build, catalog, hints, objecthints
+from src.bot.names import NameError_
+from src.bot.zones import Zones, bounds, mask_rows
 from src.protocol.grants import GRANTS
 from src.protocol import enums, rpc
 
@@ -269,14 +273,59 @@ class ControlServer:
             **self._with_staff(action.name in hints.STAFF_ACTIONS),
         }
 
+    def _zones(self) -> Zones:
+        """The session's zones, bound to the joined game."""
+        zones = self.session.state.zones
+        zones.bind(
+            getattr(getattr(self.session.client, "current_room", None), "name", "")
+        )
+        return zones
+
+    def zone(self, body: dict[str, Any] | None) -> tuple[int, dict[str, Any]]:
+        """``/zone``: list zones, or ``{"set": name, "x", "y", "w", "h"}`` /
+        ``{"remove": name}``."""
+        zones = self._zones()
+        try:
+            if body and (name := body.get("remove")):
+                return 200, {"removed": zones.remove(str(name))}
+            if body and (name := body.get("set")):
+                x, y, w, h = (int(body[k]) for k in ("x", "y", "w", "h"))
+                zones.set(str(name), x, y, w, h)
+        except (KeyError, ValueError) as exc:
+            return 400, {"error": f"need set, x, y, w, h: {exc}"}
+        return 200, {"zones": zones.all(), "groups": zones.groups()}
+
+    def area(self, query: dict[str, str]) -> dict[str, Any]:
+        """``/area``: the grid of a rectangle or a ``zone``, plus the zones it touches."""
+        zones = self._zones()
+        if "zone" in query:
+            rects = zones.rects(query["zone"])
+            if not rects:
+                raise NameError_(f"no zone named {query['zone']!r} (`ctl zone list`)")
+            x, y, w, h = bounds(rects)
+        else:
+            rects = []
+            x, y, w, h = (int(query.get(k, d)) for k, d in AREA_DEFAULTS)
+        reply = self.session.state.area(x, y, min(w, 60), min(h, 60))
+        if len(rects) > 1:  # a group: only its own cells, not its bounding box
+            reply["rows"] = mask_rows(reply["rows"], x, y, rects)
+            reply.pop("materials")
+            reply["bounding_box"] = {"x": x, "y": y, "w": w, "h": h}
+        reply["zones"] = zones.overlapping(x, y, w, h)
+        return {**reply, "hints": list(hints.COMMAND_HINTS["area"])}
+
     def build(self, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
-        """``/build``: ``{"jobs": [spec, ...]}`` (see :func:`build.job_from`)."""
+        """``/build``: ``{"jobs": [spec, ...]}`` (see :func:`build.job_from`).
+
+        A spec may give ``"zone": NAME`` instead of ``x, y, width, height``."""
         specs = body.get("jobs")
         if not isinstance(specs, list) or not specs:
             return 400, {"error": "jobs must be a non-empty list of job specs"}
         try:
+            zones = self._zones()
+            specs = [one for s in specs for one in zones.resolve(s)]
             jobs = [build.job_from(s) for s in specs]
-        except build.BuildError as exc:
+        except (build.BuildError, NameError_) as exc:
             return 400, {"error": str(exc)}
         sent = self.session.build(jobs)
         log.info("control /build %r -> sent=%s", specs, sent)
@@ -395,8 +444,13 @@ class _Handler(BaseHTTPRequestHandler):
             elif url.path.startswith("/actions/"):
                 self._reply(*c.action(unquote(url.path[9:])))
             elif url.path == "/area":
-                x, y, w, h = (int(query.get(k, d)) for k, d in AREA_DEFAULTS)
-                self._reply(200, c.session.state.area(x, y, min(w, 60), min(h, 60)))
+                self._reply(200, c.area(query))
+            elif url.path == "/zone":
+                self._reply(*c.zone(None))
+            elif url.path == "/network":
+                self._reply(
+                    200, c.session.state.networks(query.get("utility", "electricity"))
+                )
             elif url.path.startswith("/names/"):
                 self._reply(*c.names(url.path[7:], query.get("q", "")))
             elif url.path == "/alias":
@@ -434,6 +488,8 @@ class _Handler(BaseHTTPRequestHandler):
             body = self._body()
             if path == "/alias":
                 self._reply(*c.alias(body))
+            elif path == "/zone":
+                self._reply(*c.zone(body))
             elif path == "/send":
                 self._reply(*c.send(body))
             elif path == "/build":

@@ -37,6 +37,15 @@ anywhere an object is expected (`ctl send ElectricalSwitch Main_Power_Station of
 `RemoveRoom Holding_Cell`) and appears in `problems`, the event feed and object dumps
 (`Name`). Names are saved per game in `bot-names.json`.
 
+## Zones and networks
+
+Name map rectangles instead of remembering coordinates: `ctl zone set Detention:Canteen 14 63 14 9`
+(`:` nests; `Detention` is then the sum of its children, so it may be L-shaped), `ctl zone list`,
+`ctl zone rm NAME`. `--zone NAME` replaces `X Y W H` in `ctl area`, `ctl build` and `ctl demolish`;
+a group is built/bulldozed rectangle by rectangle. Zone every foundation you build.
+`ctl network` validates the electricity lines (raw green energy must pass a Transformer before
+it reaches consumers); `ctl area` shows terrain only, check `Save Objects` before building.
+
 ## Act
 
 ```sh

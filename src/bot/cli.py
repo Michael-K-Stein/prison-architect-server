@@ -265,6 +265,22 @@ def _show(ctx: typer.Context, method: str, path: str, body: dict | None = None) 
         raise typer.Exit(1)
 
 
+def _fail(message: str) -> None:
+    typer.echo(json.dumps({"error": message}, indent=1))
+    raise typer.Exit(1)
+
+
+def _rect(
+    x: int | None, y: int | None, width: int, height: int, zone: str | None
+) -> dict:
+    """A job's area: the named zone (resolved by the server) or X Y W H."""
+    if zone:
+        return {"zone": zone}
+    if x is None or y is None:
+        _fail("give X Y or --zone NAME")
+    return {"x": x, "y": y, "width": width, "height": height}
+
+
 @ctl.command("state")
 def ctl_state(
     ctx: typer.Context,
@@ -369,8 +385,8 @@ def ctl_build(
             help="foundation, wall, floor, room, place, line (pipes/cables) or demolish."
         ),
     ],
-    x: Annotated[int, typer.Argument(help="Left cell.")],
-    y: Annotated[int, typer.Argument(help="Top cell.")],
+    x: Annotated[int | None, typer.Argument(help="Left cell.")] = None,
+    y: Annotated[int | None, typer.Argument(help="Top cell.")] = None,
     width: Annotated[int, typer.Argument(help="Cells wide (not for place).")] = 1,
     height: Annotated[int, typer.Argument(help="Cells high (not for place).")] = 1,
     name: Annotated[
@@ -385,9 +401,15 @@ def ctl_build(
     facing: Annotated[
         str | None, typer.Option(help="place: down, up, left or right.")
     ] = None,
+    zone: Annotated[
+        str | None,
+        typer.Option(
+            "--zone", "-z", help="A named zone (`ctl zone`) instead of X Y W H."
+        ),
+    ] = None,
 ) -> None:
     """Build: e.g. `build foundation 10 10 5 5`, `build place 11 11 -n Bed`."""
-    spec: dict = {"tool": tool, "x": x, "y": y, "width": width, "height": height}
+    spec: dict = {"tool": tool, **_rect(x, y, width, height, zone)}
     key = {"room": "kind", "place": "object", "line": "object"}.get(tool, "material")
     if name:
         spec[key] = name
@@ -425,6 +447,55 @@ def ctl_name_rm(
 def ctl_name_list(ctx: typer.Context) -> None:
     """All names of this game and what they point at."""
     _show(ctx, "GET", "/alias")
+
+
+@ctl.command("network")
+def ctl_network(
+    ctx: typer.Context,
+    utility: Annotated[
+        str, typer.Argument(help="Utility to validate.")
+    ] = "electricity",
+) -> None:
+    """Validate a utility's lines: each network, what feeds it, what is wrong.
+
+    Electricity: raw green energy (generators' lines) must reach consumers only
+    through a Transformer. Reads the last save: `ctl refresh` first after building.
+    """
+    _show(ctx, "GET", f"/network?utility={quote(utility)}")
+
+
+zone_app = typer.Typer(
+    help="Name map rectangles (Food_Zone) and use them with --zone in area/build/demolish."
+)
+ctl.add_typer(zone_app, name="zone")
+
+
+@zone_app.command("set")
+def ctl_zone_set(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Argument(help="e.g. Food_Zone.")],
+    x: Annotated[int, typer.Argument(help="Left cell.")],
+    y: Annotated[int, typer.Argument(help="Top cell.")],
+    width: Annotated[int, typer.Argument(help="Cells wide.")],
+    height: Annotated[int, typer.Argument(help="Cells high.")],
+) -> None:
+    """Name a rectangle: `ctl zone set Food_Zone 20 66 20 7`."""
+    body = {"set": name, "x": x, "y": y, "w": width, "h": height}
+    _show(ctx, "POST", "/zone", body)
+
+
+@zone_app.command("rm")
+def ctl_zone_rm(
+    ctx: typer.Context, name: Annotated[str, typer.Argument(help="The zone.")]
+) -> None:
+    """Forget a zone."""
+    _show(ctx, "POST", "/zone", {"remove": name})
+
+
+@zone_app.command("list")
+def ctl_zone_list(ctx: typer.Context) -> None:
+    """All zones of this game."""
+    _show(ctx, "GET", "/zone")
 
 
 @ctl.command("raw")
@@ -483,8 +554,8 @@ def ctl_hire(
 @ctl.command("demolish")
 def ctl_demolish(
     ctx: typer.Context,
-    x: Annotated[int, typer.Argument(help="Left cell.")],
-    y: Annotated[int, typer.Argument(help="Top cell.")],
+    x: Annotated[int | None, typer.Argument(help="Left cell.")] = None,
+    y: Annotated[int | None, typer.Argument(help="Top cell.")] = None,
     width: Annotated[int, typer.Argument(help="Cells wide.")] = 1,
     height: Annotated[int, typer.Argument(help="Cells high.")] = 1,
     name: Annotated[
@@ -495,9 +566,15 @@ def ctl_demolish(
             help="Demolish (bulldoze), DemolishWalls, ClearIndoorArea or RemoveTunnels.",
         ),
     ] = "Demolish",
+    zone: Annotated[
+        str | None,
+        typer.Option(
+            "--zone", "-z", help="A named zone (`ctl zone`) instead of X Y W H."
+        ),
+    ] = None,
 ) -> None:
     """Bulldoze an area; then DemolishWalls, then ClearIndoorArea to clear a building."""
-    spec = {"tool": "demolish", "x": x, "y": y, "width": width, "height": height}
+    spec = {"tool": "demolish", **_rect(x, y, width, height, zone)}
     _show(ctx, "POST", "/build", {"jobs": [{**spec, "material": name}]})
 
 
@@ -539,12 +616,23 @@ def ctl_wire(
 @ctl.command("area")
 def ctl_area(
     ctx: typer.Context,
-    x: Annotated[int, typer.Argument(help="Left cell.")],
-    y: Annotated[int, typer.Argument(help="Top cell.")],
+    x: Annotated[int | None, typer.Argument(help="Left cell.")] = None,
+    y: Annotated[int | None, typer.Argument(help="Top cell.")] = None,
     width: Annotated[int, typer.Argument(help="Cells wide.")] = 10,
     height: Annotated[int, typer.Argument(help="Cells high.")] = 10,
+    zone: Annotated[
+        str | None,
+        typer.Option(
+            "--zone", "-z", help="A named zone (`ctl zone`) instead of X Y W H."
+        ),
+    ] = None,
 ) -> None:
     """What the map cells in an area are made of (walls, floor, frame, nothing)."""
+    if zone:
+        _show(ctx, "GET", f"/area?zone={quote(zone)}")
+        return
+    if x is None or y is None:
+        _fail("give X Y or --zone NAME")
     _show(ctx, "GET", f"/area?x={x}&y={y}&w={width}&h={height}")
 
 

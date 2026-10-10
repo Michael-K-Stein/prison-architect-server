@@ -22,6 +22,16 @@ finding in `journal/journal2.md`.
 - **Unnamed keys.** `Finance.v.<n>` / `tr.*`, `Intake.i`, `NeedsDistribution`, `Visitation.w`,
   `WorkQueue.ri`, `EffectsSystem`, `EventLog` event codes (guesses), `VictorySystem` leftovers.
 
+- **Blocking actions.** Let selected `ctl` commands wait for the work to finish and return the
+  result (e.g. `ctl demolish --zone Detention:Canteen --wait` bulldozes a zone and returns when
+  its cells are clear, or `build ... --wait` returns `built` / `refused`). Future bot agents use
+  them to work synchronously. Every blocking call MUST take a timeout of **at most 9 minutes**
+  (reject larger values; on expiry return what is still pending, never hang). Rarely needed:
+  jobs are already queued in-game for workmen to pick up, so use it only for the few steps whose
+  next action depends on the result (clear a site before building on it, finish a room before
+  placing objects, check a job was not silently dropped). Poll `ConstructionSystem Jobs` and
+  the object / cell state; see also "Verify build jobs" below.
+
 ## Missing bot features (end of the MKS/MKS2 sessions)
 
 Found while running Haiku agents through `ctl`; most cost an agent real time. Roughly by value.
@@ -87,13 +97,12 @@ Found while running Haiku agents through `ctl`; most cost an agent real time. Ro
 - The object-hint pipeline shows hints once and as reminders; tune thresholds from real agent runs.
 - More tests for the control API against recorded captures (`captures/mks2-bot*.sqlite`).
 
-### Next goal (user): complete Grant "Basic Detention Centre"
-That is `Grant_bootstraps` (title from the language file; 20000 advance, 10000 on completion; tasks
-HoldingCell/PaddedHoldingCell, Shower, Yard, Kitchen, Canteen rooms that meet their rules, 2 Guards,
-2 Cooks). MKS2 does not offer it in `AcceptGrant` choices (`AcceptGrant bootstraps` did nothing;
-the full name is `Grant_bootstraps`, any spelling works in the bot); the first goal is to find
-out whether MKS2 already had it done or why it is not listed. Use `ctl hints`, doors for every
-building, a Transformer for green power, intake Closed while prisoners lack cells.
+### Fix MKS2's power hall wiring (found by `ctl network`)
+The raw-green trunk (x=21) touches the light rows y=35/37/43/45/47 of the power hall, so those
+lights are dark. Needs a **cable-removal job** (none known: `demolish` leaves the cable; capture the
+user's client removing one) to cut (22,y) on those rows, then an AC spine at x=42 joining them to the
+Transformer's output rows (y=39/41, x>=27). The admin hall's lights are on the same raw network
+(via y=26 / x=62). The kitchen's Cooker/Fridge sit on a 5-cell cable with no source.
 
 ### Unknown ObjectData keys `p`, `v`, `o` (user, BrowserStat -> ObjectData/<id>)
 

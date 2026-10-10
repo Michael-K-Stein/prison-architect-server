@@ -78,6 +78,14 @@ BUILD = (
     "clamps higher values).",
 )
 
+COMMAND_HINTS: dict[str, tuple[str, ...]] = {
+    "area": (
+        "This shows terrain only, not objects. Check the area for objects before "
+        "building: a foundation over them destroys them.",
+    ),
+}
+"""Hints attached to the reply of a read-only ``ctl`` command (by name)."""
+
 TOPICS: dict[str, tuple[str, ...]] = {
     "doors": DOORS,
     "entrance": ENTRANCE,

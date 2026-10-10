@@ -8,3 +8,6 @@ captures/
 *.sqlite-shm
 .env
 bot-names.json
+bot-zones.json
+*.log
+serve*.out

@@ -2073,3 +2073,55 @@ Evidence from `bot-goal-3.sqlite` (user's proxy) and `mks2-bot4.sqlite` (bot):
   Rebuilding a loadable `.prison` from it is possible but not done (TODO).
 - The room kept running with only bots (actors 6 and 7 both named Claude), so a rejoining client
   succeeds at `JoinRoomCallback` and then waits for a save that no host sends. The bot left the room.
+
+## Basic Detention Centre completed (`captures/bot-goal-4..7.sqlite`, Claude Sonnet 5.5 work)
+
+Goal: complete `Grant_bootstraps` in MKS2 (money was never a limit: balance 80 M). Evidence is in
+`bot-goal-6.sqlite` and the real-client capture `captures/bot-goal/basic-detention-centre.sqlite`
+(a **live** file: read it with `Capture`, or `capture tail --from-start --timeout N`, never plain
+`capture tail`, which follows forever).
+
+- **Accepting works exactly as the real client does it.** `AcceptGrant string='Grant_bootstraps'` (the
+  real client, actor 3, #4589) is followed within 40 ms by `TransactionAdded finance_cost_grantadvance
+  +20000`, the `DirectoryData:Objective` parent (`StartingPayment=20000`, `CompletionPayment=10000`) and
+  its seven children. The bot sent the same and got the same. The first attempt looked like a no-op only
+  because `ctl state` printed the grant list from the old save; `Save Grants/Grant_bootstraps` and
+  `objective added: Grant_bootstraps` appear after the next update.
+- **Completion** (bot-goal-6 #2731-2739, 15:34:27): `TransactionAdded finance_cost_grantcompletion
+  +10000`, then `ObjectiveRemoved` for the seven tasks and the grant, and `Save Grants` status
+  `Completed`. It came as soon as the five rooms met their rules and 2 Guards and 2 Cooks existed; the
+  Cooker/Fridge having **no power did not block it** (only the room rules count: `Kitchen` needs Cooker,
+  Fridge, Sink being present).
+- **What was built** (7x7 foundations = 5x5 inside, Door in the south wall at x+3, y+6): HoldingCell
+  (Toilet, Bench), Shower (2 ShowerHead), Kitchen (Cooker, Fridge, Sink), Yard (fenced by its own walls
+  counted as `secure`), Canteen. Hired 2 Cooks (`hire Cook 2`); 3 Guards existed already.
+- **Object footprints seen from `Pos`** (centre, `ObjectsCentreAligned`): `place X Y` anchors the
+  **top-left** cell; Bench and Table are **4 cells wide, 1 high** (placed at 16,67 -> Pos 18.0,67.5),
+  ServingTable 5x1 (Pos 18.5,65.5), Sink 2x1 (73.5,19.5), Cooker/Fridge 2x1. Overlapping placements are
+  dropped silently by the host: a 5x5 canteen could not hold ServingTable + Table + Bench, so the
+  canteen was rebuilt 14x9 (12x7 inside), about three times the area.
+- **Room zoning**: `build room` (a `Designation` job) on the interior gave rooms 5-9 at once.
+  `ClearIndoorArea`/`DemolishWalls` are `demolish` materials, not `build room` kinds.
+- **Cable removal is still unknown.** `ctl demolish` (Material 2) on one cable cell in the open did not
+  remove it (cell (7,70) still listed in `Save Electricity` after two refreshes). Bulldozing a building
+  removes walls, floors and **objects keep standing only if they are not under a foundation**: a
+  foundation job over the Wind farm (x 2-40, y 12-18) **deleted 8 of 10 WindTurbines** (cables and
+  Solar panels survived). The turbines were rebuilt with `place` at the same centres.
+- **Electricity validation** (`ctl network`, `src/bot/network.py`): cables are cells in
+  `Save Electricity` (`"x y 1"`, empty value), the colour is not saved, so networks are rebuilt by
+  flood-fill and classified by what touches them. MKS2 result: network 0 has 548 cells and joins all 30
+  generators, the Transformer's input, 6 Batteries **and the cable rows of the power hall's lights**
+  (rows y=35, 37, 43, 45, 47 hang off the raw trunk at x=21): raw green energy cannot power lights, which
+  is why those 20+ lights read `Powered False`. Only the Transformer's output side (rows y=39/41, x>=27,
+  network 1) carries AC. Fixing it needs cable removal (cut the trunk at x=22 on those rows) and an AC
+  spine at x=42; not possible until a removal job is found (capture the user's client removing a cable).
+
+### Mistakes log (continued)
+
+- Chose the building site from `ctl area`, which draws only terrain, clipped to 60 columns, and never
+  looked at objects: the foundations were built **on the wind-turbine farm** and deleted 8 turbines.
+  Always check object positions (`Save Objects`) and cables (`Save Electricity`) before a foundation.
+  `ctl area` now says so (`hints.COMMAND_HINTS`).
+- Hid errors with `>/dev/null` on `ctl zone set`; the running server predated nested zones, so five
+  zones silently failed to save. Restart `bot serve` after code changes and read replies.
+- Ran plain `capture tail` on a live capture: it follows forever and ate the command timeout.

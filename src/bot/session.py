@@ -31,6 +31,7 @@ from src.bot import build
 from src.bot.build import Job
 from src.bot.formatting import format_event_lines
 from src.bot.names import ObjectNames
+from src.bot.zones import Zones
 from src.bot.recording import record_traffic
 from src.bot.savegame import SaveTransfer
 from src.bot.state import GameState
@@ -89,7 +90,7 @@ class Session(
         self.regions: dict[str, str] = {}
         self.events: deque[tuple[int, int, Any]] = deque(maxlen=5000)
         self.master = self.joined = self.lobby_joined = False
-        self.state = GameState(names=ObjectNames())
+        self.state = GameState(names=ObjectNames(), zones=Zones())
         """What the host's events say about the game (merged snapshots)."""
         self.password = ""
         """The game password last sent (reused to refresh the save)."""

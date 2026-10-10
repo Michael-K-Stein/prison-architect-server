@@ -25,7 +25,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.protocol import rpc
+from src.bot import network
 from src.bot.names import ObjectNames
+from src.bot.zones import Zones
 from src.protocol.net_keys import label
 from src.protocol.room_rules import ROOM_RULES
 from src.protocol.enums import (
@@ -208,6 +210,8 @@ class GameState:
     names: ObjectNames = field(default_factory=lambda: ObjectNames(None))
     """Names the bot gave to objects/rooms (``ctl name``); not saved unless the
     session passes a file."""
+    zones: Zones = field(default_factory=lambda: Zones(None))
+    """Named map rectangles (``ctl zone``); not saved unless the session passes a file."""
     lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     # feeding
@@ -582,6 +586,24 @@ class GameState:
                 "D door/other, . nothing",
             }
 
+    def networks(self, utility: str = "electricity") -> dict[str, Any]:
+        """Networks of one utility (:data:`network.UTILITIES`) in the last save."""
+        spec = network.UTILITIES.get(utility)
+        if spec is None:
+            return {"error": f"utilities: {', '.join(network.UTILITIES)}"}
+        with self.lock:
+            if self.save is None:
+                return {"error": "the save is not loaded yet"}
+            node = self.save.children.get(spec.node)
+            cells = set()
+            for key in node.children if node else ():
+                parts = key.split()
+                if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
+                    cells.add((int(parts[0]), int(parts[1])))
+            objects = self.save.children.get("Objects")
+            fields = [i.fields for i in objects.children.values()] if objects else []
+            return network.analyze(cells, fields, spec)
+
     def room_list(self) -> list[dict[str, Any]]:
         """Rooms from the last save: index, type, and the assigned prisoner (cells)."""
         with self.lock:
@@ -718,6 +740,7 @@ class GameState:
                 "named": {
                     n: {"uId": u, "index": i} for n, (u, i) in self.names.all().items()
                 },
+                "zones": self.zones.all(),
                 "save_loaded": self.save is not None,
                 "alerts": list(self.alerts)[-10:],
                 "problems": self.problems(),
