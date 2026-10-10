@@ -18,7 +18,8 @@ def _stamp(ts_ns: int) -> str:
 def _render(pkt: Packet, raw: bool) -> tuple[str, list[str]]:
     """Header line and body lines for one packet, as the proxy shows them."""
     arrow = "client -> server" if pkt.direction == TO_SERVER else "server -> client"
-    header = f"#{pkt.id}  {_stamp(pkt.ts_ns)}  session {pkt.session}  {arrow}"
+    mark = "  [injected]" if pkt.injected else ""
+    header = f"#{pkt.id}  {_stamp(pkt.ts_ns)}  session {pkt.session}  {arrow}{mark}"
     body: list[str] = []
     show_hex = raw or pkt.command is None
     if pkt.command is None:
@@ -51,7 +52,8 @@ class CompactView:
         if pkt.session != self._session:
             self._session = pkt.session
             sess = f" s{pkt.session}"
-        prefix = f"#{pkt.id} {_stamp(pkt.ts_ns)}{sess} {arrow} "
+        mark = "[injected] " if pkt.injected else ""
+        prefix = f"#{pkt.id} {_stamp(pkt.ts_ns)}{sess} {arrow} {mark}"
         if pkt.command is None:
             lines = [f"{pkt.name} {pkt.size}B {pkt.payload.hex()}"]
         elif raw:

@@ -70,6 +70,10 @@ class Recorder:
         db.execute("PRAGMA journal_mode=WAL")
         db.execute("PRAGMA synchronous=NORMAL")
         db.executescript(SCHEMA)
+        if "injected" not in {r[1] for r in db.execute("PRAGMA table_info(packets)")}:
+            db.execute(
+                "ALTER TABLE packets ADD COLUMN injected INTEGER NOT NULL DEFAULT 0"
+            )
         row = db.execute("SELECT value FROM meta WHERE key='format'").fetchone()
         if row is None:
             db.executemany(
@@ -101,9 +105,16 @@ class Recorder:
         return packet
 
     def record(
-        self, session: ProxySession, direction: Direction, packet: PhotonPacket
+        self,
+        session: ProxySession,
+        direction: Direction,
+        packet: PhotonPacket,
+        *,
+        injected: bool = False,
     ) -> int | None:
         """Queue ``packet`` and return its capture id, or None if not recorded.
+
+        ``injected`` marks a packet the proxy made up rather than relayed.
 
         The id is assigned here, in arrival order, so it can be shown right
         away; it is the ``packets.id`` the writer thread stores.
@@ -122,7 +133,7 @@ class Recorder:
         with self._lock:  # id order must match queue order
             packet_id = self._next_id
             self._next_id += 1
-            self._queue.put(("packet", (packet_id, *row)))
+            self._queue.put(("packet", (packet_id, *row, int(injected))))
         return packet_id
 
     def _session_id(self, session: ProxySession, now: int) -> int:
@@ -210,8 +221,8 @@ class Recorder:
                     )
                     self._db.executemany(
                         "INSERT INTO packets (id, ts_ns, session, dir, command, format,"
-                        " code, encrypted, protocol, return_code, size, payload)"
-                        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                        " code, encrypted, protocol, return_code, size, payload, injected)"
+                        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                         packets,
                     )
             except sqlite3.Error:
@@ -276,14 +287,19 @@ class SwitchableRecorder:
             old.close()
 
     def record(
-        self, session: ProxySession, direction: Direction, packet: PhotonPacket
+        self,
+        session: ProxySession,
+        direction: Direction,
+        packet: PhotonPacket,
+        *,
+        injected: bool = False,
     ) -> int | None:
         """Record into the current file, or return None when idle."""
         with self._lock:
             current = self._recorder
         if current is None:
             return None
-        return current.record(session, direction, packet)
+        return current.record(session, direction, packet, injected=injected)
 
     def __enter__(self) -> SwitchableRecorder:
         return self

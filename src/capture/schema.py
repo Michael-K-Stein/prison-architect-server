@@ -16,7 +16,9 @@ protocol, return_code, size, payload BLOB)``
     responses and events it is the serialized payload (starting at the
     operation code byte); for anything else, the whole packet.
     Addresses are recorded as the real server sent them, before the proxy
-    rewrites them.
+    rewrites them. ``injected`` is 1 for a packet the proxy made up and sent
+    itself (the console's ``say``), 0 for real traffic. Files made before the
+    column existed get it added (all 0) the next time a recorder opens them.
 """
 
 FORMAT_VERSION = 1
@@ -42,7 +44,8 @@ CREATE TABLE IF NOT EXISTS packets (
     protocol INTEGER NOT NULL,
     return_code INTEGER,
     size INTEGER NOT NULL,
-    payload BLOB
+    payload BLOB,
+    injected INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS packets_session ON packets (session, id);
 CREATE INDEX IF NOT EXISTS packets_code ON packets (command, code, id);

@@ -78,6 +78,8 @@ class Packet:
     return_code: int | None
     size: int
     payload: bytes
+    injected: bool = False
+    """True for a packet the proxy made up and sent (the console's ``say``)."""
 
     @property
     def is_operation(self) -> bool:
@@ -129,6 +131,16 @@ _COLUMNS = (
     "id, ts_ns, session, dir, command, format, code, encrypted, protocol,"
     " return_code, size, payload"
 )
+
+
+def _columns(db: sqlite3.Connection) -> str:
+    """``_COLUMNS`` plus ``injected`` (0 for captures made before that column)."""
+    have = {r[1] for r in db.execute("PRAGMA table_info(packets)")}
+    return _COLUMNS + (", injected" if "injected" in have else ", 0")
+
+
+def _packet(row: tuple[Any, ...]) -> Packet:
+    return Packet(*row[:7], bool(row[7]), *row[8:12], bool(row[12]))
 
 
 def _filters(
@@ -208,11 +220,11 @@ class Capture:
         ``where`` is extra SQL (e.g. ``"size > ?"``) with ``params``.
         """
         clauses, args = _filters(session, direction, command, code, where, params)
-        sql = f"SELECT {_COLUMNS} FROM packets"  # noqa: S608 -- fixed columns
+        sql = f"SELECT {_columns(self.db)} FROM packets"  # noqa: S608 -- fixed columns
         if clauses:
             sql += " WHERE " + " AND ".join(clauses)
         for row in self.db.execute(sql + " ORDER BY id", args):
-            yield Packet(*row[:7], bool(row[7]), *row[8:])
+            yield _packet(row)
 
     @classmethod
     def follow(
@@ -247,11 +259,7 @@ class Capture:
             msg = "pass either after or from_end, not both"
             raise ValueError(msg)
         clauses, args = _filters(session, direction, command, code, where, params)
-        sql = (
-            f"SELECT {_COLUMNS} FROM packets WHERE "  # noqa: S608 -- fixed columns
-            + " AND ".join(["id > ?", *clauses])
-            + " ORDER BY id LIMIT 500"
-        )
+        where_sql = " AND ".join(["id > ?", *clauses]) + " ORDER BY id LIMIT 500"
         cursor: int | None = None if from_end else after
         db: sqlite3.Connection | None = None
         idle_since = time.monotonic()
@@ -266,6 +274,9 @@ class Capture:
                             cursor = db.execute(
                                 "SELECT COALESCE(MAX(id), 0) FROM packets"
                             ).fetchone()[0]
+                        sql = (  # noqa: S608 -- fixed columns
+                            f"SELECT {_columns(db)} FROM packets WHERE " + where_sql
+                        )
                         rows = db.execute(sql, (cursor, *args)).fetchall()
                     except sqlite3.OperationalError as exc:
                         if not _transient(exc):
@@ -276,7 +287,7 @@ class Capture:
                     idle_since = time.monotonic()
                     for row in rows:
                         cursor = row[0]
-                        yield Packet(*row[:7], bool(row[7]), *row[8:])
+                        yield _packet(row)
                     continue
                 if timeout is not None and time.monotonic() - idle_since >= timeout:
                     return
