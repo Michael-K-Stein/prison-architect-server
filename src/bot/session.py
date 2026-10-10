@@ -31,7 +31,7 @@ from src.bot import build
 from src.bot.build import Job
 from src.bot.formatting import format_event_lines
 from src.bot.names import ObjectNames
-from src.bot.reconnect import LAND_PURCHASED
+from src.bot.reconnect import BACKOFF, LAND_PURCHASED, MAX_ATTEMPTS, backoff
 from src.bot.zones import Zones
 from src.bot.recording import record_traffic
 from src.bot.savegame import SaveTransfer
@@ -52,6 +52,71 @@ APP_VERSION = "the_slammer_1.0"  # AppVersion in the game's Authenticate (captur
 
 class ConnectError(RuntimeError):
     """The bot could not connect or join; the message is meant for the user."""
+
+
+class MaxCcuError(ConnectError):
+    """Photon rejected the connection because the CCU limit was reached."""
+
+
+def is_max_ccu(cause: object) -> bool:
+    """Return True if ``cause`` indicates Photon's CCU limit was reached."""
+    if cause is None:
+        return False
+    if isinstance(cause, MaxCcuError):
+        return True
+    try:
+        from pyphotonrealtime.realtime.state import DisconnectCause
+
+        if (
+            cause == DisconnectCause.MaxCcuReached
+            or getattr(cause, "value", None) == DisconnectCause.MaxCcuReached.value
+        ):
+            return True
+    except (ImportError, AttributeError):
+        pass
+    try:
+        from pyphotonrealtime.realtime.error_code import ErrorCode
+
+        if (
+            cause == ErrorCode.MaxCcuReached
+            or getattr(cause, "value", None) == ErrorCode.MaxCcuReached.value
+        ):
+            return True
+    except (ImportError, AttributeError):
+        pass
+    if isinstance(cause, int) and cause in (32757, 11):
+        return True
+    text = str(cause)
+    return "MaxCcuReached" in text or "32757" in text
+
+
+def retry_ccu[T](
+    action: Callable[[], T],
+    *,
+    max_attempts: int = MAX_ATTEMPTS,
+    backoff_fn: Callable[[int], float] = backoff,
+    sleep: Callable[[float], None] = time.sleep,
+    on_retry: Callable[[int, float, Exception], None] | None = None,
+) -> T:
+    """Run ``action``, retrying with backoff if Photon rejects with MaxCcuReached."""
+    for attempt in range(max_attempts):
+        try:
+            return action()
+        except Exception as exc:
+            if not is_max_ccu(exc) or attempt >= max_attempts - 1:
+                raise
+            delay = backoff_fn(attempt)
+            log.warning(
+                "Photon CCU limit reached (attempt %d/%d): retrying in %.1f s (%s)",
+                attempt + 1,
+                max_attempts,
+                delay,
+                exc,
+            )
+            if on_retry is not None:
+                on_retry(attempt + 1, delay, exc)
+            sleep(delay)
+    return action()
 
 
 @dataclass
@@ -100,6 +165,7 @@ class Session(
         """The join handshake: the host's save game, once requested."""
         self.disconnected: object | None = None
         self.join_error = ""
+        self.join_error_code: int | None = None
         self._stop = threading.Event()
         self._next_ping: float | None = None
         if (peer := getattr(self.client, "peer", None)) is not None:
@@ -137,11 +203,13 @@ class Session(
     def on_join_room_failed(self, return_code: int, message: str) -> None:
         """Remember why joining failed."""
         self.join_error = f"{message} (code {return_code})"
+        self.join_error_code = return_code
         log.warning("join room failed: %s", self.join_error)
 
     def on_disconnected(self, cause: object) -> None:
         """Remember the disconnect cause."""
-        self.disconnected = cause
+        if self.disconnected is None:
+            self.disconnected = cause
         log.warning("disconnected: %s", cause)
 
     def on_event(self, event: Any) -> None:
@@ -305,12 +373,17 @@ def make_settings(opts: Options, region: str | None = None) -> AppSettings:
     return settings
 
 
-def fetch_regions(opts: Options, recorder: Recorder | None = None) -> dict[str, str]:
-    """Ask the Name Server for its regions (read-only), then disconnect."""
+def _fetch_regions_once(
+    opts: Options, recorder: Recorder | None = None
+) -> dict[str, str]:
     session = Session(recorder=recorder)
     try:
         session.start(make_settings(opts))
         if not session.wait_for(lambda: bool(session.regions)):
+            if is_max_ccu(session.disconnected):
+                raise MaxCcuError(
+                    f"Name Server rejected connection: maximum CCU reached ({session.disconnected})"
+                )
             raise ConnectError(
                 f"no region list received from the Name Server"
                 f" (disconnected: {session.disconnected}). Is the Photon Name Server"
@@ -320,3 +393,15 @@ def fetch_regions(opts: Options, recorder: Recorder | None = None) -> dict[str, 
         return dict(session.regions)
     finally:
         session.stop()
+
+
+def fetch_regions(
+    opts: Options,
+    recorder: Recorder | None = None,
+    *,
+    retry: bool = True,
+) -> dict[str, str]:
+    """Ask the Name Server for its regions (read-only), then disconnect."""
+    if not retry:
+        return _fetch_regions_once(opts, recorder)
+    return retry_ccu(lambda: _fetch_regions_once(opts, recorder))
