@@ -2008,3 +2008,19 @@ appeared (start payment 5000 was already paid on accept; `completion` 5000 per
 the Door unstuck it and the floor finished within minutes. Two other 6x6 foundations
 (10,44) and (54,4) were left without doors by the agent; I put StaffDoors on them
 earlier. Open now: target_ExportPower1-3, target_ChargeBattery, target_PassReform.
+
+### Handoff: what is still missing in the bot (user is resetting the context)
+
+The bot features I still think are missing are filed in `TODO.md` under "Missing bot features":
+a map with objects and cables (`ctl map`, `ctl network`), object footprints and placement checks,
+one-call object state, verified build jobs (no more silent drops), an entrance checker, batch build
+retries, less reliance on `ctl refresh`, auto-reconnect, prisoner data and unhoused-prisoner
+detection, intake categories, a grants dashboard, reform and research dashboards, staff and
+policy commands, the export / battery chain, and the remaining unnamed keys. The next goal is
+"Complete Grant 'Basic Detention Centre'" = `Grant_bootstraps` (title from the language file).
+Facts to carry: grant names are the full objective names; every building needs a door workmen
+and its users can open; green power needs a Transformer; intake is Closed in MKS2 (59-67
+prisoners, no cells); 3 Guards, 26 Workmen, an Accountant, a Warden are hired; open grants
+are target_ExportPower1-3, target_ChargeBattery, target_PassReform (a Haiku agent was working on
+them); completed: GreenMachine, EcoFriendly, Administration, SolarPanels, WindTurbine,
+PowerStation.
