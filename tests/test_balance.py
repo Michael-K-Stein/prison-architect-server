@@ -125,7 +125,7 @@ def test_host_actor_is_learned_from_directory_data() -> None:
 
 def test_commands_need_an_attached_game() -> None:
     *_, table, seen, _ = _setup()
-    for line in ("say CEO hi", "cash 5", "balance 5", "inject GameSpeedChange 1"):
+    for line in ("/say CEO hi", "/cash 5", "/balance 5", "/inject GameSpeedChange 1"):
         assert "not attached" in table.run(line), line
     assert seen == []
 
@@ -133,38 +133,50 @@ def test_commands_need_an_attached_game() -> None:
 def test_cash_and_inject_send_marked_events() -> None:
     session, tracker, over, table, seen, shown = _setup()
     tracker.attach("jail")
-    assert table.run("cash 500") == ""
-    assert table.run("inject GameSpeedChange 2") == ""
+    assert table.run("/cash 500") == ""
+    assert table.run("/inject GameSpeedChange 2") == ""
     assert [s.get_payload().operation_code for s in session.sent] == [118, 96]
     assert bytes(
         session.sent[0].get_payload().params[ParameterKey.Data].value
     ) == build(118, 500, "finance_cost_cashflow", 0, 0)
     assert all(injected for _, _, injected in seen) and len(shown) == 2
-    assert "unknown RPC" in table.run("inject Nope")
-    assert table.run("inject GameSpeedChange").startswith("inject RPC")
+    assert "unknown RPC" in table.run("/inject Nope")
+    assert table.run("/inject GameSpeedChange").startswith("/inject RPC")
 
 
 def test_balance_command_pushes_both_snapshots_from_the_host() -> None:
     session, tracker, over, table, seen, shown = _setup()
     tracker.attach("jail")
-    assert "not seen" in table.run("balance")
+    assert "not seen" in table.run("/balance")
     event = _finance_event(30110, actor=1)
     over.rewrite(session, bytes(event.get_payload().params[ParameterKey.Data].value))
-    assert "host hasn't sent" in table.run("balance 1000000")
+    assert "host hasn't sent" in table.run("/balance 1000000")
     tracker.observe(session, Direction.ToClient, event)
-    assert "client now shows 1000000" in table.run("balance 1000000")
+    assert "client now shows 1000000" in table.run("/balance 1000000")
     assert len(session.sent) == 2
     for packet in session.sent:
         payload = packet.get_payload()
         assert payload.params[ParameterKey.ActorNr].value == 1  # the host, not us
         assert packet.get_header().get_command_code() == CommandCode.Event
         assert _balance_of(bytes(payload.params[ParameterKey.Data].value)) == 1_000_000
-    assert "offset +969890" in table.run("balance")
+    assert "offset +969890" in table.run("/balance")
     session.sent.clear()
-    assert "real balance" in table.run("balance off")
+    assert "real balance" in table.run("/balance off")
     assert (
         _balance_of(
             bytes(session.sent[0].get_payload().params[ParameterKey.Data].value)
         )
         == 30110
     )
+
+
+def test_say_without_args_offers_the_speakers() -> None:
+    from src.bot.broadcast import SPEAKERS
+    from src.cli.console import Choose
+
+    _session, tracker, _over, table, _seen, _shown = _setup()
+    tracker.attach(None)
+    with pytest.raises(Choose) as ask:
+        table.run("/say")
+    assert ask.value.options == list(SPEAKERS)
+    assert ask.value.template.format("CEO") == "/say CEO "

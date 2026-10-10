@@ -181,7 +181,9 @@ class ConsolePane:
     Create it right after logging is set up, so the startup lines land in it too.
     """
 
-    def __init__(self, title: str = "Prison Architect") -> None:
+    def __init__(
+        self, title: str = "Prison Architect", show_banner: bool = True
+    ) -> None:
         self.entries: deque[Entry] = deque(maxlen=PANE_ENTRIES)
         self.interactive = sys.stdin.isatty()
         self.up = 0
@@ -191,11 +193,11 @@ class ConsolePane:
         size = shutil.get_terminal_size()
         self.width, self.height = size.columns, max(size.lines - 4, 1)
         self._saved: list[logging.Handler] | None = None
-        self._last_total = 0
-        self._was_up = False
-        for text in banner(title, min(size.columns, 60)):
-            self.say(text, "bold fg:ansicyan")
-        self.say("")
+        self._anchor: tuple[Entry, int] | None = None
+        if show_banner:
+            for text in banner(title, min(size.columns, 60)):
+                self.say(text, "bold fg:ansicyan")
+            self.say("")
 
     # -- adding --------------------------------------------------------
     def say(self, text: str, style: str = "") -> None:
@@ -207,6 +209,7 @@ class ConsolePane:
     def clear(self) -> None:
         self.entries.clear()
         self.up = 0
+        self._anchor = None
 
     # -- logging -------------------------------------------------------
     def install_logging(self) -> None:
@@ -235,24 +238,42 @@ class ConsolePane:
     def scroll(self, rows: int) -> None:
         """Move the view ``rows`` up (negative: down); 0 rows below follows the tail."""
         self.up = max(0, self.up + rows)
+        self._anchor = None
 
     def follow(self) -> None:
         self.up = 0
+        self._anchor = None
 
     def jump_top(self) -> None:
         self.up = 10**9  # clamped by the next view()
+        self._anchor = None
 
     def view(self) -> list[tuple[Entry | None, Row]]:
         """Exactly ``height`` rows ``(entry, row)``, padded at the top when short."""
         entries = list(self.entries)
         sizes = [len(e.rows(self.width)) for e in entries]
         total = sum(sizes)
-        if self._was_up and self.up and total > self._last_total:
-            self.up += total - self._last_total  # keep what's on screen in place
-        self._last_total = total
-        self.up = min(self.up, max(0, total - self.height))
-        self._was_up = self.up > 0
+        limit = max(0, total - self.height)
         start = max(0, total - self.height - self.up)
+        if (
+            self.up and self._anchor is not None
+        ):  # stay on the same row as entries come and go
+            seen = 0
+            for entry, size in zip(entries, sizes):
+                if entry is self._anchor[0]:
+                    start = seen + min(self._anchor[1], size - 1)
+                    break
+                seen += size
+        start = min(start, limit)
+        self.up = limit - start
+        self._anchor = None
+        if self.up:
+            seen = 0
+            for entry, size in zip(entries, sizes):
+                if seen + size > start:
+                    self._anchor = (entry, start - seen)
+                    break
+                seen += size
         out: list[tuple[Entry | None, Row]] = []
         seen = 0
         for entry, size in zip(entries, sizes):

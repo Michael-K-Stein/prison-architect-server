@@ -95,6 +95,6 @@ def test_summary_colours() -> None:
 
 def test_tab_completion() -> None:
     table = CommandTable()
-    assert complete(table, "he") == ("help ", [])
-    assert complete(table, "")[1] == ["exit", "help", "quit"]
+    assert complete(table, "/he") == ("/help ", [])
+    assert complete(table, "/")[1] == ["/exit", "/help", "/quit"]
     assert complete(table, "zzz") == ("zzz", [])

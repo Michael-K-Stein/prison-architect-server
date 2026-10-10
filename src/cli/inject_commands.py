@@ -12,11 +12,11 @@ from typing import Any
 
 from pyphotonrealtime.server import Direction
 
-from src.bot.broadcast import speaker_index
+from src.bot.broadcast import SPEAKERS, speaker_index
 from src.bot.catalog import ArgError, find, parse_args
 from src.cli.attach import Game, GameTracker, deliver, event_from_data, inject
 from src.cli.balance import BalanceOverride, snapshot_data
-from src.cli.console import Command
+from src.cli.console import Choose, Command
 from src.protocol.rpc import RpcShapeError
 
 NEW_SPEECH = 117
@@ -48,11 +48,14 @@ def inject_commands(
         show(packet_id, Direction.ToClient, packet, injected=True)
 
     def games(args: list[str]) -> str:
-        live = tracker.games()
-        if not live:
+        rooms = tracker.rooms()
+        if not rooms:
             return "no games yet: join one in the client"
+        current = tracker.current()
         return "\n".join(
-            f"{'*' if g is tracker.current() else ' '} {g.label()}" for g in live
+            f"{'*' if current in members else ' '} {name or '(unnamed)'}: "
+            + ", ".join(f"{g.who()} (#{g.number})" for g in members)
+            for name, members in rooms
         )
 
     def attach(args: list[str]) -> str:
@@ -66,6 +69,8 @@ def inject_commands(
 
     def say(args: list[str]) -> str:
         game = attached()
+        if not args:
+            raise Choose("speaker", list(SPEAKERS), "/say {} ")
         if len(args) < 2:
             raise ValueError("expected a speaker and a message")
         send(game, NEW_SPEECH, speaker_index(args[0]), " ".join(args[1:]))

@@ -25,29 +25,29 @@ def test_blank_line_prints_nothing() -> None:
 
 def test_command_gets_quoted_arguments() -> None:
     seen: list[list[str]] = []
-    out = _table(seen).run('echo "a b" c')
+    out = _table(seen).run('/echo "a b" c')
     assert seen == [["a b", "c"]]
     assert out == "echoed a b c"
 
 
 def test_unknown_command_points_at_help() -> None:
-    assert _table([]).run("nope") == "unknown command 'nope'; try help"
+    assert _table([]).run("/nope") == "unknown command 'nope'; try /help"
 
 
 def test_help_lists_every_command() -> None:
-    text = _table([]).run("help")
+    text = _table([]).run("/help")
     for name in ("help", "quit", "echo WORDS"):
         assert name in text
 
 
 def test_quit_raises() -> None:
     with pytest.raises(Quit):
-        _table([]).run("quit")
+        _table([]).run("/quit")
 
 
 def test_exit_is_quit() -> None:
     with pytest.raises(Quit):
-        _table([]).run("exit")
+        _table([]).run("/exit")
 
 
 def test_bad_arguments_are_reported_not_raised() -> None:
@@ -55,8 +55,8 @@ def test_bad_arguments_are_reported_not_raised() -> None:
         raise ValueError("expected one path")
 
     table = CommandTable({"strict": Command("strict PATH", "x", strict)})
-    assert table.run("strict") == "strict PATH: expected one path"
-    assert table.run('strict "unclosed').startswith("could not parse")
+    assert table.run("/strict") == "/strict PATH: expected one path"
+    assert table.run('/strict "unclosed').startswith("could not parse")
 
 
 def test_switchable_recorder_idle_until_opened(tmp_path: Path) -> None:

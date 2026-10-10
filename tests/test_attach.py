@@ -100,7 +100,7 @@ def test_attach_by_number_name_or_alone() -> None:
         tracker.attach(None)
     assert tracker.attach("2").name == "two"
     assert tracker.attach("one").session is a
-    with pytest.raises(ValueError, match="no single"):
+    with pytest.raises(ValueError, match="no game matches"):
         tracker.attach("nope")
 
 
@@ -177,3 +177,31 @@ def test_old_capture_without_the_column(tmp_path: Path) -> None:
         rec.record(Session(), Direction.ToClient, _joined(2))
     with Capture(path) as cap:
         assert [p.injected for p in cap.packets()] == [False, False]
+
+
+def test_rooms_group_clients_and_attach_by_actor() -> None:
+    a, b = Session(), Session()
+    tracker = _tracker({a, b})
+    _join_game(tracker, a, "jail")
+    _join_game(tracker, b, "jail", actor=3)
+    [(name, members)] = tracker.rooms()
+    assert name == "jail" and len(members) == 2
+    with pytest.raises(ValueError, match="2 clients"):
+        tracker.attach("jail")
+    assert tracker.attach(f"jail:{members[1].actor}").session is b
+
+
+def test_actor_name_comes_from_the_enter_request() -> None:
+    from pyphotonrealtime.protocol.param.int8_param import Int8Parameter
+    from pyphotonrealtime.realtime._convert import to_hashtable
+
+    session = Session()
+    tracker = _tracker({session})
+    request = _join("jail")
+    request.get_payload().params[ParameterKey.PlayerProperties] = to_hashtable(
+        {Int8Parameter(255): StringParameter("Bob")}
+    )
+    tracker.observe(session, Direction.ToServer, request)
+    tracker.observe(session, Direction.ToClient, _joined(2))
+    [game] = tracker.games()
+    assert game.player == "Bob" and game.who() == 'actor 2 "Bob"'

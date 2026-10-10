@@ -18,7 +18,7 @@ from pyphotonrealtime.protocol.packet.factory import PacketFactory
 from pyphotonrealtime.protocol.packet.operation_packet import PhotonOperationPacket
 from pyphotonrealtime.protocol.param.int32_param import Int32Parameter
 from pyphotonrealtime.protocol.param.parameter_key import ParameterKey
-from pyphotonrealtime.realtime._convert import to_param
+from pyphotonrealtime.realtime._convert import to_param, to_python
 from pyphotonrealtime.server import Direction
 
 from src.protocol.rpc import build
@@ -26,6 +26,17 @@ from src.protocol.rpc import build
 ENTER_OPERATIONS = (OperationCode.JoinGame, OperationCode.CreateGame)
 EVENT_COMMANDS = (CommandCode.Event, CommandCode.EncryptedEvent)
 DIRECTORY_DATA = 9
+PLAYER_NAME_KEY = 255
+
+
+def player_name(params: Any) -> str:
+    """The actor name in an enter request's player properties (property 255)."""
+    props = params.get(ParameterKey.PlayerProperties)
+    try:
+        value = to_python(props).get(PLAYER_NAME_KEY) if props is not None else None
+    except (AttributeError, TypeError):
+        return ""
+    return str(value) if value else ""
 
 
 @dataclass(eq=False)
@@ -37,11 +48,21 @@ class Game:
     name: str
     session: Any
     actor: int
+    player: str = ""
+    """The actor's name, from the player properties of its enter request."""
     host_actor: int | None = None
     """The room's host, learned from the first ``DirectoryData`` event it sends."""
 
     def label(self) -> str:
-        return f"{self.name or '(unnamed)'} (actor {self.actor}, #{self.number})"
+        return f"{self.name or '(unnamed)'} ({self.who()}, #{self.number})"
+
+    def who(self) -> str:
+        """``actor 2 "Claude"``: the actor number, plus its name when known."""
+        return (
+            f'actor {self.actor} "{self.player}"'
+            if self.player
+            else f"actor {self.actor}"
+        )
 
 
 class GameTracker:
@@ -51,9 +72,8 @@ class GameTracker:
         """``alive(session)``: whether the proxy still has that session."""
         self._alive = alive
         self._lock = threading.Lock()
-        self._asked: dict[
-            Any, str
-        ] = {}  # session -> room named in its last enter request
+        self._asked: dict[Any, tuple[str, str]] = {}
+        """session -> (room, actor name) of its last enter request"""
         self._games: list[Game] = []
         self._count = 0
         self.attached: Game | None = None
@@ -76,16 +96,20 @@ class GameTracker:
         if direction == Direction.ToServer:
             name = params.get(ParameterKey.GameId)
             with self._lock:
-                self._asked[session] = str(name.value) if name is not None else ""
+                self._asked[session] = (
+                    str(name.value) if name is not None else "",
+                    player_name(params),
+                )
             return
         actor = params.get(ParameterKey.ActorNr)
         if actor is None or payload.get_return_code() != 0:
             return  # a Master Server answer (an address) or a refusal
         name = params.get(ParameterKey.GameId)
         with self._lock:
-            room = str(name.value) if name is not None else self._asked.get(session, "")
+            asked_room, asked_player = self._asked.get(session, ("", ""))
+            room = str(name.value) if name is not None else asked_room
             self._count += 1
-            game = Game(self._count, room, session, int(actor.value))
+            game = Game(self._count, room, session, int(actor.value), asked_player)
             self._games.append(game)
             old = self.attached
             if old is not None and not self._alive(old.session) and old.name == room:
@@ -105,6 +129,19 @@ class GameTracker:
             self._games = [g for g in self._games if self._alive(g.session)]
             return list(self._games)
 
+    def rooms(self) -> list[tuple[str, list[Game]]]:
+        """Live games grouped by room name (one entry per room, its clients in
+        join order). Unnamed games are never merged."""
+        out: list[tuple[str, list[Game]]] = []
+        for game in self.games():
+            for name, members in out:
+                if name and name == game.name:
+                    members.append(game)
+                    break
+            else:
+                out.append((game.name, [game]))
+        return out
+
     def current(self) -> Game | None:
         """The attached game while its client is still connected, else None."""
         game = self.attached
@@ -122,9 +159,20 @@ class GameTracker:
                 raise ValueError("several games; say which (games lists them)")
             found = live[0]
         else:
+            name, _, actor = ref.rpartition(":")
             matches = [g for g in live if ref == str(g.number) or g.name == ref]
-            if len(matches) != 1:
-                raise ValueError(f"no single game matches {ref!r} (games lists them)")
+            if not matches and actor.isdigit():  # NAME:ACTOR picks one client of a room
+                matches = [g for g in live if g.name == name and g.actor == int(actor)]
+            if len(matches) > 1:
+                raise ValueError(
+                    f"{ref!r} has {len(matches)} clients; pick one: "
+                    + ", ".join(
+                        f"#{g.number} or {g.name}:{g.actor} ({g.player or 'no name'})"
+                        for g in matches
+                    )
+                )
+            if not matches:
+                raise ValueError(f"no game matches {ref!r} (games lists them)")
             found = matches[0]
         self.attached = found
         return found
@@ -139,7 +187,7 @@ class GameTracker:
             return "not attached (games, attach)"
         if not self._alive(game.session):
             return f"attached to {game.name or game.number}: client gone"
-        return f"attached: {game.name or '(unnamed)'} as actor {game.actor}"
+        return f"attached: {game.name or '(unnamed)'} as {game.who()}"
 
 
 def event_from_data(
