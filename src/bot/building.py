@@ -38,7 +38,8 @@ class RoomSpec:
     w: int
     h: int
     door: Cell
-    objects: tuple[tuple[str, int, int], ...]
+    objects: tuple[tuple, ...]
+    """``(name, dx, dy)`` or ``(name, dx, dy, facing)``, cells inside the room."""
 
     def interior(self) -> set[Cell]:
         return {(self.x + i, self.y + j) for i in range(self.w) for j in range(self.h)}
@@ -164,9 +165,9 @@ def _object_cells(r: RoomSpec) -> set[Cell]:
     """Building coordinates of every cell an object of the room covers."""
     return {
         (r.x + dx + i, r.y + dy + j)
-        for name, dx, dy in r.objects
-        for i in range(rooms.size_of(name)[0])
-        for j in range(rooms.size_of(name)[1])
+        for name, dx, dy, facing in map(rooms.norm, r.objects)
+        for i in range(rooms.size_of(name, facing)[0])
+        for j in range(rooms.size_of(name, facing)[1])
     }
 
 
@@ -248,10 +249,10 @@ def render(b: Building) -> list[str]:
         grid[y][x] = "D"
     letters: dict[str, str] = {}
     for r in b.rooms:
-        for name, dx, dy in r.objects:
+        for name, dx, dy, facing in map(rooms.norm, r.objects):
             letter = letters.get(name) or rooms._letter(name, letters)
             letters[name] = letter
-            w, h = rooms.size_of(name)
+            w, h = rooms.size_of(name, facing)
             for j in range(h):
                 for i in range(w):
                     grid[r.y + dy + j][r.x + dx + i] = letter
@@ -278,7 +279,12 @@ def stages(b: Building) -> list[tuple[str, list[dict]]]:
         (
             "entrances",
             [
-                {"tool": "place", "object": "Door", "x": x0 + x, "y": y0 + y}
+                {
+                    "tool": "place",
+                    "object": "Door",
+                    "x": x0 + x,
+                    "y": y0 + y,
+                }
                 for x, y in b.entrances
             ],
         ),
@@ -293,13 +299,18 @@ def stages(b: Building) -> list[tuple[str, list[dict]]]:
             ],
         )
     )
-    internal = {r.door for r in b.rooms} - set(b.entrances)
+    internal = {r.door: r for r in b.rooms if r.door not in b.entrances}
     out.append(
         (
             "doors",
             [
-                {"tool": "place", "object": "Door", "x": x0 + x, "y": y0 + y}
-                for x, y in sorted(internal)
+                {
+                    "tool": "place",
+                    "object": rooms.construction_door(r.type),
+                    "x": x0 + x,
+                    "y": y0 + y,
+                }
+                for (x, y), r in sorted(internal.items())
             ],
         )
     )
@@ -335,3 +346,14 @@ def stages(b: Building) -> list[tuple[str, list[dict]]]:
         )
     )
     return [s for s in out if s[1]]
+
+
+def final_doors(b: Building) -> list[tuple[int, int, str]]:
+    """``(x, y, door type)`` in map cells for every door that must be swapped after
+    construction: a room whose door workmen cannot open (JailDoor, SolitaryDoor...) is built
+    with a StaffDoor and gets its real door here; all other doors are placed final."""
+    return [
+        (b.x + r.door[0], b.y + r.door[1], rooms.door_kind(r.type))
+        for r in b.rooms
+        if rooms.needs_swap(r.type) and r.door not in b.entrances
+    ]

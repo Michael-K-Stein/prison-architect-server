@@ -48,18 +48,18 @@ def parse_size(text: str | None) -> tuple[int, int] | None:
     return int(parts[0]), int(parts[1])
 
 
-def parse_objects(items: list[str]) -> list[tuple[str, int, int]]:
-    """``["Bed:0:0", ...]`` -> ``[("Bed", 0, 0), ...]``; ``ValueError`` when malformed."""
-    out = []
+def parse_objects(items: list[str]) -> list[tuple]:
+    """``["Bed:0:0", "Chair:1:2:up"]`` -> ``[("Bed", 0, 0), ("Chair", 1, 2, "up")]``;
+    ``ValueError`` when malformed."""
+    out: list[tuple] = []
     for text in items:
-        name, _, rest = text.partition(":")
-        dx, _, dy = rest.partition(":")
+        parts = text.split(":")
         try:
-            out.append((name, int(dx), int(dy)))
+            if len(parts) not in (3, 4) or not parts[0]:
+                raise ValueError
+            out.append((parts[0], int(parts[1]), int(parts[2]), *parts[3:]))
         except ValueError:
-            raise ValueError(f"--obj {text!r}: expected Name:dx:dy") from None
-        if not name:
-            raise ValueError(f"--obj {text!r}: expected Name:dx:dy")
+            raise ValueError(f"--obj {text!r}: expected Name:dx:dy[:facing]") from None
     return out
 
 
@@ -96,6 +96,65 @@ def room_plan(
     WxH --door COL --obj Name:dx:dy ... --dry-run`.
     """
     typer.echo(json.dumps(rooms.constraints(_kind(room)), indent=1))
+
+
+SWAPPABLE = ("StaffDoor", "Door")
+"""Door types the swap may remove: only the construction door (or a plain Door) is touched."""
+
+
+def swap_door(port: int, x: int, y: int, kind: str) -> str:
+    """Replace the door on cell (x, y) with ``kind``: a client's ``ObjectRemoved`` deletes the
+    old one on the host (journal2, the pump), then the new door is installed.
+
+    Destructive, so it only removes a ``StaffDoor`` / ``Door`` standing exactly on that
+    cell, and refuses when it cannot find exactly one. Returns what happened.
+    """
+    call("POST", "/refresh", {"seconds": 5}, port=port, interrupts=False)
+    status, data = call(
+        "GET", "/state/Save/Objects?depth=1", port=port, interrupts=False
+    )
+    if status >= 400:
+        return f"cannot read the objects: {data}"
+    found = [
+        v
+        for v in data.values()
+        if isinstance(v, dict)
+        and v.get("Type") in SWAPPABLE
+        and int(v.get("Pos.x", -1)) == x
+        and int(v.get("Pos.y", -1)) == y
+    ]
+    if any(v.get("Type") == kind for v in found):
+        return "already has that door"
+    if len(found) != 1:
+        return f"expected exactly one StaffDoor/Door at {x},{y}, found {len(found)}: not touched"
+    door = found[0]
+    call(
+        "POST",
+        "/send",
+        {"action": "ObjectRemoved", "args": [f"{door['Id.u']},{door['Id.i']}"]},
+        port=port,
+        interrupts=False,
+    )
+    call("POST", "/wait", {"seconds": 4}, port=port, interrupts=False)
+    status, data = call(
+        "POST",
+        "/build",
+        {"jobs": [{"tool": "place", "object": kind, "x": x, "y": y}]},
+        port=port,
+        interrupts=False,
+    )
+    return (
+        f"{door['Type']} -> {kind}"
+        if status < 400
+        else f"removed, but placing {kind} failed: {data}"
+    )
+
+
+def _jobs_done(port: int) -> bool:
+    status, data = call(
+        "GET", "/state/ConstructionSystem/Jobs?depth=0", port=port, interrupts=False
+    )
+    return status < 400 and int(data.get("Size", 1)) == 0
 
 
 def _say(port: int, payload: dict) -> None:
@@ -211,7 +270,10 @@ def room_build(
     ] = None,
     obj: Annotated[
         list[str] | None,
-        typer.Option("--obj", help="Name:dx:dy, the object's top left cell (repeat)."),
+        typer.Option(
+            "--obj",
+            help="Name:dx:dy[:facing], the top left cell and up/down/left/right (repeat).",
+        ),
     ] = None,
     dry_run: Annotated[
         bool, typer.Option(help="Only check and show the design.")
@@ -233,8 +295,6 @@ def room_build(
     """
     port = ctx.obj
     timeout = min(timeout, STAGE_TIMEOUT_MAX)
-    if _kind(room) in rooms.UNRELEASED:
-        _fail(f"{room} is unreleased content: {rooms.UNRELEASED[_kind(room)]}")
     plan, errors = _design(_kind(room), size, door, obj or [], auto)
     picture = rooms.render(plan)
     if errors:
@@ -313,6 +373,12 @@ def room_build(
                 )
                 if not ok:
                     warnings.append("the walls did not go up (is the door usable?)")
+        final = rooms.door_kind(plan.room)
+        if plan.building and rooms.needs_swap(plan.room):
+            _wait_for(port, lambda: _jobs_done(port), timeout)
+            done.append(
+                "door: " + swap_door(port, x + 1 + plan.door, y + plan.h + 1, final)
+            )
     except OSError as exc:
         _fail(f"no control server: {exc}")
     _say(
@@ -326,6 +392,26 @@ def room_build(
             "next": "`ctl refresh`, then check `problems` for this room",
         },
     )
+
+
+door_app = typer.Typer(
+    help="Swap a door for another type (destructive: removes the old one)."
+)
+
+
+@door_app.command("swap")
+def door_swap(
+    ctx: typer.Context,
+    x: Annotated[int, typer.Argument(help="Door cell x.")],
+    y: Annotated[int, typer.Argument(help="Door cell y.")],
+    kind: Annotated[
+        str, typer.Argument(help="JailDoor, StaffDoor, SecureDoor, SolitaryDoor, Door.")
+    ],
+) -> None:
+    """Replace the StaffDoor / Door on a cell with another door type (see `rooms.DOOR_KINDS`)."""
+    if kind not in rooms.SIZES or "Door" not in kind:
+        _fail(f"{kind!r} is not a door type")
+    _say(ctx.obj, {"cell": [x, y], "result": swap_door(ctx.obj, x, y, kind)})
 
 
 building_app = typer.Typer(
@@ -432,6 +518,11 @@ def building_build(
 
                 if not _wait_for(port, built, timeout):
                     warnings.append("some internal walls were not built in time")
+        swaps = building.final_doors(b)
+        if swaps:
+            _wait_for(port, lambda: _jobs_done(port), timeout)
+            for sx, sy, kind in swaps:
+                done.append(f"door {sx},{sy}: " + swap_door(port, sx, sy, kind))
     except OSError as exc:
         _fail(f"no control server: {exc}")
     _say(

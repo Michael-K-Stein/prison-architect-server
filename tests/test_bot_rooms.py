@@ -100,3 +100,52 @@ def test_wall_runs_find_a_neighbours_wall() -> None:
     assert room_cli.wall_runs(["W..", "W..", "W.."], 10, 5) == [(10, 5, 1, 3)]
     assert room_cli.wall_runs(rows, 0, 0)[0] == (0, 0, 5, 1)
     assert room_cli.wall_runs(["..."], 0, 0) == []
+
+
+def test_doors_follow_the_room_type() -> None:
+    assert rooms.door_kind("Cell") == "JailDoor" and rooms.needs_swap("Cell")
+    assert rooms.construction_door("Cell") == "StaffDoor"
+    assert rooms.door_kind("Library") == "Door" and not rooms.needs_swap("Library")
+    assert (
+        rooms.construction_door("Office") == "StaffDoor"
+    )  # final: workmen can open it
+    assert not rooms.needs_swap("Office")
+    plan = rooms.plan_room("Cell")
+    door_job = rooms.stages(plan, 0, 0)[1][0]
+    assert door_job["object"] == "StaffDoor"
+    library = rooms.stages(rooms.plan_room("Library"), 0, 0)[1][0]
+    assert library["object"] == "Door"
+
+
+def test_facing_turns_a_footprint_and_is_sent() -> None:
+    assert rooms.size_of("CinemaScreen") == (3, 1)
+    assert rooms.size_of("CinemaScreen", "right") == (1, 3)
+    errors = rooms.check("Cinema", 5, 5, [("CinemaScreen", 0, 0, "bogus")])
+    assert any("facing must be" in e for e in errors)
+    plan, _ = rooms.design("Cell", 3, 4, 2, [("Bed", 0, 0), ("Toilet", 1, 0, "left")])
+    assert plan.objects[1].facing == "left"
+    place = rooms.stages(plan, 0, 0)[-1]
+    assert place[1]["facing"] == "left"
+
+
+def test_workmen_blocked_door_families() -> None:
+    for door in (
+        "JailDoor",
+        "JailDoorRed",
+        "JailDoorLargeGrey",
+        "SolitaryDoor",
+        "SecureDoor",
+        "RemoteDoorWhite",
+        "KeycardDoor",
+        "KeycardDoorLarge",
+    ):
+        assert rooms.workmen_blocked(door), door
+    for door in (
+        "Door",
+        "StaffDoor",
+        "StaffDoorBlue",
+        "DoubleStaffDoor",
+        "VisitorDoor",
+    ):
+        assert not rooms.workmen_blocked(door), door
+    assert rooms.needs_swap("Security") and rooms.needs_swap("Solitary")

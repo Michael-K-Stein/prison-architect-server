@@ -41,6 +41,8 @@ from src.protocol.enums import (
     name_of,
 )
 from src.protocol.game_text import TEXT
+from src.protocol.game_tables import INTAKE_TYPES
+from src.protocol.grants import GRANTS
 from src.protocol.snapshot import Node, decode_args, decompress
 
 log = logging.getLogger(__name__)
@@ -401,6 +403,76 @@ class GameState:
                 advice=str(extra.get("advice", "")),
             )
         )
+
+    def todo(self) -> list[dict[str, Any]]:
+        """The in-game Todo list: objectives, the staff alerts now showing and the intake state.
+
+        The game builds its list from these (user): "Read the CEO's letter", "Accept your first
+        Grant" (objectives, removed when done), "The prison is missing a Door Control
+        system" / "Nobody is working in the Infirmary" (staff alerts), "Prisoner Intake"
+        (always there, shows the intake state). Names are the game's own texts.
+        """
+        with self.lock:
+            items: list[dict[str, Any]] = []
+            for name, fields in self.objectives.items():
+                if fields.get("Parent"):
+                    continue  # a requirement of a grant, listed under it
+                title = TEXT.get(f"objective_{name.lower()}", "")
+                grant = GRANTS.get(name)
+                if not title and grant:
+                    title = str(grant.get("title") or "")
+                tasks = [
+                    str(f.get("Name"))
+                    for f in self.objectives.values()
+                    if f.get("Parent") == name
+                ]
+                item: dict[str, Any] = {
+                    "kind": "objective",
+                    "id": name,
+                    "title": title or name,
+                }
+                if tasks:
+                    item["tasks"] = tasks
+                extra = {
+                    k: v
+                    for k, v in fields.items()
+                    if k not in ("Name", "Type", "Parent")
+                    and not isinstance(v, (dict, list))
+                }
+                if extra:
+                    item["fields"] = extra
+                items.append(item)
+            showing = {a.text: a for a in self.alert_log if a.kind == "staff"}
+            for line in self.staff_alerts:
+                alert = showing.get(line.split(": ", 1)[-1])
+                if alert is None:
+                    items.append({"kind": "alert", "title": line})
+                    continue
+                item = {
+                    "kind": "alert",
+                    "id": alert.id,
+                    "title": alert.title or alert.text,
+                    "from": alert.who,
+                    "advice": alert.advice,
+                }
+                if alert.urgent:
+                    item["urgent"] = True
+                items.append(item)
+            intake = self.save.children.get("Intake") if self.save else None
+            if intake is not None:
+                mode = intake.fields.get("IntakeType")
+                items.append(
+                    {
+                        "kind": "intake",
+                        "id": "PrisonerIntake",
+                        "title": TEXT.get(
+                            "objective_prisonerintake", "Prisoner Intake"
+                        ),
+                        "state": INTAKE_TYPES.get(mode, mode),
+                        "closed": mode == 0,
+                    }
+                )
+            return items
 
     def alerts_since(self, seq: int = 0) -> list[Alert]:
         """Alerts with a sequence number above ``seq`` (oldest first)."""

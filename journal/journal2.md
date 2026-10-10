@@ -2633,3 +2633,33 @@ zone-only room (Forestry, Exports, Storage...) no longer draws walls (the player
   (`SuperiorBed` or `ComfyBed`, Toilet, ShowerHead, OfficeDesk or FancyDesk, Tv, Bookshelf, Plant) is leftover data.
   A `ComfyBed` placed in the MKS2 zone was not charged and did not appear either (no `object_ComfyBed` line, still
   "lacks SuperiorBed"), and the `SuperiorBed` charge (-800) / refund (+800) repeated, so the host drops the job.
+
+### The in-game Todo list, doors, facing and SuperiorCell after all (user corrections, MKS2)
+
+- **The Todo list is not a separate list** (user): it shows what the game wants done, and an item disappears when done.
+  Items seen: "Read the CEO's letter" and "Accept your first Grant" (marked done): these are objectives
+  (`objective_readceosletter`, `FirstGrant`; removed with `ObjectiveRemoved`); "Prisoner Intake" (always there,
+  shows the intake state: `objective_intake_closed` / `objective_intake_arrivals` *X Prisoners arriving at *Y,
+  categories); "The prison is missing a Door Control system", "Nobody is working in the Infirmary" (`DOCTOR01`),
+  "Our prisoners aren't very clean": `StaffAlert` snapshots (the title text, `d11_staffalert_title_<ID>`); and sometimes
+  "Feed all Prisoners" with Prisoners / Meals counters (objective `FeedAllPrisoners`). So nothing new on the wire:
+  `Objective` snapshots + `StaffAlert` + `Save Intake`. The bot shows it with `ctl todo` (objectives, the alerts now
+  showing with the game's advice, intake state). A hungry-prisoners alert (`NEEDS04`, from the Psychologist, text "Put
+  that cookie down! Our prisoners are starving!") appeared after the Psychologist started working.
+  `src/protocol/textgen.py` regenerates `game_text.py` with the objective / need / room / adviser texts too.
+- **SuperiorCell is valid after all** (user): cancelling the pending `SuperiorBed` job and placing a **ComfyBed** made
+  the room valid (the rule accepts it as an alternative) and the toilet worked after the pipe fix. My ComfyBed test
+  failed because the stuck SuperiorBed job (charged then refunded in a loop) occupied the cell. The client cannot
+  create the room, but the host accepts the zone and the rule is satisfiable; the room tools no longer treat it as
+  impossible (see `rooms.UNRELEASED`: now a warning only).
+- **Doors** (user): a plain Door everywhere is wrong. The game's own prefabs (`prefabs*.txt`) use JailDoor for cells,
+  dormitories, padded cells and the Armoury / Workshop / Intake / HoldingCell (JailDoorLarge), SolitaryDoor for solitary,
+  SecureDoor for the Kennel and Security, StaffDoor for offices, the staffroom and the medical ward, Door elsewhere.
+  `rooms.DOOR_KINDS` records that. Workmen cannot open: every `JailDoor*` colour and `JailDoorLarge*`, `SolitaryDoor`,
+  `SecureDoor`, `RemoteDoor*` (needs a wiring system) and `KeycardDoor` / `KeycardDoorLarge`; all other doors they can. So
+  only those rooms are built with a temporary StaffDoor and get their real door afterwards (`ctl door swap X Y KIND`,
+  which removes the old door with `ObjectRemoved`, then places the new one); every other door is placed final at once.
+- **Facing** (user: "the projector must be IN FRONT of the screen, not next to it"): objects have a facing; the prefabs use
+  `orX/orY`, e.g. `orY -1` for deck chairs facing up toward a screen. `ctl room build --obj Name:dx:dy:facing`
+  (up/down/left/right; left/right turn the footprint by 90 degrees) and `["Name", dx, dy, "up"]` in building specs.
+  The bot's plain `--auto` layout ignores facing, so directional rooms (Cinema, Gymnasium, Classroom, Restaurant) need a designed layout.

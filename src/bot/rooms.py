@@ -35,10 +35,11 @@ MIN_BUILDING = 3
 BUILDING_FREE = frozenset({"None", "ClearRooms"})
 UNRELEASED = {
     "SuperiorCell": "not in the game client (it cannot be created there; its labels are "
-    "code-like, e.g. roomgrading_SuperiorCell_Item): the host accepts the zone but "
-    "refunds the SuperiorBed, so the room never meets its rules (journal2)"
+    "code-like, e.g. roomgrading_SuperiorCell_Item); the host accepts the zone and the "
+    "rules are met with a ComfyBed instead of the SuperiorBed (journal2)"
 }
-"""Room types in the data files that the real game does not offer (unfinished content)."""
+"""Room types in the data files that the real game's client does not offer (a warning only: the
+host accepts the zone and the rule can be met, e.g. a ComfyBed for the SuperiorCell)."""
 """Rooms with no requirements at all: just a zone, no building."""
 
 
@@ -51,11 +52,12 @@ SIZES = _load_sizes()
 
 @dataclass(frozen=True)
 class Placement:
-    """One object: its type and top left cell inside the room."""
+    """One object: its type, top left cell inside the room and the way it faces."""
 
     name: str
     dx: int
     dy: int
+    facing: str = "down"
 
 
 @dataclass(frozen=True)
@@ -80,9 +82,76 @@ class RoomPlan:
         return self.w + 2, self.h + 2
 
 
-def size_of(name: str) -> tuple[int, int]:
+FACINGS = ("down", "up", "left", "right")
+"""``OrX/OrY`` (0,1) (0,-1) (-1,0) (1,0); the game's prefabs use e.g. ``orY -1`` for chairs
+that face up toward a screen."""
+
+
+def size_of(name: str, facing: str = "down") -> tuple[int, int]:
+    """The footprint (w, h) of an object; a left/right facing turns it by 90 degrees."""
     info = SIZES.get(name, {})
-    return int(info.get("w", 1)), int(info.get("h", 1))  # type: ignore[call-overload]
+    w, h = int(info.get("w", 1)), int(info.get("h", 1))  # type: ignore[call-overload]
+    return (h, w) if facing in ("left", "right") else (w, h)
+
+
+def norm(obj: tuple) -> tuple[str, int, int, str]:
+    """``(name, dx, dy)`` or ``(name, dx, dy, facing)`` as ``(name, dx, dy, facing)``."""
+    name, dx, dy = obj[0], int(obj[1]), int(obj[2])
+    return name, dx, dy, (obj[3] if len(obj) > 3 else "down")
+
+
+DOOR_KINDS = {
+    "Armoury": "JailDoor",
+    "Cell": "JailDoor",
+    "Dormitory": "JailDoor",
+    "FamilyCell": "JailDoor",
+    "HoldingCell": "JailDoor",
+    "Intake": "JailDoor",
+    "PaddedCell": "JailDoor",
+    "PaddedHoldingCell": "JailDoor",
+    "SuperiorCell": "JailDoor",
+    "Workshop": "JailDoor",
+    "Execution": "JailDoor",
+    "Kennel": "SecureDoor",
+    "Security": "SecureDoor",
+    "Solitary": "SolitaryDoor",
+    "PaddedSolitary": "SolitaryDoor",
+    "Office": "StaffDoor",
+    "Staffroom": "StaffDoor",
+    "MedicalWard": "StaffDoor",
+    "Morgue": "StaffDoor",
+    "CleaningCupboard": "StaffDoor",
+}
+"""The door each room type should get, from the game's own prefabs (``prefabs*.txt``:
+cells use JailDoor, solitary SolitaryDoor, offices and the staffroom StaffDoor...). Any
+other room gets a plain Door. A plain Door everywhere is a security mistake (user)."""
+CONSTRUCTION_DOOR = "StaffDoor"
+"""The temporary door of a room whose final door workmen cannot open."""
+BLOCKED_PREFIXES = ("JailDoor", "RemoteDoor", "KeycardDoor")
+"""Door families workmen cannot open (user): jail doors in every colour and the large ones,
+remote doors (they need a wiring system) and keycard doors (also large)."""
+BLOCKED_DOORS = frozenset({"SolitaryDoor", "SecureDoor"})
+"""The other doors workmen cannot open; Door, StaffDoor... they can, so those are placed final."""
+
+
+def workmen_blocked(door: str) -> bool:
+    """Whether workmen cannot open this door type (see ``BLOCKED_PREFIXES``)."""
+    return door.startswith(BLOCKED_PREFIXES) or door in BLOCKED_DOORS
+
+
+def door_kind(room: str) -> str:
+    """The final door of a room type (``DOOR_KINDS``, else ``Door``)."""
+    return DOOR_KINDS.get(room, "Door")
+
+
+def needs_swap(room: str) -> bool:
+    """Whether the final door is one workmen cannot open (a temporary door is swapped out)."""
+    return workmen_blocked(door_kind(room))
+
+
+def construction_door(room: str) -> str:
+    """The door to place while building: the final one, unless workmen cannot open it."""
+    return CONSTRUCTION_DOOR if needs_swap(room) else door_kind(room)
 
 
 def _usable(name: str) -> bool:
@@ -205,7 +274,7 @@ def render(plan: RoomPlan) -> list[str]:
         grid[plan.h + 1][plan.door + 1] = "D"
     letters: dict[str, str] = {}
     for obj in plan.objects:
-        w, h = size_of(obj.name)
+        w, h = size_of(obj.name, obj.facing)
         letter = letters.get(obj.name) or _letter(obj.name, letters)
         letters[obj.name] = letter
         for j in range(h):
@@ -226,7 +295,14 @@ def stages(plan: RoomPlan, x: int, y: int) -> list[list[dict]]:
         ow, oh = plan.outer
         out.append([{"tool": "foundation", "x": x, "y": y, "width": ow, "height": oh}])
         out.append(
-            [{"tool": "place", "object": "Door", "x": ix + plan.door, "y": y + oh - 1}]
+            [
+                {
+                    "tool": "place",
+                    "object": construction_door(plan.room),
+                    "x": ix + plan.door,
+                    "y": y + oh - 1,
+                }
+            ]
         )
         zone_x, zone_y = ix, iy
     else:
@@ -251,6 +327,7 @@ def stages(plan: RoomPlan, x: int, y: int) -> list[list[dict]]:
                     "object": o.name,
                     "x": zone_x + o.dx,
                     "y": zone_y + o.dy,
+                    "facing": o.facing,
                 }
                 for o in plan.objects
             ]
@@ -294,7 +371,9 @@ def constraints(room: str) -> dict:
         "notes": [
             *([f"UNRELEASED: {UNRELEASED[room]}"] if room in UNRELEASED else []),
             "Interior cells are numbered from the top left (0,0); an object's anchor is its "
-            "top left cell and it covers w x h cells (facing down).",
+            "top left cell and it covers w x h cells when facing down (a left/right facing "
+            "turns the footprint: add :up/:down/:left/:right to --obj, e.g. chairs facing a "
+            "screen); doors: the room gets " + "the door type from `door_kind`.",
             "The door is in the bottom wall at one interior column; keep that column and the "
             "row above the wall free so people can walk in.",
             *(
@@ -316,9 +395,7 @@ def constraints(room: str) -> dict:
     }
 
 
-def check(
-    room: str, width: int, height: int, objects: list[tuple[str, int, int]]
-) -> list[str]:
+def check(room: str, width: int, height: int, objects: list[tuple]) -> list[str]:
     """Rule violations of a layout (size, bounds, overlaps, required objects); the door
     is not looked at. Empty list: it meets the requirements."""
     min_size, _flags, required = ROOM_RULES[room]
@@ -326,11 +403,14 @@ def check(
     if min_size and (width < min_size[0] or height < min_size[1]):
         errors.append(f"interior {width}x{height} is below the minimum {min_size}")
     taken: dict[tuple[int, int], str] = {}
-    for name, dx, dy in objects:
+    for name, dx, dy, facing in map(norm, objects):
         if not _usable(name):
             errors.append(f"{name}: not a placeable object (see `ctl names objects`)")
             continue
-        w, h = size_of(name)
+        if facing not in FACINGS:
+            errors.append(f"{name}: facing must be one of {', '.join(FACINGS)}")
+            continue
+        w, h = size_of(name, facing)
         for j in range(h):
             for i in range(w):
                 cell = (dx + i, dy + j)
@@ -340,7 +420,7 @@ def check(
                 if cell in taken:
                     errors.append(f"{name} overlaps {taken[cell]} at {cell}")
                 taken[cell] = name
-    names = {n for n, _, _ in objects}
+    names = {o[0] for o in objects}
     for name, alts in required:
         if not names & {name, *alts}:
             errors.append(
@@ -354,22 +434,22 @@ def design(
     width: int,
     height: int,
     door: int,
-    objects: list[tuple[str, int, int]],
+    objects: list[tuple],
     variant: str = "custom",
 ) -> tuple[RoomPlan, list[str]]:
     """A player's own layout as a :class:`RoomPlan`, with the rule violations found
     (empty = it meets the requirements): size, door, bounds, overlaps, required objects."""
     _min_size, flags, _required = ROOM_RULES[room]
     errors = check(room, width, height, objects)
-    placements = tuple(Placement(n, x, y) for n, x, y in objects)
+    placements = tuple(Placement(*norm(o)) for o in objects)
     if not 0 <= door < width:
         errors.append(f"door column {door} is outside the interior (0..{width - 1})")
     taken = {
-        (x + i, y + j)
-        for n, x, y in objects
-        if _usable(n)
-        for j in range(size_of(n)[1])
-        for i in range(size_of(n)[0])
+        (p.dx + i, p.dy + j)
+        for p in placements
+        if _usable(p.name) and p.facing in FACINGS
+        for j in range(size_of(p.name, p.facing)[1])
+        for i in range(size_of(p.name, p.facing)[0])
     }
     if (door, height - 1) in taken:
         errors.append(f"the cell inside the door ({door},{height - 1}) is blocked")

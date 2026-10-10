@@ -31,7 +31,7 @@ from src.bot.flow import join_flow, join_room, pick
 from src.bot.formatting import format_region
 from src.bot.hud import run_hud
 from src.bot.reconnect import Reconnector
-from src.bot.room_cli import building_app, room_app
+from src.bot.room_cli import building_app, door_app, room_app
 from src.bot.session import (
     APP_VERSION,
     CLAUDE_ORANGE,
@@ -621,6 +621,7 @@ ISSUES_FILE = Path("bot-issues.jsonl")
 
 ctl.add_typer(room_app, name="room")
 ctl.add_typer(building_app, name="building")
+ctl.add_typer(door_app, name="door")
 
 
 @ctl.command("issue")
@@ -763,6 +764,13 @@ def ctl_connect(
             indent=1,
         )
     )
+
+
+@ctl.command("todo")
+def ctl_todo(ctx: typer.Context) -> None:
+    """The in-game Todo list: objectives, staff alerts now showing (with the game's advice)
+    and the intake state: what the game wants done next."""
+    _show(ctx, "GET", "/todo")
 
 
 @ctl.command("alerts")
