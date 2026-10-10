@@ -71,6 +71,8 @@ class ControlServer:
         """Bind to ``port`` (0: any free port); call :meth:`start` to serve."""
         self.session = session
         self.stopped = threading.Event()
+        self.auto_reconnect = False
+        """True when a :class:`~src.bot.reconnect.Reconnector` replaces dead sessions."""
 
         handler = type("Handler", (_Handler,), {"control": self})
         self._staff_calls = 0
@@ -107,9 +109,12 @@ class ControlServer:
         self.httpd.server_close()
 
     def wait(self, poll: float = 0.25) -> str:
-        """Block until /quit or a disconnect; returns which (Ctrl-C propagates)."""
+        """Block until /quit or a disconnect; returns which (Ctrl-C propagates).
+
+        With ``auto_reconnect`` a disconnect is not the end: only /quit or giving up is.
+        """
         while not self.stopped.wait(poll):
-            if self.session.disconnected is not None:
+            if self.session.disconnected is not None and not self.auto_reconnect:
                 return "disconnected"
         return "quit"
 

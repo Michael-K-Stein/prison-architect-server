@@ -31,6 +31,7 @@ from src.bot import build
 from src.bot.build import Job
 from src.bot.formatting import format_event_lines
 from src.bot.names import ObjectNames
+from src.bot.reconnect import LAND_PURCHASED
 from src.bot.zones import Zones
 from src.bot.recording import record_traffic
 from src.bot.savegame import SaveTransfer
@@ -41,6 +42,7 @@ from src.server.upstream import resolve_upstream
 
 log = logging.getLogger(__name__)
 
+LAND_RESYNC_DELAY = 2.0  # seconds after LandPurchased before asking for the save
 PING_INTERVAL = 4.0  # seconds between the game client's P (ping) updates
 FIRST_PING_DELAY = 1.3  # ... the first one comes this long after joining
 CLAUDE_ORANGE = "d97757"  # RRGGBB; sent as the game does: "0xRRGGBBAA"
@@ -153,6 +155,10 @@ class Session(
                 log.debug("event %s", line)
         self.events.append((event.sender, event.code, value))
         self.state.apply(event.code, value)
+        if event.code == LAND_PURCHASED:
+            # the real client reloads the save now ("reconnecting"); so must the bot
+            self.state.note("land purchased: reloading the save")
+            threading.Timer(LAND_RESYNC_DELAY, self._resync).start()
         try:
             line = self.save.on_event(event.code, value)
         except (ValueError, rpc.RpcShapeError) as exc:
@@ -168,6 +174,11 @@ class Session(
         return self.raise_event(
             build.DIRECTORY_DATA, build.construction_data(jobs, actor)
         )
+
+    def _resync(self) -> None:
+        """Ask for a fresh save after the map grew (a timer callback)."""
+        if self.disconnected is None and not self._stop.is_set():
+            self.request_save(self.password)
 
     def request_save(self, password: str = "") -> None:
         """Ask the host for the full game (``AuthoriseConnection``).

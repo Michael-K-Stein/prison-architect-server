@@ -2581,3 +2581,19 @@ negative job types seen in the captures: `-1` (cancel jobs: `Material 333` / `24
 none with `Status -6`), so negative `Type`s are editing tools, positive ones are build tools (`JOB_TYPES`).
 Not verified live: the host was frozen when this was written (game time stuck at 103778.67 for over ten
 minutes while packets still flowed; `host_stalled` true; the host process alive).
+
+### After a land purchase the host window freezes until clicked; bots went silent (Claude Sonnet 5.5 work)
+
+Seen live: after `LandPurchaseRequest` the user's RealClient shows a "reconnecting" window for a few seconds
+(it reloads the save after `LandPurchased`), DHost looked frozen on the RealClient until the user clicked the
+host window ("simply had to click the screen after land expansion"), and **both bots stopped receiving
+`DirectoryData` snapshots** at the same game minute (103778.67): no more `World` / `ObjectData` / `Finance`
+updates, `ctl state` showed a frozen `time_index` and `host_stalled: true`, while the game ran fine for the real
+client (the proxy capture's `World.TimeIndex` kept rising to 105664 and beyond). The RPC events (`ObjectAdded`...)
+still reached the bots. A fresh join (`ctl quit`, new `serve`) received snapshots again at once. Fix in the bot:
+`src/bot/reconnect.py`: the session asks for the save again 2 s after `LandPurchased` (10), and a
+`Reconnector` thread decides from the silence of `World` snapshots: `resync` (ask for the save) after 15 s, `rejoin`
+(leave, join again with 2/4/8/15/30 s backoff while the room is full, up to 10 tries) after 20 s more, or at once
+when disconnected; the new session replaces the old one inside the control server, so the port and names
+survive. `bot ... serve --no-reconnect` turns it off. The cause of the freeze is the host window (it needs a
+click), not the bots; a purchase should be followed by a click on DHost.

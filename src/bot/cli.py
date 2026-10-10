@@ -30,6 +30,7 @@ from src.bot.control import DEFAULT_PORT, ControlServer, call
 from src.bot.flow import join_flow, join_room, pick
 from src.bot.formatting import format_region
 from src.bot.hud import run_hud
+from src.bot.reconnect import Reconnector
 from src.bot.room_cli import room_app
 from src.bot.session import (
     APP_VERSION,
@@ -208,6 +209,13 @@ def serve(
         str | None, typer.Option(help="Game (room) name; default: the first open one.")
     ] = None,
     port: Annotated[int, typer.Option(help="Control server port.")] = DEFAULT_PORT,
+    reconnect: Annotated[
+        bool,
+        typer.Option(
+            help="Resync after land purchases and rejoin when the host goes silent "
+            "or the connection drops."
+        ),
+    ] = True,
 ) -> None:
     """Join a game headless and serve the JSON control API (see `bot ctl`)."""
     opts: Options = ctx.obj
@@ -226,10 +234,19 @@ def serve(
             server = ControlServer(session, port)
             server.start()
             console.print(f"control server: {server.url}", markup=False)
+            if reconnect:
+                server.auto_reconnect = True
+                Reconnector(
+                    server,
+                    lambda: join_room(opts, opts.region, room, recorder),
+                    opts.password,
+                ).start()
             reason = server.wait()
             log.info("serve stopped: %s", reason)
             if reason == "disconnected":
-                console.print(f"Disconnected: {session.disconnected}", markup=False)
+                console.print(
+                    f"Disconnected: {server.session.disconnected}", markup=False
+                )
         except KeyboardInterrupt:
             log.info("interrupted by the user")
             console.print("\nInterrupted, disconnecting.")
@@ -240,6 +257,7 @@ def serve(
         finally:
             if server is not None:
                 server.stop()
+                session = server.session  # a reconnect may have replaced it
             if session is not None:
                 session.stop()
 
