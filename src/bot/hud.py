@@ -240,7 +240,7 @@ def browse_text(state: Any, path: str, depth: int = BROWSE_DEPTH) -> str:
         node = root.find(rest) if root is not None else None
         if node is None:
             return f"No state at {path!r}. Systems: {', '.join(sorted(state.systems))}"
-        tree = node.to_dict(depth)
+        tree = node.to_dict(depth, system)
     return json.dumps(tree, indent=1, default=str)
 
 

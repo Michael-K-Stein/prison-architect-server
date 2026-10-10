@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.protocol import rpc
+from src.protocol.net_keys import long_name
 from src.protocol.enums import (
     ELECTRICAL,
     OBJECT_TYPES,
@@ -94,19 +95,28 @@ class StateNode:
             node = node.children.get(part) if node else None
         return node
 
-    def to_dict(self, depth: int = -1) -> dict[str, Any]:
+    def to_dict(self, depth: int = -1, system: str | None = None) -> dict[str, Any]:
         """JSON-able ``{field: value, ..., "/child": {...}}``; bytes as hex.
 
         ``depth`` limits how many child levels are included (-1: all); cut
-        children show as their count.
+        children show as their count. With ``system``, short network keys are
+        shown as ``Long name (key)`` (:mod:`src.protocol.net_keys`).
         """
-        out: dict[str, Any] = {k: _jsonable(v) for k, v in self.fields.items()}
+        out: dict[str, Any] = {
+            _labelled(system, k): _jsonable(v) for k, v in self.fields.items()
+        }
         if depth == 0 and self.children:
             out["/children"] = len(self.children)
             return out
         for name, child in self.children.items():
-            out["/" + name] = child.to_dict(depth - 1)
+            out["/" + name] = child.to_dict(depth - 1, system)
         return out
+
+
+def _labelled(system: str | None, key: str) -> str:
+    """``key``, as ``Long name (key)`` when the system's short keys are known."""
+    long = long_name(system, key) if system else None
+    return f"{long} ({key})" if long and long != key else key
 
 
 def _jsonable(value: Any) -> Any:

@@ -113,7 +113,9 @@ class ControlServer:
         )
         return out
 
-    def node(self, path: str, depth: int) -> tuple[int, dict[str, Any]]:
+    def node(
+        self, path: str, depth: int, raw: bool = False
+    ) -> tuple[int, dict[str, Any]]:
         """``/state/<System>/<path>``: one node's ``to_dict(depth)``."""
         system, _, rest = path.strip("/").partition("/")
         state = self.session.state
@@ -122,7 +124,7 @@ class ControlServer:
             node = root.find(rest) if root else None
             if node is None:
                 return 404, {"error": f"no state node {path.strip('/')!r}"}
-            return 200, node.to_dict(depth)
+            return 200, node.to_dict(depth, None if raw else system)
 
     def actions(self, kind: str | None, show_all: bool) -> list[dict[str, Any]]:
         """``/actions``: the catalog, buildable ones only unless ``show_all``."""
@@ -269,7 +271,9 @@ class _Handler(BaseHTTPRequestHandler):
             if url.path == "/state":
                 self._reply(200, c.state())
             elif url.path.startswith("/state/"):
-                self._reply(*c.node(url.path[7:], int(query.get("depth", -1))))
+                self._reply(
+                    *c.node(url.path[7:], int(query.get("depth", -1)), "raw" in query)
+                )
             elif url.path == "/actions":
                 show_all = query.get("all", "0").lower() in ("1", "true", "yes")
                 self._reply(200, c.actions(query.get("kind") or None, show_all))

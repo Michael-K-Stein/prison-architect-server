@@ -271,13 +271,26 @@ def ctl_state(
     system: Annotated[str | None, typer.Argument(help="System, e.g. World.")] = None,
     path: Annotated[str | None, typer.Argument(help="Child path, a/b.")] = None,
     depth: Annotated[int, typer.Option(help="Child levels (-1: all).")] = -1,
+    raw: Annotated[
+        bool, typer.Option(help="Show the short network keys without long names.")
+    ] = False,
 ) -> None:
-    """The game state summary, or one system/node."""
+    """The game state summary, or one system/node (short keys get long names)."""
     if system is None:
         _show(ctx, "GET", "/state")
         return
     node = "/".join(x.strip("/") for x in (system, path or "") if x.strip("/"))
-    _show(ctx, "GET", f"/state/{quote(node)}?depth={depth}")
+    _show(ctx, "GET", f"/state/{quote(node)}?depth={depth}{'&raw=1' if raw else ''}")
+
+
+@ctl.command("keys")
+def ctl_keys(
+    system: Annotated[str | None, typer.Argument(help="e.g. ObjectData.")] = None,
+) -> None:
+    """What the short snapshot keys (`st`, `ci`, `ts`...) stand for."""
+    from src.protocol.net_keys import KEYS
+
+    typer.echo(json.dumps(KEYS.get(system, KEYS) if system else KEYS, indent=1))
 
 
 @ctl.command("actions")
