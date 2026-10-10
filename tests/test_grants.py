@@ -36,7 +36,7 @@ def test_accept_grant_takes_any_spelling():
 def test_hints_for_commands():
     from src.bot import hints
 
-    assert any("None" in h for h in hints.for_action("IntakeTypeChange"))
+    assert any("Closed" in h for h in hints.for_action("IntakeTypeChange"))
     assert any(
         "Workmen CANNOT" in h
         for h in hints.for_jobs([{"tool": "place", "object": "JailDoor"}])
@@ -46,4 +46,6 @@ def test_hints_for_commands():
         for h in hints.for_jobs([{"tool": "place", "object": "Battery"}])
     )
     action = catalog.find("IntakeTypeChange")
+    assert catalog.parse_args(action, ["Closed"], GameState()) == [0]
+    assert catalog.parse_args(action, ["fill capacity"], GameState()) == [1]
     assert catalog.parse_args(action, ["None"], GameState()) == [0]

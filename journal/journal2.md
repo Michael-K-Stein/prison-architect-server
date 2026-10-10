@@ -1915,3 +1915,13 @@ its prefix.
   `ctl action NAME`, in the replies of `ctl send`, `ctl build` and `ctl hire` (matched by
   action, tool and object name, e.g. JailDoor, Battery, PowerStation) and from
   `ctl hints [doors|power|people|grants|build]`, so the agent can steer itself.
+
+Intake names (user): the game's intake screen offers **Closed / Fill Capacity / Total
+Prisoners / Num Per Day / All Available** (modes 0-4; the binary's enum calls 0 `None`).
+`INTAKE_MODES` holds the screen labels, and `IntakeTypeChange` accepts either spelling
+(`Closed`, `fill capacity`, `FillCapacity`, `None`). TODO (user): the intake screen also
+controls which prisoner categories are taken (`Save Intake/Categories`:
+`PrisonerCategory` MinSec / Normal / MaxSec / PrisonerTransfer with `Pool`, `Ratio`,
+`NextIntake`, `Queue`); not wired into the bot yet. After `IntakeTypeChange 0` the host
+reported `IntakeType=0`; the prisoner count still rose from 59 to 67 from arrivals already
+on the way.

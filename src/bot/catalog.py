@@ -19,6 +19,7 @@ from typing import Any
 
 from src.protocol.grants import GRANTS, canonical
 from src.protocol.enums import (
+    INTAKE_MODES,
     INTAKE_TYPES,
     RESEARCH,
     ROOM_TYPES,
@@ -313,6 +314,10 @@ def parse_args(action: Action, values: list[Any], state: Any = None) -> list[Any
         canonical(str(v)) if source(a) == "grant" and isinstance(v, str) else v
         for a, v in zip(action.args, values)
     ]
+    values = [
+        _intake_mode(v) if source(a) == "intake" and isinstance(v, str) else v
+        for a, v in zip(action.args, values)
+    ]
     return [
         _by_name(a, v, state)
         if _is_named(a, v, state)
@@ -392,7 +397,7 @@ def choices(arg: Arg, state: Any = None) -> list[Choice]:
     if kind == "speed":
         return [Choice(v, label) for v, label in SPEEDS.items()]
     if kind == "intake":
-        return [Choice(v, n) for v, n in sorted(INTAKE_TYPES.items())]
+        return [Choice(v, n) for v, n in sorted(INTAKE_MODES.items())]
     if kind == "vehicle":
         return [Choice(v, n) for v, n in sorted(VEHICLES.items()) if v]
     if kind == "research":
@@ -422,6 +427,18 @@ def choices(arg: Arg, state: Any = None) -> list[Choice]:
     if kind == "objective":
         return [Choice(n, n) for n in sorted(state.objectives)]
     return []
+
+
+def _intake_mode(text: str) -> Any:
+    """``Closed`` / ``fill capacity`` / ``FillCapacity`` / ``None`` -> the mode number."""
+    key = text.strip().lower().replace(" ", "").replace("_", "")
+    for number in INTAKE_MODES:
+        if key in (
+            INTAKE_MODES[number].lower().replace(" ", ""),
+            INTAKE_TYPES[number].lower(),
+        ):
+            return number
+    return text
 
 
 def _grant_label(name: str) -> str:

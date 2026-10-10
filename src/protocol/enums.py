@@ -32,6 +32,18 @@ RESEARCH: dict[int, str] = dict(
 """BeginResearch / ToggleResearchDesired id -> name: static array at
 ``0x140DF4A20`` filled by ``sub_140096B10`` (IDA). Spelling is the game's."""
 
+INTAKE_MODES: dict[int, str] = {
+    0: "Closed",
+    1: "Fill Capacity",
+    2: "Total Prisoners",
+    3: "Num Per Day",
+    4: "All Available",
+}
+"""``IntakeTypeChange`` argument as the game's intake screen labels it (user, MKS2); the
+binary's enum names are in ``INTAKE_TYPES`` (0 is called ``None`` there). TODO: the
+intake screen also has per-category controls (``Intake/cat`` MinSec / Normal / MaxSec
+ratios, pools); not wired yet."""
+
 ADVISERS: dict[int, str] = {
     0: "Unknown",
     1: "The CEO",
@@ -51,6 +63,7 @@ STAFF = frozenset({"Workman", "Guard", "Doctor", "Cook", "Warden"})
 
 __all__ = [
     "ADVISERS",
+    "INTAKE_MODES",
     "ELECTRICAL",
     "FOUNDATION_MATERIALS",
     "ROOM_ERRORS",

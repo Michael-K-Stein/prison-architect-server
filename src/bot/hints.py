@@ -28,7 +28,7 @@ POWER = (
 )
 PEOPLE = (
     "Prisoners without a cell/bed can die or escape, which cuts reputation and income: "
-    "pause intake (IntakeTypeChange None) when prisoners exceed beds.",
+    "pause intake (IntakeTypeChange Closed) when prisoners exceed beds.",
     "Research needs the matching staff member hired AND seated in his own Office room "
     "(`ctl research NAME`); one occupant per Office; check progress after a few seconds "
     "with `ctl refresh`, not just 'sent: true'.",
@@ -59,8 +59,9 @@ ACTION_HINTS: dict[str, tuple[str, ...]] = {
     "AcceptGrant": GRANTS,
     "CancelGrant": GRANTS[:1],
     "IntakeTypeChange": (
-        "0 None (stops arrivals), 1 FillCapacity, 2 TotalPrisoners, 3 NumPerDay, "
-        "4 AllAvailable. Pause intake when prisoners exceed cells.",
+        "Closed (stops arrivals), Fill Capacity, Total Prisoners, Num Per Day, All "
+        "Available (0-4). Pause intake when prisoners exceed cells. TODO: per-category "
+        "intake controls (MinSec / Normal / MaxSec) are not wired yet.",
         *PEOPLE[:1],
     ),
     "ElectricalSwitch": POWER[1:2],

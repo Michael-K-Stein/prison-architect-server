@@ -133,4 +133,4 @@ Replies from `ctl send`, `ctl build`, `ctl hire` and `ctl action NAME` carry a `
 with the rules that matter for that command; `ctl hints` prints them all (topics: doors,
 power, people, grants, build). Read them before building: workmen cannot open JailDoors,
 a building needs a Door or StaffDoor first, Batteries are indoor only, unhoused prisoners
-die (pause intake with `ctl send IntakeTypeChange None`).
+die (pause intake with `ctl send IntakeTypeChange Closed`).
