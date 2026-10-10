@@ -94,3 +94,13 @@ HoldingCell/PaddedHoldingCell, Shower, Yard, Kitchen, Canteen rooms that meet th
 the full name is `Grant_bootstraps`, any spelling works in the bot); the first goal is to find
 out whether MKS2 already had it done or why it is not listed. Use `ctl hints`, doors for every
 building, a Transformer for green power, intake Closed while prisoners lack cells.
+
+### Unknown ObjectData keys `p`, `v`, `o` (user, BrowserStat -> ObjectData/<id>)
+
+They exist on workmen (and other staff and prisoners), change very rapidly, and have no save
+name. Not found in any `ObjectData` constructor decompiled so far (`sub_1407D1E10` WorldObject
+and the Person / Door / Container / electrical classes), so they come from a function that registers
+them without a long name. Facts so far (MKS2, `mks2-bot4.sqlite`, 26 workmen + staff) and
+hypotheses already **rejected** are in the journal ("Unknown ObjectData keys p, v, o"). Next step:
+find the registering function in IDA (xrefs to the 1-char strings `"p"`, `"v"`, `"o"` at
+`0x140ADA774`-ish in `.rdata` next to `"ss"`, `"rs"`, `"s1"`) and read which members they bind.

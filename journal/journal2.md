@@ -2024,3 +2024,27 @@ prisoners, no cells); 3 Guards, 26 Workmen, an Accountant, a Warden are hired; o
 are target_ExportPower1-3, target_ChargeBattery, target_PassReform (a Haiku agent was working on
 them); completed: GreenMachine, EcoFriendly, Administration, SolarPanels, WindTurbine,
 PowerStation.
+
+### Unknown ObjectData keys `p`, `v`, `o` (TODO from the user; not solved)
+
+Checked against the same objects' real positions from `Save Objects` (14 workmen, a
+Warden, an Accountant):
+- **`o`**: 16-bit unsigned (0..65535). Read as an angle (`o/65536*360`) it does NOT match the
+  save's orientation (`Or.x/Or.y`) of the same object: 130.4 deg vs 280.9, 190.1 vs 269.1. Values
+  look uniform over the range and change every update.
+- **`v`**: signed 32-bit. Mostly 0 or small negatives (-3 .. -75, i.e. `0xFFFFFFB5`-style),
+  otherwise large values that are a pair of int16 (hi, lo): -1376185 = (-21, 71), 1179664 = (18, 16),
+  131128 = (2, 56), 3735617 = (57, 65). Does not match the save's `Vel` either (workman 16:
+  `v` 524351 = (8, 63) vs Vel (-0.58, 0.54)).
+- **`p`**: 32-bit unsigned, **clusters around `0x55555555` (1431655765)** for almost every
+  object: workmen read `0x5558xxxx`..`0x555Fxxxx` (high half 21828..21882, low half 20765..21288)
+  regardless of where they stand (positions 84..89 x 39..57, and the Warden at 67,35 gives
+  21588); only the Accountant differs (17569 / 20946). Consecutive values for one object differ
+  by tens to a few thousand, with occasional jumps of about 65536. Not a position (hi/256 and
+  lo/256 give 85.4 / 81.2 for every workman), and not an ObjectId.
+- Reading: `0x5555....` is an alternating-bit fill, so `p` may be a counter or hash seeded with
+  that pattern, or uninitialised/debug memory synced as a field (the same family as the unnamed
+  `a`, `ttt`, `inst`, `la`, `esr`). They change on every update, which is why they flood `ObjectData`
+  snapshots; the bot ignores them. To settle it: decompile the function that registers `"p"`,
+  `"v"`, `"o"` (find them with the byte search used in `ida_keys*.py`: ` p `, ` v `,
+  ` o ` in `.rdata`, then xrefs) and read which members they bind.

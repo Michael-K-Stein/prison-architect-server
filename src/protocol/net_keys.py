@@ -30,6 +30,9 @@ KEYS: dict[str, dict[str, str]] = {
         "inst": "? bool, default true (installed?)",
         "sl": "Slot: carried object slot 0-19 (sl0 ... sl19)",
         "d": "Dest: where it is walking to (d.x, d.y)",
+        "p": "? unknown, fast-changing int near 0x55555555 (not position; see TODO.md)",
+        "v": "? unknown int, 0 / small negative / packed int16 pair (not Vel; see TODO.md)",
+        "o": "? unknown 16-bit value (not Orientation; see TODO.md)",
         # Person (prisoners, staff), fn 0x14052F7B0
         "eq": "Equipment",
         "cae": "ActionEquipment",
