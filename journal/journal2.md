@@ -1755,3 +1755,17 @@ older `Grant_GreenMachine` (solar / wind / hybrid, one each) is a separate grant
   target_WindTurbine Completed; target_GreenEnergySource counts 10/10/10;
   target_PowerStation clock started; Export, Battery and PassReform not done.
   Bureaucracy: staff hired and seated, sixteen researches done.
+
+### A real client builds a foundation (as seen by the bot in MKS2, `captures/mks2-bot.sqlite`)
+
+The host mirrors each player's pending tool use in `PlayerData` (`Job {...}`
+with `Status=1` while the area is valid, `Status=-2` when refused). Dragging a
+foundation over several frames: `SizeX/SizeY` 1x1 -> 5x7 -> 10x10 -> 14x10 at
+(58,27), with `Cost` -60, -1350, -2800, -3600 (negative = price) and `Speed`
+60 -> 100 -> 140 (grows with the area; 60 for a single cell). On release the
+host adds it to `ConstructionSystem` as `Status=2`, `Counter`/`Counter2`
+(cells left), `BatchId=0`, `Id=0`, `FoundationCostSpent`. Objects:
+`Job {Type='Objects', Material=424, OrY=1, Cost=-200, Speed=60}` (one preview
+per placed cell). The preview fields `Cost`, `Speed`, `QRWallType=46` are
+host-computed; the bot's own `Construction` jobs (which it sends) carry only
+Type, Material, Pos, Size, Or, Status=1.
