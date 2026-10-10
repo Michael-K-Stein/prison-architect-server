@@ -246,15 +246,46 @@ def _inline(node: Node, system: str | None) -> str:
     return f"{head} [{'; '.join(_inline(c, system) for c in node.children)}]"
 
 
+COMPACT_MAX_CHILDREN = 6
+"""Children of the root shown one per line before the rest are counted."""
+COMPACT_SHOWN_GRANDCHILDREN = 3
+"""Children of a deeper node shown inline before ``...+N more``."""
+
+
+def _clip(text: str, limit: int = COMPACT_WIDTH) -> str:
+    return text if len(text) <= limit else f"{text[: limit - 1]}…"
+
+
+def _brief(node: Node, system: str | None, depth: int = 0) -> str:
+    """A node on one bounded line: few children, the rest only counted."""
+    head = format_tree(Node(node.name, node.fields), system=system)[0]
+    kids = node.children
+    if not kids:
+        return head
+    if depth >= 2:
+        return f"{head} [{len(kids)} children]"
+    parts = [_brief(c, system, depth + 1) for c in kids[:COMPACT_SHOWN_GRANDCHILDREN]]
+    if len(kids) > COMPACT_SHOWN_GRANDCHILDREN:
+        parts.append(f"…+{len(kids) - COMPACT_SHOWN_GRANDCHILDREN} more")
+    return f"{head} [{'; '.join(parts)}]"
+
+
 def _compact_snapshot(system: str | None, tree: Node) -> list[str]:
+    """One line when the tree is small, else a bounded summary (never one line per node,
+    a ``World`` snapshot has hundreds: ``CrisisSectorData`` has 150+ children)."""
     prefix = "DirectoryData:"
     if system is not None and system != tree.name:
         prefix += f"{system} "
     one = prefix + _inline(tree, system)
     if len(one) <= COMPACT_WIDTH:
         return [one]
-    lines = format_tree(tree, system=system)
-    return [prefix + lines[0], *("  " + line for line in lines[1:])]
+    head = format_tree(Node(tree.name, tree.fields), system=system)[0]
+    lines = [_clip(prefix + head)]
+    for child in tree.children[:COMPACT_MAX_CHILDREN]:
+        lines.append("  " + _clip(_brief(child, system), COMPACT_WIDTH - 2))
+    if len(tree.children) > COMPACT_MAX_CHILDREN:
+        lines.append(f"  …+{len(tree.children) - COMPACT_MAX_CHILDREN} more children")
+    return lines
 
 
 def compact_event(code: int, data: bytes) -> list[str]:

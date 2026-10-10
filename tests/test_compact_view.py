@@ -53,13 +53,14 @@ def test_compact_is_shorter_than_default() -> None:
         assert len(compact_lines(packet(body))) <= len(log_lines(packet(body)))
 
 
-def test_big_tree_spills_to_children() -> None:
+def test_big_tree_is_summarised_not_spilled() -> None:
     from src.protocol import events
 
     tree = Node("T", [("a", 1)], [Node(f"c{i}", [("x", i)]) for i in range(60)])
     lines = events._compact_snapshot(None, tree)
     assert lines[0] == "DirectoryData:T {a=1}"
-    assert len(lines) == 61 and lines[1] == "    c0 {x=0}"
+    assert len(lines) == 8 and lines[1] == "  c0 {x=0}"
+    assert lines[-1] == "  …+54 more children"
     small = events._compact_snapshot(None, Node("T", [], [Node("c", [("x", 1)])]))
     assert small == ["DirectoryData:T [c {x=1}]"]
     assert COMPACT_WIDTH >= 100
@@ -68,3 +69,17 @@ def test_big_tree_spills_to_children() -> None:
 def test_undecodable_event_shows_hex() -> None:
     (line,) = compact_event(9, b"\xff")
     assert "unparsed" in line and "ff" in line
+
+
+def test_compact_snapshot_with_a_huge_node_stays_short():
+    from src.protocol.events import COMPACT_MAX_CHILDREN, _compact_snapshot
+    from src.protocol.snapshot import Node
+
+    sectors = Node(
+        "CrisisSectorData", [], [Node(str(i), [("x", i)]) for i in range(154)]
+    )
+    tree = Node("World", [("a", 1)], [sectors, Node("ClientData", [("gt", 10.0)])])
+    lines = _compact_snapshot("World", tree)
+    assert len(lines) <= COMPACT_MAX_CHILDREN + 2
+    assert all(len(line) <= 162 for line in lines)
+    assert any("154" in line or "more" in line for line in lines)
