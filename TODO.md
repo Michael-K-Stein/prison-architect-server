@@ -23,6 +23,13 @@ finding in `journal/journal2.md`.
 
 ## Deferred from the MKS2 session (2026-10-10)
 
+- **Utility line optimization** (user): `src/bot/connect.py` is a plain BFS per object (shortest run to the nearest fed
+  cell, earlier runs reused). Replace it with A* (or a Steiner-tree heuristic over all targets at once) and a cost
+  model: cell price (trunk vs branch; long straight runs through several rooms are cheap to draw, lines may cross
+  several foundation borders), overlap protection (never touch the raw green line, never run through generators,
+  keep clear of objects a line is `BlockedBy`), extendability (a straight trunk with free neighbouring cells,
+  runs along room edges, room for later branches). Keep `plan()`'s output (`line` jobs) so `ctl connect` does not change.
+
 Prioritised after the main tasks (room goal, PassReform, Needs report); each is a thread that was opened and
 parked:
 - **DLC gating** (user): offer a DLC object / room / research only when the current game supports it. The data
