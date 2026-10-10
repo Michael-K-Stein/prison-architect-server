@@ -1826,3 +1826,9 @@ depends on the handler, not only on the sender.
 in MKS2. This is the first client-originated packet in this project that changes
 what the host's UI shows; it needs no spoofing of the sender. Reproduce with
 `python main.py bot ctl send NewSpeechAdded 2 "your text"`.
+
+The broadcast one, `ctl send NewSpeechAdded 1 "The CEO here. Great work, Claude. Keep
+the station OFF." --broadcast` (adviser 1 = The CEO, sent to every other player, not
+only the host), was also seen by the user in MKS2. Which screen showed it (host
+`DHost`, client `RealClient`, or both) is still to be confirmed; if the client
+displays it, a client accepts `NewSpeechAdded` from a non-host sender.
