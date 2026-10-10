@@ -48,7 +48,9 @@ finished first.
 ## Recipe: a prisoner cell
 
 Check progress with `ctl area X Y 5 5`: one row of letters per map row,
-`W` wall, `F` floor, `B` frame (walls not built yet), `.` nothing.
+`W` wall, `F` floor (a door's cell also reads `F`), `B` frame (walls not
+built yet), `D` other ground, `.` nothing. At 10x speed, `ctl wait 30` lets
+about 300 game minutes pass.
 
 1. `build foundation X Y 5 5`: a 5x5 building, inside cells `X+1..X+3`,
    `Y+1..Y+3`. Speed up and wait until `ctl area X Y 5 5` shows `F` inside and
