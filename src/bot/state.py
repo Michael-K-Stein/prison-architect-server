@@ -20,10 +20,12 @@ import threading
 import time
 import zlib
 from collections import Counter, deque
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from typing import Any
 
 from src.protocol import rpc
+from src.protocol.enums import OBJECT_TYPES, ROOM_TYPES, name_of
 from src.protocol.snapshot import Node, decode_args, decompress
 
 log = logging.getLogger(__name__)
@@ -33,6 +35,14 @@ OBJECT_ADDED = 13
 OBJECT_REMOVED = 14
 OBJECTIVE_REMOVED = 21
 TRANSACTION_ADDED = 118
+TRANSACTION_APPENDED = 119
+CREATE_ROOM = 15
+REMOVE_ROOM = 16
+TRACKED = frozenset(
+    {OBJECT_ADDED, OBJECT_REMOVED, OBJECTIVE_REMOVED, TRANSACTION_ADDED}
+    | {TRANSACTION_APPENDED, CREATE_ROOM, REMOVE_ROOM}
+)
+"""Event codes (besides DirectoryData) that change the state."""
 OBJECTIVE_SYSTEM = "Objective"
 LIST_ITEM = "[i "
 SAVE_SYSTEM = "Save"
@@ -102,6 +112,27 @@ def _jsonable(value: Any) -> Any:
 
 
 @dataclass(frozen=True)
+class GameObject:
+    """An object the state knows: its ObjectId, type name and position."""
+
+    uid: int
+    index: int
+    name: str
+    pos: tuple[float, float] | None
+
+    @property
+    def object_id(self) -> tuple[int, int]:
+        """``(uId, index)``, as an ``ObjectId`` argument."""
+        return (self.uid, self.index)
+
+    @property
+    def label(self) -> str:
+        """``Name #index``, plus the position when known."""
+        where = f" at {self.pos[0]:g},{self.pos[1]:g}" if self.pos else ""
+        return f"{self.name or '?'} #{self.index}{where}"
+
+
+@dataclass(frozen=True)
 class Transaction:
     """One ``TransactionAdded``: signed amount and ledger key."""
 
@@ -130,6 +161,10 @@ class GameState:
     """Snapshots merged per system."""
     errors: int = 0
     last_update: float = 0.0
+    type_names: dict[int, str] = field(default_factory=lambda: dict(OBJECT_TYPES))
+    """Object type id -> name: the known table, plus pairs learned live."""
+    rooms: dict[int, dict[str, Any]] = field(default_factory=dict)
+    """Rooms by index: ``uId``, ``type`` id, ``name`` (save ``Rooms`` / CreateRoom)."""
     save: StateNode | None = None
     """The host's full save game, once the join handshake delivered it."""
     lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
@@ -164,20 +199,28 @@ class GameState:
                         self.note(f"objective added: {fields['Name']}")
                 return
             self.systems.setdefault(name, StateNode()).merge(tree)
+            if name == "ObjectData":
+                self._learn_type_names(tree)
             return
-        if code not in (
-            OBJECT_ADDED,
-            OBJECT_REMOVED,
-            OBJECTIVE_REMOVED,
-            TRANSACTION_ADDED,
-        ):
+        if code not in TRACKED:
             return
         args = [value for _, value in rpc.parse(code, data).args]
         if code == OBJECT_ADDED:
             (uid, index), type_id = args
-            node = self._objects().children.setdefault(str(index), StateNode())
-            node.fields.update({"uId": uid, "t": type_id})
-            self.note(f"object added: #{index} type {type_id} (uId {uid})")
+            node = StateNode({"uId": uid, "t": type_id})
+            if type_id in self.type_names:
+                node.fields["name"] = self.type_names[type_id]
+            self._objects().children[str(index)] = node
+            label = self.type_names.get(type_id, f"type {type_id}")
+            self.note(f"object added: #{index} {label} (uId {uid})")
+        elif code == CREATE_ROOM:
+            (uid, index), type_id = args
+            self.rooms[index] = {"uId": uid, "type": type_id}
+            self.note(f"room created: #{index} {name_of(ROOM_TYPES, type_id)}")
+        elif code == REMOVE_ROOM:
+            uid, index = args[0]
+            self.rooms.pop(index, None)
+            self.note(f"room removed: #{index}")
         elif code == OBJECT_REMOVED:
             uid, index = args[0]
             self._objects().children.pop(str(index), None)
@@ -186,10 +229,18 @@ class GameState:
             name = _text(args[0])
             self.objectives.pop(name, None)
             self.note(f"objective removed: {name}")
-        else:
+        else:  # TransactionAdded / TransactionAppended
             amount, key = int(args[0]), _text(args[1])
             self.transactions.append(Transaction(amount, key, time.time()))
             self.note(f"money {amount:+d} {key}")
+
+    def _learn_type_names(self, tree: Node) -> None:
+        """A full object entry (with ``t``) for an object named by the save."""
+        objects = self._objects().children
+        for child in tree.children:
+            node = objects.get(child.name)
+            if node and "t" in node.fields and node.fields.get("name"):
+                self.type_names.setdefault(node.fields["t"], node.fields["name"])
 
     def load_save(self, tree: Node) -> None:
         """Keep the host's full save tree (the join handshake's result).
@@ -213,6 +264,14 @@ class GameState:
                     {"uId": f.get("Id.u"), "name": f.get("Type")}
                     | {k: f[k] for k in ("Pos.x", "Pos.y") if k in f}
                 )
+            rooms = self.save.children.get("Rooms")
+            for item in rooms.children.values() if rooms else ():
+                f = item.fields
+                if "Id.i" in f:
+                    self.rooms[f["Id.i"]] = {
+                        "uId": f.get("Id.u"),
+                        "name": f.get("RoomType"),
+                    }
             self.note(f"save game loaded: {len(tree.children)} sections")
 
     def _save_value(self, path: str, key: str) -> Any:
@@ -312,6 +371,48 @@ class GameState:
             objects = self.systems.get("ObjectData")
             node = objects.children.get(str(index)) if objects else None
             return node.fields.get("uId") if node else None
+
+    def objects(self, names: Collection[str] | None = None) -> list[GameObject]:
+        """Known objects (optionally only those whose type name is in ``names``)."""
+        with self.lock:
+            objects = self.systems.get("ObjectData")
+            out = []
+            for index, node in objects.children.items() if objects else ():
+                f = node.fields
+                name = f.get("name") or self.type_names.get(f.get("t", -1), "")
+                if "uId" not in f or (names is not None and name not in names):
+                    continue
+                pos = (f["Pos.x"], f["Pos.y"]) if "Pos.x" in f else None
+                out.append(GameObject(f["uId"], int(index), name, pos))
+            return sorted(out, key=lambda o: (o.name, o.index))
+
+    def squads(self) -> list[GameObject]:
+        """Called-in squads (``Squads.sqd``): their ObjectIds and ``Type``."""
+        with self.lock:
+            node = self.systems.get("Squads")
+            sqd = node.children.get("sqd") if node else None
+            items = [c.fields for c in sqd.children.values()] if sqd else []
+            return [
+                GameObject(f["Id.u"], f["Id.i"], str(f.get("Type", "")), None)
+                for f in items
+                if "Id.u" in f and "Id.i" in f
+            ]
+
+    def research(self) -> dict[int, tuple[float, bool]]:
+        """Research by id: (progress 0..1, desired), from ``Research`` (``N-r``/``N-d``)."""
+        with self.lock:
+            node = self.systems.get("Research")
+            out: dict[int, tuple[float, bool]] = {}
+            for key, value in node.fields.items() if node else ():
+                ident, _, kind = key.partition("-")
+                if ident.isdigit() and kind in ("r", "d"):
+                    progress, desired = out.get(int(ident), (0.0, False))
+                    if kind == "r":
+                        progress = float(value)
+                    else:
+                        desired = bool(value)
+                    out[int(ident)] = (progress, desired)
+            return out
 
     def summary(self) -> dict[str, Any]:
         """A JSON-able overview: money, time, speed, objectives, counts."""

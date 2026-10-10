@@ -137,7 +137,7 @@ class ControlServer:
         except (KeyError, TypeError):
             return 400, {"error": f"unknown action {key!r}"}
         try:
-            values = catalog.parse_args(action, args, self.session.state.uid_of)
+            values = catalog.parse_args(action, args, self.session.state)
             data = rpc.build(action.code, *values)
         except (catalog.ArgError, rpc.RpcShapeError) as exc:
             return 400, {"error": str(exc)}

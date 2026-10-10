@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from src.protocol.enums import RESEARCH, ROOM_TYPES, STAFF, VEHICLES, name_of
 from src.protocol.rpc import COMPONENTS, COMPOSITE_ARITY
 from src.protocol.rpc_table import RPCS
 
@@ -279,12 +280,122 @@ def _object_id(arg: Arg, text: Any, resolve: Any) -> tuple[int, int]:
     return int(uid), index
 
 
-def parse_args(action: Action, values: list[Any], resolve: Any = None) -> list[Any]:
-    """All of ``action``'s arguments from text/JSON values (count checked)."""
+def parse_args(action: Action, values: list[Any], state: Any = None) -> list[Any]:
+    """All of ``action``'s arguments from text/JSON values (count checked).
+
+    With the :class:`~src.bot.state.GameState`, a value may also be one of the
+    argument's :func:`choices` by label (``RiotPolice``, ``Warden #132``), and
+    an ``ObjectId`` may be ``#index``.
+    """
     if action.blocked:
         raise ArgError(f"{action.name}: {action.blocked}")
     if len(values) != len(action.args):
         raise ArgError(
             f"{action.signature} takes {len(action.args)} arguments, got {len(values)}"
         )
-    return [parse_arg(a, v, resolve) for a, v in zip(action.args, values)]
+    resolve = state.uid_of if state is not None else None
+    return [
+        parse_arg(a, _by_label(a, v, state), resolve)
+        for a, v in zip(action.args, values)
+    ]
+
+
+@dataclass(frozen=True)
+class Choice:
+    """One value an argument can take, and what the user sees."""
+
+    value: Any
+    label: str
+
+
+SOURCES: dict[str, str] = {
+    "vehicle": "vehicle",
+    "squad": "squad",
+    "staff": "staff",
+    "prisoner": "prisoner",
+    "informant": "prisoner",
+    "research": "research",
+    "grant": "grant",
+    "objective": "objective",
+    "room": "room",
+    "cell": "room",
+    "other": "room",
+    "speed": "speed",
+}
+"""Argument name -> where its choices come from (see :func:`choices`)."""
+
+SPEEDS = {0: "paused", 1: "1x", 2: "2x", 5: "5x", 10: "10x"}
+"""``GameSpeedChange``: the multiplier (journal2, live test)."""
+
+
+def source(arg: Arg) -> str:
+    """The choices source of ``arg`` ('' = free input)."""
+    if arg.type == "bool":
+        return "bool"
+    found = SOURCES.get(arg.name.rstrip("?"), "")
+    if not found and arg.type == "ObjectId":
+        return "object"
+    return found
+
+
+def choices(arg: Arg, state: Any = None) -> list[Choice]:
+    """The values ``arg`` can take, named; [] when it is free input.
+
+    Static tables (vehicles, research, speed) need no state; objects, squads,
+    rooms, grants and objectives come from the live ``state``.
+    """
+    kind = source(arg)
+    if kind == "bool":
+        return [Choice(True, "true"), Choice(False, "false")]
+    if kind == "speed":
+        return [Choice(v, label) for v, label in SPEEDS.items()]
+    if kind == "vehicle":
+        return [Choice(v, name) for v, name in sorted(VEHICLES.items())]
+    if kind == "research":
+        known = state.research() if state is not None else {}
+        ids = sorted(set(RESEARCH) | set(known))
+        return [Choice(i, _research_label(i, known.get(i))) for i in ids]
+    if state is None:
+        return []
+    if kind == "squad":
+        return [Choice(o.object_id, o.label) for o in state.squads()]
+    if kind in ("staff", "prisoner", "object"):
+        names = {"staff": STAFF, "prisoner": {"Prisoner"}}.get(kind)
+        return [Choice(o.object_id, o.label) for o in state.objects(names)]
+    if kind == "room":
+        return [
+            Choice(
+                (r["uId"], i),
+                f"{r.get('name') or name_of(ROOM_TYPES, r.get('type', -1))} #{i}",
+            )
+            for i, r in sorted(state.rooms.items())
+            if r.get("uId") is not None
+        ]
+    if kind == "grant":
+        names = set(state.grants()) | {
+            n.removeprefix("Grant_") for n in state.objectives if n.startswith("Grant_")
+        }
+        return [Choice(n, n) for n in sorted(names)]
+    if kind == "objective":
+        return [Choice(n, n) for n in sorted(state.objectives)]
+    return []
+
+
+def _research_label(ident: int, progress: tuple[float, bool] | None) -> str:
+    label = name_of(RESEARCH, ident)
+    if progress is not None:
+        done, desired = progress
+        label += f" ({done:.0%}{', researching' if desired else ''})"
+    return label
+
+
+def _by_label(arg: Arg, value: Any, state: Any) -> Any:
+    """``value`` swapped for a choice's value when it names one."""
+    if not isinstance(value, str) or not source(arg) or source(arg) == "bool":
+        return value
+    wanted = value.strip().lower()
+    for choice in choices(arg, state):
+        label = choice.label.lower()
+        if wanted in (label, label.split(" (")[0], label.split(" at ")[0]):
+            return choice.value
+    return value

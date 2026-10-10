@@ -205,7 +205,7 @@ def browse_text(state: Any, path: str, depth: int = BROWSE_DEPTH) -> str:
 def send(session: Any, action: Action, values: Sequence[Any]) -> str:
     """Parse, build and raise ``action``; the log line for the result."""
     try:
-        args = parse_args(action, list(values), session.state.uid_of)
+        args = parse_args(action, list(values), session.state)
         data = rpc.build(action.code, *args)
     except (ArgError, ValueError, TypeError) as exc:
         return f"error {action.name}: {exc}"
