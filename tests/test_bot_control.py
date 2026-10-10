@@ -26,12 +26,14 @@ class FakeSession:
         self.lock = threading.RLock()
         self.disconnected: object | None = None
         self.sent: list[tuple[int, bytes]] = []
+        self.broadcasts: list[bool] = []
         host = SimpleNamespace(nick_name="Host")
         room = SimpleNamespace(name="Jail", players={1: host})
         self.client = SimpleNamespace(current_room=room)
 
     def raise_event(self, code: int, data: bytes, *, broadcast: bool = False) -> bool:
         self.sent.append((code, data))
+        self.broadcasts.append(broadcast)
         return True
 
     def build(self, jobs: list[Any]) -> bool:
@@ -226,3 +228,24 @@ def test_join_room_headless(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(ConnectError):
         flow.join_room(opts, "eu", "Missing")
     assert stopped == [True]
+
+
+def test_ctl_broadcast_speakers_and_recipients(
+    served: tuple[ControlServer, FakeSession],
+) -> None:
+    server, session = served
+    runner = CliRunner()
+    port = ["ctl", "--port", str(server.port)]
+    result = runner.invoke(app, [*port, "broadcast", "Hello all", "--from", "Warden"])
+    assert result.exit_code == 0, result.output
+    assert session.sent[-1][0] == 117  # NewSpeechAdded
+    assert session.broadcasts[-1] is True  # default: everyone
+    result = runner.invoke(
+        app, [*port, "broadcast", "Just you", "--from", "the ceo", "--to", "host"]
+    )
+    assert result.exit_code == 0, result.output
+    assert session.broadcasts[-1] is False
+    assert runner.invoke(app, [*port, "broadcast", "x", "--from", "Nobody"]).exit_code
+    assert runner.invoke(
+        app, [*port, "broadcast", "x", "--from", "CEO", "--to", "all"]
+    ).exit_code

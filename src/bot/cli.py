@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from enum import Enum
@@ -24,6 +25,7 @@ from urllib.parse import quote
 import typer
 from rich.console import Console
 
+from src.bot.broadcast import SPEAKERS, speaker_index
 from src.bot.control import DEFAULT_PORT, ControlServer, call
 from src.bot.flow import join_flow, join_room, pick
 from src.bot.formatting import format_region
@@ -373,6 +375,47 @@ def ctl_send(
 ) -> None:
     """Send one RPC (to the host; --broadcast: to everyone else)."""
     body = {"action": action, "args": args or [], "broadcast": broadcast}
+    _show(ctx, "POST", "/send", body)
+
+
+@ctl.command("broadcast")
+def ctl_broadcast(
+    ctx: typer.Context,
+    message: Annotated[str, typer.Argument(help="What the adviser says.")],
+    speaker: Annotated[
+        str | None,
+        typer.Option(
+            "--from",
+            help=f"Who speaks: {', '.join(SPEAKERS)}. Asks from a list if omitted.",
+        ),
+    ] = None,
+    to: Annotated[
+        str,
+        typer.Option(
+            help="Who receives it: everyone (default: every other player) or host "
+            "(the host only).",
+        ),
+    ] = "everyone",
+) -> None:
+    """Show a message spoken by an adviser, to every player or to the host only."""
+    if to not in ("everyone", "host"):
+        raise typer.BadParameter("--to must be everyone or host")
+    if speaker is None:
+        if not sys.stdin.isatty():
+            raise typer.BadParameter("--from is required without a terminal")
+        speaker = pick(
+            "Who speaks?",
+            [(f"The {name}", name) for name in SPEAKERS],
+        )
+    try:
+        index = speaker_index(speaker)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from None
+    body = {
+        "action": "NewSpeechAdded",
+        "args": [str(index), message],
+        "broadcast": to == "everyone",
+    }
     _show(ctx, "POST", "/send", body)
 
 
