@@ -486,6 +486,27 @@ class GameState:
                 if alert.urgent:
                     item["urgent"] = True
                 items.append(item)
+            exhausted = self._exhausted_staff()
+            if exhausted:
+                item = {
+                    "kind": "report",
+                    "id": "StaffExhausted",
+                    "title": TEXT.get("objective_staffexhausted", "Staff Exhausted"),
+                    "text": TEXT.get(
+                        "objective_reststaff_exhausted",
+                        "*X staff members are exhausted.",
+                    ).replace("*X", str(exhausted)),
+                    "count": exhausted,
+                }
+                if not any(
+                    name_of(ROOM_TYPES, r.get("type", -1)) == "Staffroom"
+                    for r in self.rooms.values()
+                ):
+                    item["advice"] = TEXT.get(
+                        "objective_reststaff_needstaffroom",
+                        "Build a Staff Room so they can rest.",
+                    )
+                items.append(item)
             intake = self.save.children.get("Intake") if self.save else None
             if intake is not None:
                 mode = intake.fields.get("IntakeType")
@@ -501,6 +522,10 @@ class GameState:
                     }
                 )
             return items
+
+    def _exhausted_staff(self) -> int:
+        """How many staff members are exhausted (rest required or energy 0)."""
+        return int(self.staff_needs().get("exhausted", 0))
 
     def alerts_since(self, seq: int = 0) -> list[Alert]:
         """Alerts with a sequence number above ``seq`` (oldest first)."""

@@ -154,3 +154,11 @@ def test_staff_alerts_are_interrupts_with_the_games_advice() -> None:
     assert state.take_new_alerts() == []  # delivered once
     assert [a.seq for a in state.alerts_since(0)] == [1]
     assert first.as_dict()["urgent"] is True
+
+
+def test_todo_lists_exhausted_staff_with_the_staffroom_advice() -> None:
+    state = GameState()
+    state._exhausted_staff = lambda: 3  # type: ignore[method-assign]
+    item = next(i for i in state.todo() if i["id"] == "StaffExhausted")
+    assert item["text"] == "3 staff members are exhausted."
+    assert item["advice"] == "Build a Staff Room so they can rest."
