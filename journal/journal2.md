@@ -1222,3 +1222,62 @@ researched; names not yet known). New systems seen: `Thermometer`,
 `ServedTerm` (released at ~1383 s). The records have no cause. No bot RPC was
 sent near the deaths except the loan spam; `FeedAllPrisoners` was re-raised all
 session, so starvation is the likeliest cause (*guess*).
+
+The user confirmed in the game's reports tab that the 7 prisoners **starved**.
+
+## Object, material and room tables (IDA, sub-agent of Claude Opus 5.5)
+
+The ids are not assigned from the data files: each table is a static
+`std::string` array filled by an initialiser at startup, and the index is the
+id. Generated into `src/protocol/game_tables.py` (from
+`C:\Users\mkupe\scratch\ida\out\enums.json`):
+
+| Table | Source | Ids |
+| ----- | ------ | --- |
+| objects (`ObjectData.t`, `ObjectAdded`, `Objects` job `Material`) | `0x140DFF4E0`, stride 0x20, `sub_1400AC2A0` | 0-600 |
+| materials (Foundations / walls / floors job `Material`) | `sub_1400763B0` | 0-144 |
+| rooms (`CreateRoom`, `Designation` job `Material`) | `sub_1400788D0` | 0-61 |
+| vehicles (`NewVehicleCallout`) | `sub_140075F50` | 0-17 |
+| job types (`Job.Type`, sent as the name) | `0x140DA6040`, `sub_14000ABE0` | 0-24 |
+| intake types (`IntakeTypeChange`, button order, *guess* mapping) | `sub_14030DCF0` | 0-4 |
+
+Every id seen in a capture matches: objects 5 Bed, 9 Toilet, 14 Chair, 26
+JailDoor, 41 StaffDoor, 109 Prisoner, 124 TruckDriver, 132 Warden, 139
+SupplyTruck, 145 Hearse, 231 OfficeDesk, 233 FilingCabinet, 241 PowerStation;
+materials 46 ConcreteWall, 59 BuildingConcrete; rooms 1 Cell, 17 Office;
+vehicles 1 FireEngine, 3 RiotPolice. Two object entries are filled
+differently in the decompile and were added by hand: 125 SpiritualLeader,
+489 Rat. Job types: 0 TopLevel, 1 Foundations, 2 WallsAndDoors, 3 flooring,
+4 Designation, 5 Objects, 6 Staff, 7 Utilities, ... 14 Spawn, ... 24 Crisis.
+`SpawnObject` (110) is the debug Spawn tool, not hiring.
+
+## How a client builds (IDA + live, Claude Opus 5.5)
+
+From the binary: a client's build tool queues jobs and sends them as
+**`DirectoryData(9, "Construction", tree)`** (`sub_1403CCED0`, per frame),
+not via `PlayerData` (a display mirror) or `PlanningJobChange`:
+
+    Construction {pn=<actor>}
+      Jobs {Size=N}
+        [i 0] {Type='Foundations', Material=59, PosX, PosY, SizeX, SizeY, OrX, OrY, Status=1}
+
+The host's `DirectoryData` handler (`sub_1403CDDB0` -> `sub_1403CDF70`) adds
+each job with the routine its own tool uses (`sub_1404C9C00`) and re-checks it
+(`sub_1404BF930`); a refused job sends the player an "OrderFailed" message.
+
+`snapshot.encode_tree` / `compress` write the tree (byte-identical to the
+host's on all 6,451 `PlayerData`/`ConstructionSystem`/`WorkQueue`/`RoomData`
+trees in `bot-goal.sqlite`); `src/bot/build.py` makes the jobs.
+
+**Live (room `A`)**:
+- `foundation(10, 10, 5, 5)` -> the host's `ConstructionSystem.Jobs` got
+  `{Type='Foundations', Material=59, PosX=10, PosY=10, SizeX=5, SizeY=5,
+  Status=2, Cost=-1050, BatchId=14, Id=17}` (#83500); `FoundationCostSpent`
+  ran to -1050 and workmen built it. The user saw it in the game.
+- One batch with `room(11,11,3,3,'Cell')`, `place('Bed',11,11)`,
+  `place('Toilet',13,11)` and `place('JailDoor',12,14)`, sent while the
+  foundation was still being built: only the **JailDoor** was taken (a
+  `WorkQueue` `InstallObject ObjType='JailDoor'` at (12,14), then a JailDoor
+  object). No bed or toilet job and no `CreateRoom`. Not yet known whether
+  they were refused because the floor wasn't finished, or whether zoning
+  (`Designation`) uses another path.
