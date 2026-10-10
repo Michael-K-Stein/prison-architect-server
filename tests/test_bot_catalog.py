@@ -19,8 +19,8 @@ def test_every_rpc_is_an_action() -> None:
 
 
 def test_blocked_actions_name_the_unknown_type() -> None:
-    assert ACTIONS[56].blocked == "wire format unknown: Vector2"
-    assert ACTIONS[47].blocked == ""
+    assert ACTIONS[88].blocked == "wire format unknown: NetworkSoundId, SoundConstraint"
+    assert ACTIONS[56].blocked == ""
 
 
 def test_sendable_actions_build() -> None:
@@ -29,6 +29,9 @@ def test_sendable_actions_build() -> None:
             continue
         sample = {"int": "1", "signed char": "0", "float": "1.5", "bool": "yes"}
         sample |= {"string": "x", "MemoryBlock": "00", "ObjectId": "5,6"}
+        sample |= {"SoundObjectId": "5,6", "WorldPosition": "1,2", "Vector2": "1,2"}
+        sample |= {"Vector3": "1,2,3", "MisconductPolicy": "1,2,yes,no,3"}
+        sample |= {"CustomSectorNetworkData": ",".join(["1"] * 12)}
         values = [sample[a.type] for a in action.args]
         rpc.build(action.code, *parse_args(action, values))
 
@@ -46,4 +49,13 @@ def test_bad_values_and_counts() -> None:
     with pytest.raises(ArgError, match="takes 1 arguments"):
         parse_args(ACTIONS[47], [])
     with pytest.raises(ArgError, match="unknown"):
+        parse_args(ACTIONS[95], ["0"])
+    with pytest.raises(ArgError, match="takes 2 values"):
         parse_args(ACTIONS[56], ["1,2", "3"])
+
+
+def test_composites_round_trip() -> None:
+    args = parse_args(ACTIONS[61], ["4", "1,2,true,false,3", "5"])
+    data = rpc.build(61, *args)
+    assert data == bytes.fromhex("0204 0201 0202 01 00 0203 0205")
+    assert rpc.parse(61, data).args[1] == ("MisconductPolicy", (1, 2, True, False, 3))

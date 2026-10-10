@@ -1070,3 +1070,62 @@ events. A node may repeat a field (`Bio.Traits` x4); the state keeps a list.
   the same reader. All 91 parse now.
 - `[i N]` children (`CellData`'s changed cells, `Convictions`) are a list sent
   whole, not stable keys, so the state replaces them instead of merging.
+
+### Join handshake and composite types (IDA, sub-agent of Claude Opus 5.5)
+
+Read from the decompile (`../ida-work/db/pa.i64`); scripts in
+`C:\Users\mkupe\scratch\ida\`. Not yet seen on the wire.
+
+- **Sending**: every game RPC goes through `0x1401344C0` -> `PhotonInterfaceOld`
+  slot 2 (`0x14012B6D0`) as a *reliable* `RaiseEvent`. A client's commands go to
+  **actor 1 only** (TargetActors `[1]`); "is host" (`0x1403C38C0`) = not
+  connected, or local actor number 1. Seen for `GameSpeedChange`
+  (`0x1403CA220`), `AcceptGrant` (`0x1403C8100`), `EntityUpdateRequest`
+  (`0x1403CC170`), `WireDataRequested` (`0x1403CA130`). Handlers don't check
+  the sender, except `AuthoriseConnection`.
+- **Join** (`SaveGameSender`, built at `0x1403E49C0`, which registers ids 1-4):
+  1. joiner -> actor 1: `AuthoriseConnection(password)` on a successful Photon
+     join (`0x1403C3D70`); the string is the room password, may be empty.
+  2. host (`0x1403C4870`): kicked name -> `KickPlayer` (6); password set and
+     different -> `IncorrectPassword` (7); else the actor is queued. Joiners
+     are served one at a time (tick `0x1403E4D60`).
+  3. host -> joiner: `ProcessingStarted` (4), then `SendingSaveGame` (8).
+     The save is a `"FullSave"` tree (`SaveGame::writeSystemSections`),
+     compressed like the `DirectoryData` blobs (zlib + reversed size trailer,
+     `0x14011FCB0`).
+  4. host -> joiner: `SetNumSaveDataChunks(count, check)`, then
+     `SaveDataChunk` (3) of at most 0x7FFF bytes. `check` mixes `count` with a
+     15-bit content flag set (DLC ownership *guess*); the joiner inverts it.
+  5. joiner -> host: `SaveDataChunkAck` (2) after **every** chunk; the host
+     sends the next chunk only on the ack, and resets after 10 s without one.
+     The joiner then joins, decompresses and loads (`0x1403E5B90`); there is
+     no "done" RPC.
+- **`GameSpeedChange` handler** (`0x1403CA270`): `world+136 = (float)arg`, so
+  the argument looks like the multiplier, not a stop index (not confirmed).
+  **`AcceptGrant`** (`0x1403C8180`) passes its string to the objectives code:
+  the grant name, as guessed.
+- **Composite wire values** (per-type send functions):
+  `ObjectId`/`SoundObjectId` = int, int (`0x140151000`); `WorldPosition` = int,
+  int (`0x1403D2870`); `Vector2` = float, float (`0x1403D42F0`); `Vector3` =
+  3 floats (`0x1403C0060`); `MisconductPolicy` = int, int, raw byte, raw byte,
+  int (`0x1403E67A0`); `CustomSectorNetworkData` = 12 raw bytes
+  (`0x1403D2C60`); `SoundConstraint` = int type, + 2 ints if type is 1
+  (`0x1403E6AB0`); `NetworkSoundId` = `0`, or `1, int, int` (`0x1403BAAF0`).
+  The last two have a variable length, so the 6 sound RPCs (88-91, 95) and
+  nothing else stay unbuildable. `src/protocol/rpc.py` `COMPONENTS` now holds
+  these.
+- **Correction to "Wire format of bool"**: the compact int reader
+  (`0x140134870`) reads tag `01` as the number **1** (and `00` as 0), so a bool
+  byte `01` is also a valid int 1; `decode_args` read it as 0, now fixed.
+- My live `AuthoriseConnection("")` (above) was encoded `10` (empty byte
+  string); the game writes an empty string as `00` (code 118). The encoder now
+  writes `00`. It was also sent to "Others", not only actor 1 (host included,
+  so probably not the cause).
+
+### Mistakes log (continued)
+
+- The IDA agent first assumed every id is registered in `0x1403C11D0`; ids
+  1-4 are in the `SaveGameSender` constructor. `0x140ad7a48` is not the
+  manager's vtable (`0x140ad8310` is).
+- I sent `AuthoriseConnection("")` live before checking how the game writes an
+  empty string, although this journal already said `00`.

@@ -17,7 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from src.protocol.rpc import COMPOSITE_ARITY
+from src.protocol.rpc import COMPONENTS, COMPOSITE_ARITY
 from src.protocol.rpc_table import RPCS
 
 HANDSHAKE = frozenset({0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 143})
@@ -153,6 +153,12 @@ TYPE_HINTS = {
     "string": "text",
     "MemoryBlock": "hex bytes",
     "ObjectId": "uId,index (or #index: uId from state)",
+    "SoundObjectId": "uId,index",
+    "WorldPosition": "x,y (whole numbers)",
+    "Vector2": "x,y",
+    "Vector3": "x,y,z",
+    "MisconductPolicy": "int,int,bool,bool,int",
+    "CustomSectorNetworkData": "12 true/false values, comma-separated",
 }
 
 
@@ -240,6 +246,16 @@ def parse_arg(arg: Arg, text: Any, resolve: Any = None) -> Any:
             return bytes.fromhex(str(text))
         if t == "ObjectId":
             return _object_id(arg, text, resolve)
+        if parts := COMPONENTS.get(t):
+            items = text if isinstance(text, (list, tuple)) else str(text).split(",")
+            if len(items) != len(parts):
+                raise ArgError(
+                    f"{arg.name}: {t} takes {len(parts)} values ({arg.hint})"
+                )
+            return tuple(
+                parse_arg(Arg(f"{arg.name}[{i}]", p), v)
+                for i, (p, v) in enumerate(zip(parts, items))
+            )
     except (TypeError, ValueError) as exc:
         if isinstance(exc, ArgError):
             raise

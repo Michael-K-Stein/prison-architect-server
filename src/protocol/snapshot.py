@@ -23,6 +23,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 FLOAT_TAG = 0x1A
+ONE_TAG = 0x01
+"""Tag ``01`` is the number 1 (no bytes follow); IDA ``0x140134870``."""
 
 
 @dataclass
@@ -90,6 +92,8 @@ def decode_args(data: bytes) -> list[Any]:
         kind, size = tag >> 4, max((tag & 0x7) - 1, 0)
         if tag == FLOAT_TAG:
             values.append(struct.unpack("<f", reader.take(4))[0])
+        elif tag == ONE_TAG:
+            values.append(1)
         elif kind == 0:
             value = reader.uint(size)
             values.append(-value if tag & 0x8 else value)

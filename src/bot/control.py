@@ -247,8 +247,8 @@ class _Handler(BaseHTTPRequestHandler):
                 c.stopped.wait(seconds)
                 self._reply(200, c.state())
             elif path == "/quit":
+                c.stop()  # shuts down from another thread, after this reply
                 self._reply(200, {"quit": True})
-                c.stop()
             else:
                 self._reply(404, {"error": f"unknown endpoint {path}"})
         except ValueError as exc:

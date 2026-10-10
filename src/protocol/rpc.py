@@ -33,26 +33,31 @@ from dataclasses import dataclass
 from typing import Any
 
 from src.protocol.rpc_table import RPCS
-from src.protocol.snapshot import FLOAT_TAG
+from src.protocol.snapshot import FLOAT_TAG, ONE_TAG
+
+PRIMITIVES = frozenset({"int", "bool", "float", "string", "signed char", "MemoryBlock"})
+"""Types that are one wire value (``bool`` a raw byte, the others tagged)."""
+
+COMPONENTS: dict[str, tuple[str, ...] | None] = {
+    # measured: code 13 (x5, with int) and 14 (x1, alone); IDA 0x140151000
+    "ObjectId": ("int", "int"),
+    # journal2 "Join handshake and composite types" (per-type send functions)
+    "SoundObjectId": ("int", "int"),
+    "WorldPosition": ("int", "int"),
+    "Vector2": ("float", "float"),
+    "Vector3": ("float", "float", "float"),
+    "MisconductPolicy": ("int", "int", "bool", "bool", "int"),
+    "CustomSectorNetworkData": ("bool",) * 12,  # 12 raw bytes (bools *guess*)
+    "SoundConstraint": None,  # variable: type, then 2 ints if type == 1
+    "NetworkSoundId": None,  # variable: 0, or 1 + 2 ints
+}
+"""The primitive wire values a composite type flattens to; None = variable."""
 
 COMPOSITE_ARITY: dict[str, int | None] = {
-    "int": 1,  # measured: code 13 (x5, with ObjectId) and 118 (x8)
-    "bool": 1,  # one raw byte 00/01 (from the binary; not a tagged value)
-    "float": 1,  # format only: one 0x1a tag; not seen in captures
-    "string": 1,  # measured: code 118 (x8) and 9 (x1461, with MemoryBlock)
-    "signed char": 1,  # measured: code 118 (x8)
-    "MemoryBlock": 1,  # measured: code 9 (x1461)
-    "ObjectId": 2,  # measured: code 13 (x5, with int) and 14 (x1, alone)
-    "Vector2": None,  # unknown: no captured code uses it
-    "Vector3": None,  # unknown: no captured code uses it
-    "WorldPosition": None,  # unknown: no captured code uses it
-    "MisconductPolicy": None,  # unknown: no captured code uses it
-    "SoundConstraint": None,  # unknown: no captured code uses it
-    "SoundObjectId": None,  # unknown: no captured code uses it
-    "NetworkSoundId": None,  # unknown: no captured code uses it
-    "CustomSectorNetworkData": None,  # unknown: no captured code uses it
+    **dict.fromkeys(PRIMITIVES, 1),
+    **{t: None if c is None else len(c) for t, c in COMPONENTS.items()},
 }
-"""Flat wire values per declared type; ``None`` = not yet measured."""
+"""Flat wire values per declared type; ``None`` = not fixed (can't build)."""
 
 MAX_MAGNITUDE_BYTES = 3
 """Largest whole-number magnitude (in bytes) the encoder writes."""
@@ -119,7 +124,7 @@ def _encode_bytes(data: bytes) -> bytes:
         msg = f"{len(data)} bytes is too long for a byte string tag"
         raise ValueError(msg)
     if size == 0:
-        return b"\x10"
+        return b"\x00"  # the game sends an empty string as 0 (code 118's last arg)
     return bytes([0x10 | (size + 1)]) + len(data).to_bytes(size, "little") + data
 
 
@@ -158,8 +163,15 @@ def encode_args(values: list[int | float | bool | bytes | str]) -> bytes:
     return bytes(out)
 
 
-def _arity(type_name: str) -> int | None:
-    return COMPOSITE_ARITY.get(type_name)
+def _components(rpc: Rpc, type_name: str) -> tuple[str, ...]:
+    """The primitive types ``type_name`` is written as; error if not fixed."""
+    if type_name in PRIMITIVES:
+        return (type_name,)
+    parts = COMPONENTS.get(type_name)
+    if parts is None:
+        msg = f"{rpc.name}: wire size of {type_name} is unknown"
+        raise RpcShapeError(msg)
+    return parts
 
 
 def _read_tagged(rpc: Rpc, data: bytes, pos: int) -> tuple[Any, int]:
@@ -179,6 +191,8 @@ def _read_tagged(rpc: Rpc, data: bytes, pos: int) -> tuple[Any, int]:
     pos += 1
     if tag == FLOAT_TAG:
         return struct.unpack("<f", take(4))[0], pos + 4
+    if tag == ONE_TAG:
+        return 1, pos
     kind, size = tag >> 4, max((tag & 0x7) - 1, 0)
     if kind == 0:
         value = int.from_bytes(take(size), "little")
@@ -201,26 +215,22 @@ def _walk(rpc: Rpc, data: bytes) -> list[tuple[str, object]]:
     args: list[tuple[str, object]] = []
     pos = 0
     for type_name in rpc.types:
-        if type_name == "bool":
-            if pos >= len(data):
-                msg = f"{rpc.name}: truncated at byte {pos}"
-                raise RpcShapeError(msg)
-            byte = data[pos]
-            pos += 1
-            if byte not in (0, 1):
-                msg = f"{rpc.name}: bool byte 0x{byte:02x} is not 00 or 01"
-                raise RpcShapeError(msg)
-            args.append((type_name, bool(byte)))
-            continue
-        size = _arity(type_name)
-        if size is None:
-            msg = f"{rpc.name}: wire size of {type_name} is unknown"
-            raise RpcShapeError(msg)
         values: list[Any] = []
-        for _ in range(size):
-            value, pos = _read_tagged(rpc, data, pos)
-            values.append(value)
-        args.append((type_name, values[0] if size == 1 else tuple(values)))
+        for part in _components(rpc, type_name):
+            if part == "bool":
+                if pos >= len(data):
+                    msg = f"{rpc.name}: truncated at byte {pos}"
+                    raise RpcShapeError(msg)
+                byte = data[pos]
+                pos += 1
+                if byte not in (0, 1):
+                    msg = f"{rpc.name}: bool byte 0x{byte:02x} is not 00 or 01"
+                    raise RpcShapeError(msg)
+                values.append(bool(byte))
+            else:
+                value, pos = _read_tagged(rpc, data, pos)
+                values.append(value)
+        args.append((type_name, values[0] if len(values) == 1 else tuple(values)))
     if pos != len(data):
         msg = f"{rpc.name}: {len(data) - pos} trailing bytes"
         raise RpcShapeError(msg)
@@ -241,23 +251,26 @@ def parse(code: int, data: bytes) -> ParsedRpc:
     return ParsedRpc(rpc, _walk(rpc, data))
 
 
-def _flatten(type_name: str, arg: object) -> list[Any]:
-    size = _arity(type_name)
-    if size is None:
-        msg = f"cannot build {type_name}: its wire size is unknown"
-        raise RpcShapeError(msg)
-    if size == 1:
+def _write(rpc: Rpc, type_name: str, arg: object) -> bytes:
+    """One argument's wire bytes: its components, bools raw, the rest tagged."""
+    parts = _components(rpc, type_name)
+    if len(parts) == 1:
         values = [arg]
-    elif isinstance(arg, tuple) and len(arg) == size:
+    elif isinstance(arg, tuple) and len(arg) == len(parts):
         values = list(arg)
     else:
-        msg = f"{type_name} takes a tuple of {size} values, got {arg!r}"
+        msg = f"{type_name} takes a tuple of {len(parts)} values, got {arg!r}"
         raise RpcShapeError(msg)
-    for value in values:
+    out = bytearray()
+    for part, value in zip(parts, values):
+        if part == "bool":
+            out += _bool_byte(rpc, value)
+            continue
         if isinstance(value, bool) or not isinstance(value, (int, float, str, bytes)):
             msg = f"{type_name}: {value!r} is not a wire value"
             raise RpcShapeError(msg)
-    return values
+        out += encode_args([value])
+    return bytes(out)
 
 
 def _bool_byte(rpc: Rpc, arg: object) -> bytes:
@@ -287,13 +300,7 @@ def build(code: int, *args: object) -> bytes:
     if len(args) != len(rpc.types):
         msg = f"{rpc.name} takes {len(rpc.types)} arguments, got {len(args)}"
         raise RpcShapeError(msg)
-    out = bytearray()
-    for type_name, arg in zip(rpc.types, args):
-        if type_name == "bool":
-            out += _bool_byte(rpc, arg)
-        else:
-            out += encode_args(_flatten(type_name, arg))
-    return bytes(out)
+    return b"".join(_write(rpc, t, arg) for t, arg in zip(rpc.types, args))
 
 
 def _value_text(type_name: str, value: object) -> str:
