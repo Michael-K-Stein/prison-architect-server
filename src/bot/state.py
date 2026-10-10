@@ -26,6 +26,7 @@ from typing import Any
 
 from src.protocol import rpc
 from src.protocol.net_keys import long_name
+from src.protocol.room_rules import ROOM_RULES
 from src.protocol.enums import (
     ELECTRICAL,
     OBJECT_TYPES,
@@ -537,6 +538,7 @@ class GameState:
                     out.append(f"{where}: {text}")
                 if f.get("RequirementsFailed"):
                     out.append(f"{where}: requirements not met")
+            out.extend(self._rule_problems())
             objects = self.save.children.get("Objects")
             for item in objects.children.values() if objects else ():
                 f = item.fields
@@ -544,6 +546,54 @@ class GameState:
                     pos = f"{f.get('Pos.x', '?')},{f.get('Pos.y', '?')}"
                     out.append(f"{f['Type']} #{f.get('Id.i')} at {pos}: no power")
             return out
+
+    def _rule_problems(self) -> list[str]:
+        """Rooms short of the game's own requirements (``room_rules``): size, objects.
+
+        Sizes use the bounding box of the room's cells; objects are matched by
+        the cell under their position. Walls/roof/fence (Enclosed, Indoor,
+        Secure) are not checked here; ``ctl area`` shows them.
+        """
+        rooms = self.save.children.get("Rooms") if self.save else None
+        objects = self.save.children.get("Objects") if self.save else None
+        if not rooms:
+            return []
+        cells: dict[int, list[tuple[int, int]]] = {}
+        for xy, info in self.cells.items():
+            if info.get("Room.i") not in (None, -1):
+                cells.setdefault(info["Room.i"], []).append(xy)
+        found: dict[int, set[str]] = {}
+        for item in objects.children.values() if objects else ():
+            f = item.fields
+            if "Pos.x" in f and f.get("Type"):
+                xy = (int(f["Pos.x"]), int(f.get("Pos.y", 0)))
+                for index, room_cells in cells.items():
+                    if xy in room_cells:
+                        found.setdefault(index, set()).add(f["Type"])
+        out = []
+        for item in rooms.children.values():
+            f = item.fields
+            rule = ROOM_RULES.get(f.get("RoomType", ""))
+            area = cells.get(f.get("Id.i"))
+            if rule is None or not area:
+                continue
+            size, _flags, needed = rule
+            missing = []
+            xs, ys = [x for x, _ in area], [y for _, y in area]
+            w, h = max(xs) - min(xs) + 1, max(ys) - min(ys) + 1
+            if size and not (
+                (w >= size[0] and h >= size[1]) or (w >= size[1] and h >= size[0])
+            ):
+                missing.append(f"size {w}x{h}, needs {size[0]}x{size[1]}")
+            have = found.get(f.get("Id.i"), set())
+            for name, alts in needed:
+                if not have & {name, *alts}:
+                    missing.append(name)
+            if missing:
+                out.append(
+                    f"{f['RoomType']} #{f.get('Id.i')}: lacks " + ", ".join(missing)
+                )
+        return out
 
     def summary(self) -> dict[str, Any]:
         """A JSON-able overview: money, time, speed, objectives, counts."""

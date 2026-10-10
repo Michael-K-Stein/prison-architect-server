@@ -293,6 +293,21 @@ def ctl_keys(
     typer.echo(json.dumps(KEYS.get(system, KEYS) if system else KEYS, indent=1))
 
 
+@ctl.command("rules")
+def ctl_rules(
+    room: Annotated[
+        str | None, typer.Argument(help="e.g. Kitchen; all if omitted.")
+    ] = None,
+) -> None:
+    """What a room needs to count (size, objects), from the game's data."""
+    from src.protocol.room_rules import ROOM_RULES, describe
+
+    names = [room] if room else sorted(ROOM_RULES)
+    typer.echo(
+        json.dumps([describe(n) or f"unknown room {n!r}" for n in names], indent=1)
+    )
+
+
 @ctl.command("actions")
 def ctl_actions(
     ctx: typer.Context,

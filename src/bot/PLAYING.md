@@ -22,6 +22,7 @@ python main.py bot ctl quit         # leave the game when done
   only update on a refresh, so refresh after building or waiting.
 - `ctl events --since N`: new events after event number N (`last` in the reply).
 - `ctl state <System> [path] --depth 1`: raw state (`Save` is the full save).
+- `ctl keys` explains the short keys (`st`, `ci`...) in raw state, which `ctl state` now shows as `SubType (st)`.
 - `ctl names objects bed` / `materials concrete` / `rooms cell` / `intake`.
 
 The map is a grid of cells, `x` to the right and `y` down; the map size is in
@@ -45,6 +46,16 @@ Workers need time: wait (`ctl wait 30`, or speed up) and check `ctl events`
 and `ctl refresh` before the next step. A job the game refuses (bad spot,
 unfinished floor) just never appears; objects inside a room need its floor
 finished first.
+
+## Room requirements
+
+A zoned room only counts (and a grant's room objective only completes) when it
+meets the game's rules: `ctl rules` lists every room, `ctl rules Kitchen` one.
+`ctl state` `problems` says what each of your rooms lacks ("Kitchen #9: lacks
+Fridge, Sink"). Notably: HoldingCell needs 5x5 inside, Toilet and Bench; Yard
+5x5 and `Secure` (fenced); Kitchen Cooker, Fridge, Sink (and power for the
+cooker); Canteen ServingTable, Table, Bench or DiningChair; Shower ShowerHead.
+Staff are hired with `ctl hire Guard 2`.
 
 ## Recipe: a prisoner cell
 
