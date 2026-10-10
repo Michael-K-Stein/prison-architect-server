@@ -75,7 +75,13 @@ def parse(spec: dict) -> Building:
                 h=int(r["h"]),
                 door=(int(r["door"][0]), int(r["door"][1])),
                 objects=tuple(
-                    (str(n), int(a), int(b)) for n, a, b in r.get("objects", [])
+                    (
+                        str(o[0]),
+                        int(o[1]),
+                        int(o[2]),
+                        *([str(o[3])] if len(o) > 3 else []),
+                    )
+                    for o in r.get("objects", [])
                 ),
             )
             for r in spec["rooms"]
@@ -339,9 +345,10 @@ def stages(b: Building) -> list[tuple[str, list[dict]]]:
                     "object": name,
                     "x": x0 + r.x + dx,
                     "y": y0 + r.y + dy,
+                    "facing": facing,
                 }
                 for r in b.rooms
-                for name, dx, dy in r.objects
+                for name, dx, dy, facing in map(rooms.norm, r.objects)
             ],
         )
     )
