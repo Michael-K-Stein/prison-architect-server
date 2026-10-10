@@ -1996,3 +1996,15 @@ Grant_Administration, target_ExportPower1-3, target_PassReform, target_ChargeBat
   and within about 40 s four foundations had left the queue and the fifth fell from 45 to
   13 cells left. Rule confirmed: check every foundation job for a door on its edge (compare
   `ConstructionSystem Jobs` rectangles with the door objects in `Save Objects`).
+
+### Grant_Administration completed (Haiku 5.5, MKS2)
+
+Open task was `Grant_Administration_offices` (`RequireRoomsAvailable("Office", 2)`): two free
+Office rooms. The agent built two 6x6 foundations (2,44) and (46,4), a Door at each bottom
+edge, zoned 4x4 Offices at (3,45) and (47,5) with OfficeDesk, OfficeChair, FilingCabinet.
+`Grant_Administration` read `Completed` and `money +5000 finance_cost_grantcompletion`
+appeared (start payment 5000 was already paid on accept; `completion` 5000 per
+`grants.lua`). Lesson (again): a foundation stalls on its middle row until it has a door;
+the Door unstuck it and the floor finished within minutes. Two other 6x6 foundations
+(10,44) and (54,4) were left without doors by the agent; I put StaffDoors on them
+earlier. Open now: target_ExportPower1-3, target_ChargeBattery, target_PassReform.
