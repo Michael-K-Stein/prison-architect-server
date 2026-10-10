@@ -433,8 +433,8 @@ def test_session_tracks_objectives() -> None:
     )
     blob = zlib.compress(tree) + len(tree).to_bytes(2, "big") + b"\x03"
     state = b"\x12\x09Objective\x12" + bytes([len(blob)]) + blob
-    session._track_objectives(9, state)
+    session.state.apply(9, state)
     assert session.objectives == {"FeedAllPrisoners": "FeedAllPrisoners"}
     assert "FeedAllPrisoners" in actions._menu_title(session)
-    session._track_objectives(21, b"\x12\x10FeedAllPrisoners\x00")
+    session.state.apply(21, b"\x12\x10FeedAllPrisoners\x00")
     assert session.objectives == {}

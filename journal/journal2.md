@@ -1031,3 +1031,37 @@ capture: the recording is of the host, which applies the grant locally and
 only publishes the results above. So the `string` argument is not yet seen
 on the wire. Best guess is the grant name (`bootstraps`); to be confirmed
 with a capture of a joined client accepting a grant.
+
+## Bot game state and HUD (`captures/bot-goal.sqlite`, Claude Opus 5.5 work)
+
+Goal: a bot that holds the game state, can send every RPC whose wire shape is
+known, shows a HUD-style TUI, and can be driven by an agent. Work in progress.
+
+### What a joining client receives (live, room `A`, region `au`)
+
+- A plain Photon join (no game RPCs sent) gets only the host's periodic
+  `DirectoryData` deltas: `World`, `ObjectData`, `Intake`, `ConstructionSystem`,
+  `MisconductSystem` ~3 per second each, `EffectsSystem` now and then. No
+  `SetNumSaveDataChunks`/`SaveDataChunk` (1-3) and no full snapshot.
+- Sending `AuthoriseConnection("")` (5) after joining changed nothing within
+  15 s: no reply, no save transfer, no kick. How a joiner gets the full save is
+  being looked up in IDA (next section update).
+- The host-only capture `bot-goal.sqlite` (nobody joined) has the same systems
+  plus `PlayerData`, `Finance`, `NeedsDistribution`, `NetworkSoundSystem` twice
+  each, and 2 `TransactionAdded`.
+
+### Merging deltas (`src/bot/state.py`)
+
+A snapshot holds only changed fields, under the nodes that hold them; children
+are named (`ObjectData` children are the object index, `17`; `World` has
+`WorldData`, `ClientData`...). Merging every snapshot of a system by node name
+gives the latest value of each field seen. Replaying run5 gives balance
+`Finance.v.6 = 25868` (equal to `World.WorldData.Balance`), `TimeIndex`
+1353.4, the `FeedAllPrisoners` objective added then removed, and money
+events. A node may repeat a field (`Bio.Traits` x4); the state keeps a list.
+
+- Limitation: a joiner only knows what changed since it joined, so e.g. the
+  balance is unknown until `Finance` next changes, and most objects are
+  unknown until they move.
+- Parser gap: 76 of 91 `CellData` snapshots in run5 fail with
+  `expected '<' at 34` (not yet investigated).
