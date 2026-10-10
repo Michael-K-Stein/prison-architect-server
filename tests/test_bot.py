@@ -210,6 +210,17 @@ def test_read_ceo_letter_action_matches_the_capture() -> None:
     assert session.sent == [(21, b"\x12\x0eReadCeosLetter\x00")]
 
 
+def test_grant_actions_send_the_grant_name() -> None:
+    session = FakeSession()
+    ctx = actions.Context(session, Options("id"))
+    actions.action_accept_grant(ctx)
+    actions.action_cancel_grant(ctx)
+    assert session.sent == [
+        (47, build(47, "bootstraps")),
+        (48, build(48, "bootstraps")),
+    ]
+
+
 def test_actions_registry_and_session_event_filter() -> None:
     assert actions.ACTIONS[0][0] == "Change game speed"
     session = Session(client=SimpleNamespace(add_callback_target=lambda t: None))

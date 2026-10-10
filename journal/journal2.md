@@ -997,3 +997,37 @@ name constants, not an id table. To finish the table, either find another
 `WorkQueue ObjType` + `Job.Material` pair per object (build one of each
 object in a new capture), or find the runtime loader in IDA. Each new capture
 that builds an object gives one more id -> name pair.
+
+## Accepting the first grant (ad-hoc capture, Claude Sonnet 5.5 work)
+
+Capture `captures/ad-hoc/accepting-first-grant.sqlite`, session 3 (the game
+session; sessions 1-2 are name/master server). Goal: find the packets for
+"accept my first grant" and add grant actions to the bot. Work in progress.
+
+### What is on the wire (packets 332-359)
+
+| Packet | Event | Content |
+| ------ | ----- | ------- |
+| 332 | 118 `TransactionAdded` | `finance_cost_grantadvance: amount +20000` |
+| 333 | `DirectoryData` `Objective` | `Name='Grant_bootstraps'`, `StartingPayment=20000`, `CompletionPayment=10000`, `PaymentsMade=20000` |
+| 334-340 | `DirectoryData` `Objective` | seven children, `Parent='Grant_bootstraps'`: `_holdingcell` (Room, `RequiredId='PaddedHoldingCell'`, `RequiredId2='HoldingCell'`), `_shower`, `_yard`, `_kitchen`, `_canteen` (Room, `String1='RequirementsMet'`, `Quantity=-1`), `_guard` (Objects, `Quantity=2`, `RequiredId='Guard'`), `_chef` (Objects, `Quantity=2`, `RequiredId='Cook'`) |
+| 341 | 21 `ObjectiveRemoved` | `'FirstGrant', True` |
+| 353, 358 | `Finance` / `VictorySystem` | `tv=20000`; `c.1 {Value=20000}` |
+| 354 | `DirectoryData` `Grants` | `29 {s=1, ta=2106.29}` |
+
+- The grant's real name is `bootstraps`; `Grant_<name>` is the parent
+  objective, `Grant_<name>_<part>` its requirements. `FirstGrant` is the
+  intro objective that this grant replaces, and it is removed with the
+  bool `True` (the CEO letter, `ReadCeosLetter`, uses `False`).
+- The 20000 advance is `StartingPayment`; `CompletionPayment` is paid at the end.
+- `Grants` entries are keyed by a number (29 here, 15 in the CEO-letter
+  capture) that looks like an object/grant index, not the name; `s=1` and
+  `ta` (a `TimeIndex`) are unexplained.
+
+### Open question
+
+No `AcceptGrant` (47, `string`) or `CancelGrant` (48) packet is in this
+capture: the recording is of the host, which applies the grant locally and
+only publishes the results above. So the `string` argument is not yet seen
+on the wire. Best guess is the grant name (`bootstraps`); to be confirmed
+with a capture of a joined client accepting a grant.

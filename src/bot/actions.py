@@ -17,6 +17,11 @@ from src.bot.speed import GAME_SPEED_CHANGE, SPEED_STOPS, speed_wire_value
 from src.protocol import rpc
 
 OBJECTIVE_REMOVED = 21  # RPC code, ``ObjectiveRemoved(string, bool)``
+ACCEPT_GRANT = 47  # RPC codes, ``AcceptGrant(string)`` / ``CancelGrant(string)``
+CANCEL_GRANT = 48
+FIRST_GRANT = (
+    "bootstraps"  # objective ``Grant_bootstraps``, journal2 "Accepting the first grant"
+)
 CEO_LETTER_OBJECTIVE = "ReadCeosLetter"  # captures/ad-hoc/read-ceo-letter.sqlite
 
 console = Console()
@@ -63,6 +68,27 @@ def action_read_ceo_letter(ctx: Context) -> None:
     ctx.log.append(f"objective removed {CEO_LETTER_OBJECTIVE}")
 
 
+def _send_grant(ctx: Context, code: int, label: str, grant: str) -> None:
+    data = rpc.build(code, grant)
+    ok = ctx.session.raise_event(code, data)
+    console.print(
+        f"{'sent' if ok else 'NOT sent'} {label}({grant!r}) event {code}, "
+        f"Data={data.hex(' ')}  (unverified: the capture is of the host)",
+        markup=False,
+    )
+    ctx.log.append(f"{label} {grant}")
+
+
+def action_accept_grant(ctx: Context) -> None:
+    """Send ``AcceptGrant("bootstraps")``, the first grant."""
+    _send_grant(ctx, ACCEPT_GRANT, "AcceptGrant", FIRST_GRANT)
+
+
+def action_cancel_grant(ctx: Context) -> None:
+    """Send ``CancelGrant("bootstraps")``."""
+    _send_grant(ctx, CANCEL_GRANT, "CancelGrant", FIRST_GRANT)
+
+
 def action_events(ctx: Context) -> None:
     """Stream incoming game events until Ctrl-C."""
     console.print("[dim]Streaming events, Ctrl-C to stop.[/dim]")
@@ -86,6 +112,8 @@ def action_events(ctx: Context) -> None:
 ACTIONS: list[tuple[str, Callable[[Context], None]]] = [
     ("Change game speed", action_speed),
     ("Read the CEO's letter", action_read_ceo_letter),
+    ("Accept the first grant", action_accept_grant),
+    ("Cancel the first grant", action_cancel_grant),
     ("Show incoming events", action_events),
 ]
 
