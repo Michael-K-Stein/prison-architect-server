@@ -1161,3 +1161,17 @@ Sent from the bot (`src/bot/savegame.py`), to actor 1 only:
   until a delta arrives.
 - Every RPC the bot sends now goes to actor 1 only (`TargetActors`), like the
   game's client.
+
+### Agent control, live (`bot serve` + `bot ctl`, Claude Opus 5.5)
+
+`python main.py bot --region au --name-server auto --password 123 serve --room A`
+joined as actor 8 next to the host `Noob` (actor 1) and loaded the save.
+`bot ctl state` showed balance 48634, the grants from the save (eight
+`target_*` and `Grant_bootstraps`, all `InProgress`) and objects by name
+(Light 20, Prisoner 8, Workman 8, Stack 11, ...).
+
+- **`GameSpeedChange(2)` from the bot (to actor 1) set the host's speed**:
+  `World.ClientData.gt` became `2.0` within 3 s, and `TimeIndex` sped up.
+  So a joined client's commands are obeyed, and the argument is the
+  **multiplier** (as the IDA handler suggested), not the stop index. Set back
+  with `GameSpeedChange(1)`. Wire bytes `02 02`.
