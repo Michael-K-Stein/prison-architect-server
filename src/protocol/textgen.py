@@ -3,7 +3,7 @@
 Run as ``python -m src.protocol.textgen "<language dir>"`` (the folder with
 ``base-language.txt``, ``fullgame.txt`` and ``d11.txt``). Kept: every key that contains
 ``staffalert`` or ``warning`` or starts with ``help_``, ``objective_``, ``need_name_``,
-``needs_help_``, ``room_``, ``adviser_``, ``roomerror_`` or ``quickbuild_`` (later files override earlier ones).
+``needs_help_``, ``room_``, ``adviser_``, ``roomerror_``, ``roomgrading_``, ``object_`` or ``quickbuild_`` (later files override earlier ones).
 """
 
 from __future__ import annotations
@@ -23,6 +23,8 @@ PREFIXES = (
     "adviser_",
     "quickbuild_",
     "roomerror_",
+    "roomgrading_",
+    "object_",
 )
 HEADER = '''"""English text of the game's alert, help, objective, need and room messages. Generated.
 

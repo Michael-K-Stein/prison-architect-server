@@ -529,6 +529,57 @@ class GameState:
                 )
             return items
 
+    def room_quality(self, which: str = "") -> list[dict[str, Any]]:
+        """Room Quality: the grade of each graded room (``Save Rooms`` ``Quality``) and what
+        raises or lowers it (:mod:`src.bot.quality`). ``which``: a room type or an index."""
+        from src.bot import quality
+
+        with self.lock:
+            if self.save is None:
+                return []
+            rooms = self.save.children.get("Rooms")
+            objects = self.save.children.get("Objects")
+            by_room: dict[int, list[str]] = {}
+            counts: dict[int, int] = {}
+            for (cx, cy), f in self.cells.items():
+                index = f.get("Room.i", -1)
+                if index not in (-1, None):
+                    counts[index] = counts.get(index, 0) + 1
+            room_of = {
+                cell: f["Room.i"]
+                for cell, f in self.cells.items()
+                if f.get("Room.i") not in (-1, None)
+            }
+            for obj in objects.children.values() if objects else ():
+                f = obj.fields
+                if "Pos.x" not in f:
+                    continue
+                index = room_of.get((int(f["Pos.x"]), int(f["Pos.y"])))
+                if index is not None and f.get("Type"):
+                    by_room.setdefault(index, []).append(f["Type"])
+            out = []
+            for item in rooms.children.values() if rooms else ():
+                f = item.fields
+                kind, index = f.get("RoomType"), f.get("Id.i")
+                if kind not in quality.GRADINGS and f.get("Quality") is None:
+                    continue
+                if which and which.lower() != str(kind).lower() and which != str(index):
+                    continue
+                entry = {
+                    "index": index,
+                    "type": kind,
+                    "name": f.get("Name"),
+                    "quality": f.get("Quality"),
+                    "cells": counts.get(index, 0),
+                }
+                entry.update(
+                    quality.evaluate(
+                        str(kind), counts.get(index, 0), by_room.get(index, [])
+                    )
+                )
+                out.append(entry)
+            return out
+
     def going_green(self) -> list[dict[str, Any]]:
         """The Going Green tab: "Going Green!", Basic / Advanced Farming, Green Energy, Narcotic
         Production, Environmentally Friendly, each with its sub-headings and descriptions

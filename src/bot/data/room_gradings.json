@@ -1,0 +1,742 @@
+{
+"Canteen": [
+{
+"Size": 20,
+"Type": "RoomSize"
+},
+{
+"Id": "Fan",
+"Type": "Item"
+},
+{
+"Id": "DrinkMachine",
+"Type": "Item"
+},
+{
+"Id": "SnackMachine",
+"Type": "Item"
+},
+{
+"Id": "WaterCooler",
+"Type": "Item"
+},
+{
+"Alt": [
+"PlantCactus"
+],
+"Id": "Plant",
+"Quantity": 4,
+"Type": "Item"
+},
+{
+"Type": "MealQuality"
+},
+{
+"Type": "MealVariety"
+},
+{
+"GradeEffect": -1,
+"Quantity": 0,
+"Type": "HasWindow"
+},
+{
+"Alt": [
+"CctvCamo"
+],
+"GradeEffect": -1,
+"Id": "Cctv",
+"Type": "Item"
+},
+{
+"GradeEffect": 1,
+"Percent": 50,
+"Type": "HasGlassWalls"
+}
+],
+"Cell": [
+{
+"Size": 6,
+"Type": "RoomSize"
+},
+{
+"Size": 9,
+"Type": "RoomSize"
+},
+{
+"Size": 16,
+"Type": "RoomSize"
+},
+{
+"GradeEffect": 2,
+"Type": "OutsideWindow"
+},
+{
+"Large": true,
+"Type": "OutsideWindow"
+},
+{
+"Alt": [
+"FancyDesk"
+],
+"Id": "OfficeDesk",
+"Multi": true,
+"Type": "Item"
+},
+{
+"Id": "ShowerHead",
+"Type": "Item"
+},
+{
+"Alt": [
+"LargeTv"
+],
+"Id": "Tv",
+"Multi": true,
+"Type": "Item"
+},
+{
+"Id": "Radio",
+"Type": "Item"
+},
+{
+"Id": "BoomBoxRoundhouse",
+"Type": "Item"
+},
+{
+"Alt": [
+"ShortBookcase"
+],
+"Id": "Bookshelf",
+"Type": "Item"
+},
+{
+"Alt": [
+"WoodenStool",
+"LeatherChair",
+"OfficeChair",
+"SofaChairSingle",
+"SofaChairDouble",
+"SofaChairBrown",
+"ChairYellow",
+"SwivelChair",
+"MetalStool"
+],
+"Id": "Chair",
+"Multi": true,
+"Type": "Item"
+},
+{
+"Id": "PetBird",
+"Type": "Item"
+},
+{
+"Id": "SoftPillow",
+"Type": "Item"
+},
+{
+"Id": "SinkMirror",
+"Type": "Item"
+},
+{
+"Id": "Canvas",
+"Type": "Item"
+},
+{
+"Id": "PunchBag",
+"Type": "Item"
+},
+{
+"Alt": [
+"NettedBed"
+],
+"Id": "ComfyBed",
+"Multi": true,
+"Type": "Item"
+},
+{
+"GradeEffect": -1,
+"Id": "Mattress",
+"Type": "Item"
+},
+{
+"GradeEffect": -1,
+"Id": "OldBed",
+"Type": "Item"
+},
+{
+"GradeEffect": -1,
+"Percent": 50,
+"Type": "BadWalls"
+},
+{
+"GradeEffect": -1,
+"Percent": 50,
+"Type": "HasGlassWalls"
+},
+{
+"GradeEffect": -1,
+"Quantity": 0,
+"Type": "HasWindow"
+},
+{
+"GradeEffect": -1,
+"Type": "HasPASystem"
+}
+],
+"Classroom": [
+{
+"Size": 25,
+"Type": "RoomSize"
+},
+{
+"Size": 50,
+"Type": "RoomSize"
+},
+{
+"Id": "SchoolDesk",
+"Quantity": 6,
+"Type": "Item"
+},
+{
+"GradeEffect": 2,
+"Id": "SchoolDesk",
+"Quantity": 10,
+"Type": "Item"
+},
+{
+"Alt": [
+"ShortBookcase"
+],
+"Id": "Bookshelf",
+"Quantity": 2,
+"Type": "Item"
+},
+{
+"GradeEffect": 2,
+"Id": "Blackboard",
+"Type": "Item"
+},
+{
+"Id": "WaterCooler",
+"Type": "Item"
+},
+{
+"GradeEffect": 2,
+"Quantity": 2,
+"Type": "OutsideWindow"
+},
+{
+"GradeEffect": 1,
+"Percent": 50,
+"Type": "HasGlassWalls"
+}
+],
+"CommonRoom": [
+{
+"Size": 25,
+"Type": "RoomSize"
+},
+{
+"Size": 50,
+"Type": "RoomSize"
+},
+{
+"GradeEffect": 2,
+"Id": "ComputerStation",
+"Quantity": 4,
+"Type": "Item"
+},
+{
+"Id": "PhoneBooth",
+"Type": "Item"
+},
+{
+"Alt": [
+"TableFootball",
+"TableTennis"
+],
+"Id": "PoolTable",
+"Multi": true,
+"Type": "Item"
+},
+{
+"Alt": [
+"LargeTv"
+],
+"Id": "Tv",
+"Type": "Item"
+},
+{
+"Id": "ChessTable",
+"Type": "Item"
+},
+{
+"Id": "Radio",
+"Type": "Item"
+},
+{
+"Id": "BoomBoxRoundhouse",
+"Type": "Item"
+},
+{
+"Id": "ArcadeCabinet",
+"Type": "Item"
+},
+{
+"Alt": [
+"CctvCamo"
+],
+"GradeEffect": -1,
+"Id": "Cctv",
+"Type": "Item"
+},
+{
+"Id": "SnackMachine",
+"Type": "Item"
+},
+{
+"GradeEffect": 1,
+"Id": "VideoCallBooth",
+"Type": "Item"
+},
+{
+"GradeEffect": 1,
+"Percent": 50,
+"Type": "HasGlassWalls"
+}
+],
+"Dormitory": [
+{
+"GradeEffect": 2,
+"Type": "OutsideWindow"
+},
+{
+"Id": "ShowerHead",
+"Quantity": 1,
+"Type": "Item"
+},
+{
+"Id": "WaterCooler",
+"Type": "Item"
+},
+{
+"Alt": [
+"TableTennis",
+"PoolTable"
+],
+"Id": "TableFootball",
+"Multi": true,
+"Type": "Item"
+},
+{
+"Alt": [
+"LargeTv"
+],
+"Id": "Tv",
+"Multi": true,
+"Type": "Item"
+},
+{
+"Id": "Radio",
+"Type": "Item"
+},
+{
+"Id": "BoomBoxRoundhouse",
+"Type": "Item"
+},
+{
+"Id": "Fan",
+"Type": "Item"
+},
+{
+"Alt": [
+"ShortBookcase"
+],
+"Id": "Bookshelf",
+"Type": "Item"
+},
+{
+"Alt": [
+"Bench",
+"SmallBench",
+"JungleBench",
+"OakBench",
+"WoodenStool",
+"LeatherChair",
+"OfficeChair",
+"SofaChairSingle",
+"SofaChairDouble",
+"SofaChairBrown",
+"ChairYellow",
+"SwivelChair",
+"MetalStool"
+],
+"Id": "Chair",
+"Multi": true,
+"Type": "Item"
+},
+{
+"Id": "SinkMirror",
+"Type": "Item"
+},
+{
+"Alt": [
+"NettedBed"
+],
+"Id": "ComfyBed",
+"Multi": true,
+"Type": "Item"
+},
+{
+"GradeEffect": -1,
+"Percent": 50,
+"Type": "BadWalls"
+},
+{
+"GradeEffect": -1,
+"Percent": 50,
+"Type": "HasGlassWalls"
+},
+{
+"GradeEffect": -1,
+"Quantity": 0,
+"Type": "HasWindow"
+},
+{
+"GradeEffect": -1,
+"Id": "Mattress",
+"Quantity": 4,
+"Type": "Item"
+},
+{
+"GradeEffect": -1,
+"Type": "HasPASystem"
+}
+],
+"FamilyCell": [
+{
+"GradeEffect": -1,
+"Id": "PASystem",
+"Type": "Item"
+},
+{
+"GradeEffect": -1,
+"Type": "HasPASystem"
+}
+],
+"Gymnasium": [
+{
+"Size": 60,
+"Type": "RoomSize"
+},
+{
+"Id": "Treadmill",
+"Quantity": 6,
+"Type": "Item"
+},
+{
+"Id": "WeightsBench",
+"Quantity": 6,
+"Type": "Item"
+},
+{
+"Id": "GymMat",
+"Quantity": 4,
+"Type": "Item"
+},
+{
+"Id": "PunchBag",
+"Type": "Item"
+},
+{
+"Id": "BoxingRing",
+"Type": "Item"
+},
+{
+"Id": "Fan",
+"Type": "Item"
+},
+{
+"Id": "WaterCooler",
+"Type": "Item"
+},
+{
+"Id": "DumbbellRack",
+"Type": "Item"
+},
+{
+"GradeEffect": 2,
+"Quantity": 4,
+"Type": "OutsideWindow"
+},
+{
+"GradeEffect": -1,
+"Quantity": 0,
+"Type": "HasWindow"
+},
+{
+"GradeEffect": 1,
+"Percent": 50,
+"Type": "HasGlassWalls"
+}
+],
+"HoldingCell": [
+{
+"GradeEffect": -1,
+"Type": "HasPASystem"
+}
+],
+"PaddedCell": [
+{
+"Size": 6,
+"Type": "RoomSize"
+},
+{
+"Size": 9,
+"Type": "RoomSize"
+},
+{
+"Size": 16,
+"Type": "RoomSize"
+},
+{
+"Id": "ComfyBed",
+"Type": "Item"
+},
+{
+"GradeEffect": -1,
+"Id": "Mattress",
+"Type": "Item"
+},
+{
+"GradeEffect": -1,
+"Id": "OldBed",
+"Type": "Item"
+},
+{
+"GradeEffect": 2,
+"Stackable": true,
+"Type": "OutsideWindow"
+},
+{
+"GradeEffect": -1,
+"Id": "PASystem",
+"Type": "Item"
+}
+],
+"PaddedHoldingCell": [
+{
+"GradeEffect": -1,
+"Id": "PASystem",
+"Type": "Item"
+}
+],
+"PsychiatristOffice": [
+{
+"GradeEffect": 1,
+"Id": "LeatherSofa",
+"Type": "Item"
+},
+{
+"GradeEffect": 1,
+"Id": "MedicineCabinetPsych",
+"Type": "Item"
+},
+{
+"GradeEffect": 1,
+"Id": "RorschachTest",
+"Type": "Item"
+},
+{
+"GradeEffect": 1,
+"Id": "Flipboard",
+"Type": "Item"
+},
+{
+"GradeEffect": 1,
+"Id": "AnatomyModel",
+"Type": "Item"
+}
+],
+"SuperiorCell": [
+{
+"Size": 6,
+"Type": "RoomSize"
+},
+{
+"Size": 9,
+"Type": "RoomSize"
+},
+{
+"Size": 16,
+"Type": "RoomSize"
+},
+{
+"GradeEffect": 2,
+"Type": "OutsideWindow"
+},
+{
+"Large": true,
+"Type": "OutsideWindow"
+},
+{
+"Alt": [
+"FancyDesk"
+],
+"Id": "OfficeDesk",
+"Type": "Item"
+},
+{
+"Id": "ShowerHead",
+"Type": "Item"
+},
+{
+"Alt": [
+"LargeTv"
+],
+"Id": "Tv",
+"Multi": true,
+"Type": "Item"
+},
+{
+"Id": "Radio",
+"Type": "Item"
+},
+{
+"Id": "BoomBoxRoundhouse",
+"Type": "Item"
+},
+{
+"Alt": [
+"ShortBookcase"
+],
+"Id": "Bookshelf",
+"Type": "Item"
+},
+{
+"Alt": [
+"WoodenStool",
+"LeatherChair",
+"OfficeChair",
+"SofaChairSingle",
+"SofaChairDouble",
+"SofaChairBrown",
+"ChairYellow",
+"SwivelChair",
+"MetalStool"
+],
+"Id": "Chair",
+"Multi": true,
+"Type": "Item"
+},
+{
+"Id": "PetBird",
+"Type": "Item"
+},
+{
+"Id": "SoftPillow",
+"Type": "Item"
+},
+{
+"Id": "SinkMirror",
+"Type": "Item"
+},
+{
+"Id": "Canvas",
+"Type": "Item"
+},
+{
+"Id": "PunchBag",
+"Type": "Item"
+},
+{
+"Id": "SuperiorBed",
+"Type": "Item"
+},
+{
+"Id": "ComfyBed",
+"Type": "Item"
+},
+{
+"GradeEffect": -1,
+"Percent": 50,
+"Type": "BadWalls"
+},
+{
+"GradeEffect": -1,
+"Percent": 50,
+"Type": "HasGlassWalls"
+},
+{
+"GradeEffect": -1,
+"Quantity": 0,
+"Type": "HasWindow"
+},
+{
+"GradeEffect": -1,
+"Id": "Mattress",
+"Type": "Item"
+},
+{
+"GradeEffect": -1,
+"Type": "HasPASystem"
+}
+],
+"Yard": [
+{
+"GradeEffect": 1,
+"Size": 100,
+"Type": "RoomSize"
+},
+{
+"GradeEffect": 2,
+"Size": 200,
+"Type": "RoomSize"
+},
+{
+"Id": "RunningTrack",
+"Quantity": 12,
+"Type": "Floor"
+},
+{
+"Id": "DumbbellRack",
+"Type": "Item"
+},
+{
+"Id": "Bleachers",
+"Type": "Item"
+},
+{
+"Id": "PunchBag",
+"Type": "Item"
+},
+{
+"Id": "TyreApparatus",
+"Type": "Item"
+},
+{
+"GradeEffect": 2,
+"Quantity": 10,
+"Type": "MultiItems"
+},
+{
+"GradeEffect": -1,
+"Size": 50,
+"Type": "RoomSizeLess"
+},
+{
+"Alt": [
+"NewMud"
+],
+"GradeEffect": -1,
+"Id": "Mud",
+"Percent": 50,
+"Type": "Floor"
+},
+{
+"GradeEffect": -1,
+"Id": "PASystem",
+"Type": "Item"
+}
+]
+}

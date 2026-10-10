@@ -2705,3 +2705,17 @@ is skipped), with the Staff Room advice when no room of type 26 exists (`sub_140
 "due for release soon" counter (`Prison+6716`, in the Intake system; its timer text is not referenced by the exe) and the
 punishment counters (solitary, queued, lockdown). `GameState.todo()` now includes Incident Reports, Prisoner Parole and Staff
 Exhausted from these helpers.
+
+### Room Quality (the grade of a room, 0-15; user: 0-7 original, 8-15 the DLCs)
+
+`Save Rooms` carries it as `Quality` (a Cell reads 1, the SuperiorCell 7, Canteens / Gymnasium 0). The criteria are in
+`materials*.txt`: `BEGIN Grading Type ... END` lines inside `BEGIN Room` blocks (13 graded rooms: Cell 24 criteria, SuperiorCell
+24, Dormitory 17, CommonRoom 14, Gymnasium 12, Canteen 11, Yard 11, Classroom 9, PaddedCell 8, PsychiatristOffice 5, FamilyCell 2,
+HoldingCell 1, PaddedHoldingCell 1). Types: `RoomSize` (`Size` 6 / 9 / 16: one point per threshold reached), `Item` (`Id` + `Alt`,
+`Multi`, `GradeEffect` default +1; a Mattress or OldBed is -1), `OutsideWindow` (+2, +1 for a large window), `HasWindow
+Quantity 0` (-1: no window), `HasGlassWalls` / `BadWalls` (`Percent` 50, -1), `HasPASystem` (-1), `Floor`, `MealQuality`,
+`MealVariety`, `MultiItems`, `RoomSizeLess`. The in-game texts are `roomgrading_<room>_<kind>`. `ctl quality [ROOM|index]` lists each
+graded room with the game's `quality`, a `computed` sum of the criteria the bot can see (room size from the cells, items from the
+objects standing in the room) and `met: null` for those it cannot (windows, walls, PA system, meals): MKS2's first Cell:
+quality 1, computed 2 (sizes 6 and 9 met, 16 not; the missing point is probably the "no windows" -1).
+`src/bot/qualitygen.py` regenerates `data/room_gradings.json`; `textgen` now also keeps `roomgrading_*` and `object_*` texts.
