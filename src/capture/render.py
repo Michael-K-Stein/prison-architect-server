@@ -37,3 +37,30 @@ def _render(pkt: Packet, raw: bool) -> tuple[str, list[str]]:
     if show_hex:
         body.append(f"payload: {pkt.payload.hex()}")
     return header, body
+
+
+class CompactView:
+    """One-to-few lines per packet; the session shows only when it changes."""
+
+    def __init__(self) -> None:
+        self._session: int | None = None
+
+    def render(self, pkt: Packet, raw: bool = False) -> list[str]:
+        arrow = "->" if pkt.direction == TO_SERVER else "<-"
+        sess = ""
+        if pkt.session != self._session:
+            self._session = pkt.session
+            sess = f" s{pkt.session}"
+        prefix = f"#{pkt.id} {_stamp(pkt.ts_ns)}{sess} {arrow} "
+        if pkt.command is None:
+            lines = [f"{pkt.name} {pkt.size}B {pkt.payload.hex()}"]
+        elif raw:
+            lines = [f"{pkt.name} {pkt.payload.hex()}"]
+        else:
+            from src.protocol.events import compact_lines
+
+            try:
+                lines = compact_lines(pkt.operation())
+            except Exception as exc:  # show the packet anyway, as hex
+                lines = [f"{pkt.name} (could not decode: {exc}) {pkt.payload.hex()}"]
+        return [prefix + lines[0], *("  " + line for line in lines[1:])]

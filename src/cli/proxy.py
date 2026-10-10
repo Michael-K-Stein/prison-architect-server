@@ -27,6 +27,7 @@ def start_proxy(
     follow: bool = True,
     record: Optional[Path] = None,
     hide: Optional[list[str]] = None,
+    compact: bool = False,
 ) -> None:
     # Imported here: only the proxy command needs them.
     from contextlib import ExitStack
@@ -39,7 +40,12 @@ def start_proxy(
     from pyphotonrealtime.protocol.param.string_param import StringParameter
     from pyphotonrealtime.server import Direction, PhotonProxy
 
-    from src.protocol.events import is_hidden, log_lines, packet_label
+    from src.protocol.events import (
+        compact_lines,
+        is_hidden,
+        log_lines,
+        packet_label,
+    )
 
     setup_logging(opts.verbose)
 
@@ -94,6 +100,12 @@ def start_proxy(
     def show(packet_id, direction, packet):
         if isinstance(packet, PhotonOperationPacket):
             if hide and is_hidden(packet_label(packet), hide):
+                return packet
+            if compact:
+                arrow = "->" if direction == Direction.ToServer else "<-"
+                tag = f"#{packet_id} " if packet_id is not None else ""
+                text = "\n  ".join(compact_lines(packet))
+                logging.info("%s%s %s", tag, arrow, text)
                 return packet
             arrow = (
                 "client -> server"
@@ -161,10 +173,17 @@ def proxy(
             "forwarded and recorded.",
         ),
     ] = None,
+    compact: Annotated[
+        bool,
+        typer.Option(
+            "--compact",
+            help="Log each packet on as few lines as possible.",
+        ),
+    ] = False,
     verbose: VerboseOpt = None,
     listen: ListenOpt = None,
     ip: IpOpt = None,
 ) -> None:
     """Proxy traffic to a Photon server, logging every packet both ways."""
     opts = merge_common(ctx, verbose=verbose, listen=listen, ip=ip)
-    start_proxy(opts, upstream, port, follow, record, hide)
+    start_proxy(opts, upstream, port, follow, record, hide, compact)

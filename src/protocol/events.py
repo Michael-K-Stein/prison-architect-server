@@ -43,7 +43,13 @@ from pyphotonrealtime.protocol.param.int8_slice_param import Int8SliceParameter
 from pyphotonrealtime.protocol.param.parameter_key import ParameterKey
 
 from src.protocol.rpc import RpcShapeError, format_rpc, lookup, parse, rpc_name
-from src.protocol.snapshot import decode_args, decompress, format_tree, show_value
+from src.protocol.snapshot import (
+    Node,
+    decode_args,
+    decompress,
+    format_tree,
+    show_value,
+)
 
 if TYPE_CHECKING:
     from pyphotonrealtime.protocol.packet.operation_packet import (
@@ -222,3 +228,128 @@ def format_event(code: int, data: bytes) -> list[str]:
     except (ValueError, zlib.error) as exc:
         return [f"{title}: unparsed ({exc}): {data.hex(' ')}"]
     return [f"{title}:", *("  " + line for line in lines)]
+
+
+COMPACT_WIDTH = 160
+"""Longest line the compact view builds before spilling a tree onto several."""
+
+
+def _short(text: str, limit: int = 60) -> str:
+    return text if len(text) <= limit else f"{text[: limit - 3]}...({len(text)})"
+
+
+def _inline(node: Node, system: str | None) -> str:
+    """A whole tree node on one line: ``name {f=v} [child {f=v}; ...]``."""
+    head = format_tree(Node(node.name, node.fields), system=system)[0]
+    if not node.children:
+        return head
+    return f"{head} [{'; '.join(_inline(c, system) for c in node.children)}]"
+
+
+def _compact_snapshot(system: str | None, tree: Node) -> list[str]:
+    prefix = "DirectoryData:"
+    if system is not None and system != tree.name:
+        prefix += f"{system} "
+    one = prefix + _inline(tree, system)
+    if len(one) <= COMPACT_WIDTH:
+        return [one]
+    lines = format_tree(tree, system=system)
+    return [prefix + lines[0], *("  " + line for line in lines[1:])]
+
+
+def compact_event(code: int, data: bytes) -> list[str]:
+    """Like :func:`format_event`, but as few lines as it fits (usually one)."""
+    rpc = lookup(code)
+    title = f"Event {code}" + (f" {rpc.name}" if rpc is not None else "")
+    try:
+        args = decode_args(data)
+        if code == CASHFLOW_EVENT and len(args) == 4 and isinstance(args[1], bytes):
+            name = args[1].decode("utf-8", "replace")
+            extra = ""
+            if args[2] or args[3]:
+                extra = f" (int {args[2]}, string {(args[3] or '')!r})"
+            return [f"{title} {name} {args[0]:+}{extra}"]
+        if code == SPAWN_EVENT and len(args) == 3:
+            return [f"{title} uId {args[0]} object {args[1]} type {args[2]}"]
+        if code == SNAPSHOT_EVENT and len(args) >= 2:
+            system = (
+                args[0].decode("utf-8", "replace")
+                if isinstance(args[0], bytes)
+                else None
+            )
+            if isinstance(args[1], bytes) and args[1][:1] == b"\x78":
+                snap = decompress(args[1])
+                if snap.tree is not None:
+                    return _compact_snapshot(system, snap.tree)
+                return [f"{title} {system} {snap.raw.hex(' ')}"]
+        if code != SNAPSHOT_EVENT:
+            try:
+                parsed = parse(code, data)
+            except RpcShapeError:
+                pass
+            else:
+                items = [
+                    line.strip().replace(": ", "=", 1)
+                    for line in format_rpc(parsed)[1:]
+                ]
+                one = f"{title} {', '.join(items)}"
+                if len(one) <= COMPACT_WIDTH:
+                    return [one]
+                return [title, *("  " + i for i in items)]
+        return [f"{title} {', '.join(show_value(v) for v in args)}"]
+    except (ValueError, zlib.error) as exc:
+        return [f"{title} unparsed ({exc}): {data.hex(' ')}"]
+
+
+def _param_text(value: Any) -> str:
+    value = getattr(value, "value", value)
+    if isinstance(value, dict):
+        inner = ", ".join(
+            f"{_param_text(k)}: {_param_text(v)}" for k, v in value.items()
+        )
+        return _short("{" + inner + "}", 80)
+    if isinstance(value, (list, tuple)):
+        return _short("[" + ", ".join(_param_text(v) for v in value) + "]", 80)
+    if isinstance(value, (bytes, bytearray)):
+        return f"<{len(value)} bytes>"
+    if isinstance(value, str):
+        return _short(repr(value), 48)
+    return str(value)
+
+
+def compact_lines(packet: PhotonOperationPacket) -> list[str]:
+    """The packet in as few lines as possible, e.g.
+    ``Operation:RaiseEvent Event 118 TransactionAdded finance_cost_cashflow +51``.
+
+    Encryption shows as ``[enc]``, a return code only when not 0, parameter
+    names without their type, ``Data`` and ``Code`` only through the event.
+    """
+    header = packet.get_header()
+    payload = packet.get_payload()
+    command = header.get_command_name().replace("Encrypted", "", 1) or "Operation"
+    head = f"{command}:{payload.get_operation_name()}"
+    if header.is_encrypted():
+        head += " [enc]"
+    if payload.response_debug_data is not None:
+        rc, msg = payload.get_return_code(), payload.get_debug_message()
+        if rc != 0 or msg:
+            head += f" rc={rc}" + (f" {msg!r}" if msg else "")
+    event = event_payload(packet)
+    skip = {ParameterKey.Data, ParameterKey.Code} if event is not None else set()
+    summary = _set_properties_lines(packet)
+    if summary is not None:
+        skip |= {ParameterKey.Properties, ParameterKey.ActorNr, ParameterKey.Broadcast}
+    params = [
+        f"{get_parameter_key_name(key)}={_param_text(value)}"
+        for key, value in payload.params.items()
+        if key not in skip
+    ]
+    if event is not None and command == "Event":
+        head = ""  # the event's own title says it all
+    first = " ".join(p for p in (head, *params) if p)
+    if summary is not None:
+        return [f"{first} {summary[0]}"]
+    if event is None:
+        return [first]
+    body = compact_event(*event)
+    return [f"{first} {body[0]}", *body[1:]]

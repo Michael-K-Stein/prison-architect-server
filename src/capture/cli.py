@@ -18,7 +18,7 @@ from typing import Annotated, Optional
 import typer
 
 from src.capture.reader import Capture
-from src.capture.render import _render
+from src.capture.render import CompactView, _render
 from src.capture.schema import TO_CLIENT, TO_SERVER
 
 
@@ -74,6 +74,13 @@ def tail(
             help="Stop after this long without a new packet (default: never).",
         ),
     ] = None,
+    compact: Annotated[
+        bool,
+        typer.Option(
+            "--compact",
+            help="One line per packet where possible (short labels, inline snapshots).",
+        ),
+    ] = False,
 ) -> None:
     """Print packets as they are recorded (new ones by default)."""
     from rich.console import Console
@@ -91,9 +98,15 @@ def tail(
         direction=direction,
         timeout=timeout,
     )
+    view = CompactView() if compact else None
     try:
         for pkt in packets:
             if codes and pkt.code not in codes:
+                continue
+            if view is not None:
+                style = "green" if pkt.direction == TO_SERVER else "cyan"
+                text = "\n".join(view.render(pkt, raw))
+                console.print(text, style=style, markup=False)
                 continue
             header, body = _render(pkt, raw)
             style = "green" if pkt.direction == TO_SERVER else "cyan"
