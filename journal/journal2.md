@@ -1818,3 +1818,11 @@ the user; whether a client displays an event from a non-host sender is open.
 Contrast `TransactionAdded` (118): the host shows the amount in its list but
 does not change the bank balance, so what a host does with a client-sent event
 depends on the handler, not only on the sender.
+
+**SUCCESS: the bot injected a game packet that the host acted on.**
+`NewSpeechAdded` (117) sent from the bot (actor 3, `Claude`) reached the real host
+`DHost` and was displayed as an advisor message with the bot's own text:
+"Hello from the bot: this is an injected Warden message." Confirmed by the user
+in MKS2. This is the first client-originated packet in this project that changes
+what the host's UI shows; it needs no spoofing of the sender. Reproduce with
+`python main.py bot ctl send NewSpeechAdded 2 "your text"`.
