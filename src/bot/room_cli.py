@@ -233,6 +233,8 @@ def room_build(
     """
     port = ctx.obj
     timeout = min(timeout, STAGE_TIMEOUT_MAX)
+    if _kind(room) in rooms.UNRELEASED:
+        _fail(f"{room} is unreleased content: {rooms.UNRELEASED[_kind(room)]}")
     plan, errors = _design(_kind(room), size, door, obj or [], auto)
     picture = rooms.render(plan)
     if errors:

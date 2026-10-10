@@ -739,15 +739,19 @@ class GameState:
                 return {"error": "the save is not loaded yet"}
             node = self.save.children.get(spec.node)
             cells = set()
-            for key in node.children if node else ():
+            kinds: dict[tuple[int, int], int] = {}
+            for key, child in node.children.items() if node else ():
                 parts = key.split()
                 if len(parts) in (2, 3) and all(p.isdigit() for p in parts[:2]):
-                    cells.add((int(parts[0]), int(parts[1])))
+                    cell = (int(parts[0]), int(parts[1]))
+                    cells.add(cell)
+                    if "PipeType" in child.fields:
+                        kinds[cell] = int(child.fields["PipeType"])
             objects = self.save.children.get("Objects")
             fields = [i.fields for i in objects.children.values()] if objects else []
             width = int(self.save.fields.get("NumCellsX", 100))
             height = int(self.save.fields.get("NumCellsY", 80))
-            return connect.plan(name, cells, fields, width, height)
+            return connect.plan(name, cells, fields, width, height, kinds)
 
     def _no_water(self) -> list[str]:
         """Water appliances (sink, toilet, shower head...) off a pumped pipe network.

@@ -33,6 +33,12 @@ LAVISH_GROW = 2
 MIN_BUILDING = 3
 """Smallest interior of a walled room with no object requirement."""
 BUILDING_FREE = frozenset({"None", "ClearRooms"})
+UNRELEASED = {
+    "SuperiorCell": "not in the game client (it cannot be created there; its labels are "
+    "code-like, e.g. roomgrading_SuperiorCell_Item): the host accepts the zone but "
+    "refunds the SuperiorBed, so the room never meets its rules (journal2)"
+}
+"""Room types in the data files that the real game does not offer (unfinished content)."""
 """Rooms with no requirements at all: just a zone, no building."""
 
 
@@ -286,6 +292,7 @@ def constraints(room: str) -> dict:
             {"one_of": [info(n) for n in (name, *alts)]} for name, alts in required
         ],
         "notes": [
+            *([f"UNRELEASED: {UNRELEASED[room]}"] if room in UNRELEASED else []),
             "Interior cells are numbered from the top left (0,0); an object's anchor is its "
             "top left cell and it covers w x h cells (facing down).",
             "The door is in the bottom wall at one interior column; keep that column and the "

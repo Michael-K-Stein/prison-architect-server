@@ -2607,3 +2607,23 @@ tool afterwards (`ctl build wall 48 53 1 4`) gives two rooms with one common wal
 those runs after the floor is built; `ctl room clear X Y W H` removes a leftover building (Demolish,
 DemolishWalls, ClearIndoorArea, each waited for). Buildings need no one-cell gaps. The dry-run picture of a
 zone-only room (Forestry, Exports, Storage...) no longer draws walls (the player had read them as built).
+
+### Pipe pressure, and `SuperiorCell` is unreleased content (user, MKS2)
+
+- **Small pipes lose pressure** (user, checked in the game client: a Toilet in the SuperiorCell, 47 small-pipe cells from
+  a main, got no water). The game's text says "a small pipe can run for a limited length before the pressure becomes
+  too low"; PipeLarge is for the long distances, PipeSmall only connects appliances; `BlockedBy LargePipe` means the
+  two types cannot share a cell. The limit is not in the data files. `ctl connect water` now lays PipeLarge for the
+  long part and PipeSmall for the last 12 cells (`connect.SMALL_MAX`, a cautious guess), joins only pipes that still
+  have pressure, and re-pipes appliances that are on a pipe but too far from a large one (9 of 11 in MKS2 got
+  a PipeLarge trunk: rows y=52, 100, 109). Pipe types in `Save Water`: `PipeType` 1 = PipeLarge, 2 = PipeSmall.
+  The checker `ctl network water` does not know about pressure yet. The user's tip for lines: draw long straight
+  lines across several foundation borders instead of many short ones.
+- **`SuperiorCell` does not exist in the game client** (user): it cannot be created there and its labels are
+  code-like (the grading lines read `roomgrading_SuperiorCell_Item` in the real client, unlike the proper texts of
+  the other rooms). The data files still list it (`room_superiorcell` "Superior Cell", `SuperiorBed`, Tv, ...), the
+  host accepts the zone from a bot, but a `SuperiorBed` placement is charged and refunded (`+800` then `-800
+  object_SuperiorBed`, never an object), so the room "lacks SuperiorBed" for good. It is unfinished content; the
+  room tools now refuse it (`rooms.UNRELEASED`). Other rooms in the data files may be the same: a room that is
+  missing from the client's build menu or whose label text is raw is a candidate (the user's list of
+  rooms the client has: the 24 DLC rooms plus the base ones, without `SuperiorCell`).
