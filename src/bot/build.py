@@ -149,12 +149,27 @@ def line(obj: str, x: int, y: int, width: int = 1, height: int = 1) -> Job:
 TOOLS["line"] = (line, ("x", "y", "width", "height"), "object")
 
 
+DEMOLITION = ("Demolish", "DemolishWalls", "ClearIndoorArea", "RemoveTunnels")
+"""Material ids 2-5 of the ``flooring`` tool: bulldoze, demolish walls, clear the
+indoor flag, remove tunnels (journal2: the host's own jobs in bot-goal-2)."""
+
+
+def demolish(
+    x: int, y: int, width: int, height: int, material: str = "Demolish"
+) -> Job:
+    """Bulldoze an area: the ``flooring`` tool with a demolition material."""
+    if material not in DEMOLITION:
+        raise KeyError(material)
+    return floor(x, y, width, height, material)
+
+
 def hire(role: str) -> Job:
     """Hire one staff member (``Staff`` tool; ``Material`` is the staff object
     type, e.g. ``Guard`` 105, ``Cook`` 113, ``Warden`` 132). Position is unused."""
     return Job("Staff", id_of(OBJECTS, role), 0, 0)
 
 
+TOOLS["demolish"] = (demolish, ("x", "y", "width", "height"), "material")
 TOOLS["hire"] = (hire, (), "role")
 
 

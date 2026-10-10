@@ -1401,3 +1401,21 @@ gives `src/protocol/net_keys.py`; `ctl state` now prints `SubType (st)` (use
 - Still unknown (registered without a save name): `a`, `ttt`, `inst`, `cr`,
   `la`, `esr`, `sc`, `sj`, `si`, `tun`, `tdc`, `pil`, `pis`, `prs`, `o`, `p`,
   `v`; marked `?` in the table.
+
+### Demolishing a building (your bulldoze in `bot-goal-2`, packets 51148-51602)
+
+The host user bulldozed, demolished walls and cleared the indoor area of the old
+foundations. Each is a plain **`flooring`-tool job**; `Material` is one of the
+game's demolition materials (already in `MATERIALS`):
+
+| Packet | Job (host `PlayerData` / `ConstructionSystem`) | `WorkQueue` `MatType` |
+| ------ | ---------------------------------------------- | --------------------- |
+| 51148, 51239 | `{Type='flooring', Material=2, PosX=40, PosY=52, SizeX=5, SizeY=5}` | `Demolish` (`Type='Construct'`, `Dismantle=0`) |
+| 51282, 51448 | `Material=3`, same area | `DemolishWalls` |
+| 51602 | `Material=5` | `ClearIndoorArea` |
+
+2 Demolish, 3 DemolishWalls, 4 RemoveTunnels, 5 ClearIndoorArea, 6 SellFlooring,
+7 SellMaterial. The bot sends these as client jobs with `ctl demolish X Y W H
+[-n DemolishWalls]` (`build.demolish`); untested live until Haiku's round ends.
+The earlier guess that bulldozing was a separate job type or `Dismantle` flag
+was wrong: `Dismantle` is a `WorkQueue` field and stays 0 here.

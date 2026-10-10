@@ -55,6 +55,8 @@ meets the game's rules: `ctl rules` lists every room, `ctl rules Kitchen` one.
 Fridge, Sink"). Notably: HoldingCell needs 5x5 inside, Toilet and Bench; Yard
 5x5 and `Secure` (fenced); Kitchen Cooker, Fridge, Sink (and power for the
 cooker); Canteen ServingTable, Table, Bench or DiningChair; Shower ShowerHead.
+Clear an old building with `ctl demolish X Y W H`, then `-n DemolishWalls`,
+then `-n ClearIndoorArea` (as the game's own tools do).
 Staff are hired with `ctl hire Guard 2`.
 
 ## Recipe: a prisoner cell

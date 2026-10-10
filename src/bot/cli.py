@@ -348,7 +348,7 @@ def ctl_build(
     tool: Annotated[
         str,
         typer.Argument(
-            help="foundation, wall, floor, room, place or line (pipes/cables)."
+            help="foundation, wall, floor, room, place, line (pipes/cables) or demolish."
         ),
     ],
     x: Annotated[int, typer.Argument(help="Left cell.")],
@@ -386,6 +386,27 @@ def ctl_hire(
 ) -> None:
     """Hire staff (a `Staff` construction job per person), e.g. `hire Guard 2`."""
     _show(ctx, "POST", "/build", {"jobs": [{"tool": "hire", "role": role}] * count})
+
+
+@ctl.command("demolish")
+def ctl_demolish(
+    ctx: typer.Context,
+    x: Annotated[int, typer.Argument(help="Left cell.")],
+    y: Annotated[int, typer.Argument(help="Top cell.")],
+    width: Annotated[int, typer.Argument(help="Cells wide.")] = 1,
+    height: Annotated[int, typer.Argument(help="Cells high.")] = 1,
+    name: Annotated[
+        str,
+        typer.Option(
+            "--name",
+            "-n",
+            help="Demolish (bulldoze), DemolishWalls, ClearIndoorArea or RemoveTunnels.",
+        ),
+    ] = "Demolish",
+) -> None:
+    """Bulldoze an area; then DemolishWalls, then ClearIndoorArea to clear a building."""
+    spec = {"tool": "demolish", "x": x, "y": y, "width": width, "height": height}
+    _show(ctx, "POST", "/build", {"jobs": [{**spec, "material": name}]})
 
 
 @ctl.command("area")

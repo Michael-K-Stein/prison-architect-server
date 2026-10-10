@@ -18,3 +18,19 @@ def test_to_dict_labels_short_keys():
     node.merge(Node("0", [("st", 2), ("Type", 5)]))
     assert node.to_dict(system="ObjectData") == {"SubType (st)": 2, "Type": 5}
     assert node.to_dict() == {"st": 2, "Type": 5}
+
+
+def test_demolish_is_a_flooring_job_with_the_demolition_material():
+    from src.bot import build
+
+    job = build.job_from(
+        {
+            "tool": "demolish",
+            "x": 1,
+            "y": 2,
+            "width": 5,
+            "height": 5,
+            "material": "DemolishWalls",
+        }
+    )
+    assert (job.type, job.material) == ("flooring", 3)
