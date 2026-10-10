@@ -1652,3 +1652,33 @@ solar / wind / hybrid supply the prison, and keep it off for 10 days. Exporting
 power uses a `PowerExportMeter` (object 390) and the buildtoolbar text says a
 PowerStation "can also be connected to a Transformer to export power". The
 older `Grant_GreenMachine` (solar / wind / hybrid, one each) is a separate grant.
+
+### Bureaucracy tab, attempt 2 (Haiku 5.5, `bot-goal-3-bot`)
+
+- Staff hired with `ctl hire` (Chief, Foreman, Accountant, Lawyer; the Warden
+  already sat in Office #2) and each placed in an Office room with an
+  OfficeDesk, Chair and FilingCabinet: rooms 6 (Accountant), 7 (Lawyer), 8
+  (Chief), 16 (Foreman); StaffDoor on the bottom edge. One occupant per Office
+  room (`Entity` of the room). Idle staff read `ca=0`, `ji=-1` (Action and JobId
+  of the person, see "Short snapshot keys"), `Dest` next to the desk.
+- Research moves only at speed 10 in the agent's tests, and only after the
+  matching staff member sits in an office. Of the 23 researches stacked in the
+  first attempt (stalled at `Progress 0.0001` with no staff), sixteen finished
+  once staff existed: Cctv, RemoteAccess, Cleaning, GroundsKeeping, Patrols,
+  PrisonLabour, LandExpansion, Armoury, BankLoans, ExtraGrant, Deployment,
+  Contraband, Dogs, BodyArmour, Tazers (1.0) and LowerTaxes1 (0.97 at the
+  last read); Deathrow 0.38 running; RemoveMinCellSize 0.0001 (both need the
+  Lawyer, who works one at a time). Not started: TazersForEveryone,
+  LowerTaxes2, PermanentPunishment, ReduceExecutionLiability, LegalDefense.
+- The agent could not start a research with `BeginResearch` (Desired stayed
+  false, no charge) and used `ToggleResearchDesired` off/on instead. Not
+  understood: the first attempt's `BeginResearch` did charge money. Possibly
+  `BeginResearch` is refused for a research already `Desired`.
+- Policies were left at the save's values (Quantity 3, Variety 2, ParoleCutoff
+  40, VisitationHours 3). Reform: `StartReformProgram 0 true` creates program 0
+  with `Error: NoRegimeTime` (no schedule slot); a program needs
+  `ScheduleProgram <program> <day> <hour> <room>` and a room (classroom /
+  workshop); stopped again with `StopReformProgram 0`. The `Solar Panel
+  Development` program is what `target_PassReform` counts.
+- The new offices' lights had no power (grid damage around x 12-65, y 12-64
+  at that time).
