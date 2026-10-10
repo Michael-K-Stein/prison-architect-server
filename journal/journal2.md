@@ -1719,3 +1719,39 @@ older `Grant_GreenMachine` (solar / wind / hybrid, one each) is a separate grant
   `DismantleObject` is untested.)
 - `problems` now reports `Overloaded` on any generator type, with value 1 as
   "overloaded" and any other value with the shared-network hint.
+
+### Pause point: state when the game was reset (MKS, `bot-goal-3-bot3`)
+
+- **Goal 8 clock does run with the station off.** `ctl send ElectricalSwitch
+  Main_Power_Station off` (at game minute about 127410) made the grant's progress
+  node `Save Grants/target_PowerStation/Progress/target_PowerStation_task`
+  (`Type=TimePassedGreen`, `Quantity=5`, `Deadline=14400`) report `GreenDeadline
+  = 141810.14` = switch-off time + 14400: the grant completes at that game
+  minute (about 24 real minutes at 10x) if the station is never switched on
+  again. `Save Objectives.TimePassedGEG=14400` is the limit, not the progress.
+  The prison need not be powered for it to count (it was dark).
+- **Dismantling / removing** (user capture 53615-53702: `DismantleObject` host work
+  jobs, `PlayerIssued=False`, created by the host's own UI): no client route found.
+  Tried `Construction` jobs of Type `DismantleObject`, `Dismantle`, `Objects`,
+  `Demolish`, `Utilities` (material 243, 0, -1) and `DismantleUtility`, and
+  `flooring` Material 2: none removed the station or the cable at (65,25).
+  A Haiku agent reports plain `ctl demolish X Y W H` (default Material 2) removed
+  *cable cells* for it (not `DemolishWalls`); unverified by me, and bulldozing
+  does not remove objects (Lights at 88.5,20.5 and 94.5,30.5, the PowerStation).
+- **Battery and Transformer need a building**: `IndoorOutdoor 0` in the game
+  data, and 77 Batteries placed along an outdoor cable trunk (y=4 and y=6,
+  x=60..98) were never built; Solar/Wind/Hybrid are outdoor (1), PowerExportMeter
+  Either, PracticeSolarPanel 2. A battery hall (foundation 89,14 11x16 and 89,33
+  11x17 with a JailDoor each, interior cable rows and a spine at x=90) was
+  started; not finished.
+- **Reform ids** (Haiku): `StartReformProgram N` takes a *program type* index; type
+  12 is FirstAidTraining; 'SolarPanelDevelopment' is probably 10 (IDA string
+  table order, unconfirmed). A scheduled program with no teacher shows
+  `Error NoTeachers`; one with no regime slot `NoRegimeTime`. Reform instances
+  cannot be deleted by the bot (duplicates remain). Workshop built at
+  71..75,53..57 (room 9) with WorkshopSaw, WorkshopPress, SmallTable (`Table`
+  refused) and 2 of the 5 PracticeSolarPanels.
+- **Status at the reset**: Grant_bootstraps, target_SolarPanels and
+  target_WindTurbine Completed; target_GreenEnergySource counts 10/10/10;
+  target_PowerStation clock started; Export, Battery and PassReform not done.
+  Bureaucracy: staff hired and seated, sixteen researches done.

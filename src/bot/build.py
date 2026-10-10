@@ -128,6 +128,20 @@ def job_from(spec: dict[str, Any]) -> Job:
         kwargs["obj" if name_key == "object" else name_key] = str(spec[name_key])
     elif name_key == "object":
         raise BuildError("place needs an object name (e.g. Bed)")
+    if tool == "raw":
+        if not spec.get("type"):
+            raise BuildError("raw needs a job type (e.g. DismantleObject)")
+        try:
+            return raw(
+                str(spec["type"]),
+                int(spec["x"]),
+                int(spec["y"]),
+                int(spec.get("width", 1)),
+                int(spec.get("height", 1)),
+                int(spec.get("material", 0)),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise BuildError("raw needs type, x, y (whole numbers)") from exc
     if tool == "hire" and not spec.get("role"):
         raise BuildError("hire needs a role (Guard, Cook, Doctor, Warden, Workman)")
     if tool == "place" and spec.get("facing"):
@@ -170,6 +184,13 @@ def demolish(
     return floor(x, y, width, height, material)
 
 
+def raw(
+    job_type: str, x: int, y: int, width: int = 1, height: int = 1, material: int = 0
+) -> Job:
+    """Any job type and numeric material, for trying jobs the bot doesn't know."""
+    return Job(job_type, int(material), x, y, width, height)
+
+
 def hire(role: str) -> Job:
     """Hire one staff member (``Staff`` tool; ``Material`` is the staff object
     type, e.g. ``Guard`` 105, ``Cook`` 113, ``Warden`` 132). Position is unused."""
@@ -177,6 +198,7 @@ def hire(role: str) -> Job:
 
 
 TOOLS["demolish"] = (demolish, ("x", "y", "width", "height"), "material")
+TOOLS["raw"] = (raw, (), "material")
 TOOLS["hire"] = (hire, (), "role")
 
 

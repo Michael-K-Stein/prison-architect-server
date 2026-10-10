@@ -422,6 +422,22 @@ def ctl_name_list(ctx: typer.Context) -> None:
     _show(ctx, "GET", "/alias")
 
 
+@ctl.command("raw")
+def ctl_raw(
+    ctx: typer.Context,
+    job_type: Annotated[str, typer.Argument(help="Job Type, e.g. DismantleObject.")],
+    x: Annotated[int, typer.Argument(help="Cell x.")],
+    y: Annotated[int, typer.Argument(help="Cell y.")],
+    width: Annotated[int, typer.Argument(help="Cells wide.")] = 1,
+    height: Annotated[int, typer.Argument(help="Cells high.")] = 1,
+    material: Annotated[int, typer.Option(help="Numeric Material.")] = 0,
+) -> None:
+    """Send any Construction job type (experiments)."""
+    spec = {"tool": "raw", "type": job_type, "x": x, "y": y}
+    spec |= {"width": width, "height": height, "material": material}
+    _show(ctx, "POST", "/build", {"jobs": [spec]})
+
+
 @ctl.command("hire")
 def ctl_hire(
     ctx: typer.Context,
