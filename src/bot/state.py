@@ -60,6 +60,10 @@ TRACKED = frozenset(
 )
 """Event codes (besides DirectoryData) that change the state."""
 OBJECTIVE_SYSTEM = "Objective"
+WORLD_SYSTEM = "World"
+STALL_SECONDS = 10.0
+"""A ``World`` snapshot arrives about every 0.35 s, paused or not (journal2, speed
+section). Silence for longer than this means the host has stopped running."""
 LIST_ITEM = "[i "
 GENERATORS = frozenset(
     {"PowerStation", "SolarPanels", "WindTurbine", "SolarWindHybrid"}
@@ -194,6 +198,8 @@ class GameState:
     """Snapshots merged per system."""
     errors: int = 0
     last_update: float = 0.0
+    world_seen: float = 0.0
+    """When the last ``World`` snapshot was merged (0 before the first one)."""
     type_names: dict[int, str] = field(default_factory=lambda: dict(OBJECT_TYPES))
     """Object type id -> name: the known table, plus pairs learned live."""
     cells: dict[tuple[int, int], dict[str, Any]] = field(default_factory=dict)
@@ -252,6 +258,8 @@ class GameState:
                         if "x" in f and "y" in f:
                             self.cells.setdefault((f["x"], f["y"]), {}).update(f)
             self.systems.setdefault(name, StateNode()).merge(tree)
+            if name == WORLD_SYSTEM:
+                self.world_seen = time.time()
             if name == "ObjectData":
                 self._learn_type_names(tree)
             return
@@ -403,6 +411,19 @@ class GameState:
             return {
                 k: str(v.fields.get("Status", "")) for k, v in node.children.items()
             }
+
+    def host_stalled(
+        self, limit: float = STALL_SECONDS, now: float | None = None
+    ) -> bool:
+        """True when the host has gone silent: no ``World`` snapshot for ``limit`` s.
+
+        False before the first snapshot, so a bot that is still joining is not stalled.
+        """
+        with self.lock:
+            seen = self.world_seen
+        if not seen:
+            return False
+        return (time.time() if now is None else now) - seen > limit
 
     def object_names(self) -> Counter[str]:
         """How many known objects there are of each type name (from the save)."""
@@ -741,6 +762,7 @@ class GameState:
                     n: {"uId": u, "index": i} for n, (u, i) in self.names.all().items()
                 },
                 "zones": self.zones.all(),
+                "host_stalled": self.host_stalled(),
                 "save_loaded": self.save is not None,
                 "alerts": list(self.alerts)[-10:],
                 "problems": self.problems(),

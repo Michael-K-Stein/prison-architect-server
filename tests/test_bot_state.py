@@ -112,3 +112,24 @@ def test_bad_payload_counts_an_error() -> None:
     state = GameState()
     state.apply(9, b"\x12\x05World\x12\x02xx")
     assert state.errors == 1
+
+
+def test_host_stalled_after_silent_world_snapshots() -> None:
+    state = GameState()
+    assert not state.host_stalled(now=1e9)  # still joining: no snapshot yet
+    world = _node("World", [], [_node("ClientData", [("gt", 1, _int(0))])])
+    state.apply(9, _event("World", world))
+    seen = state.world_seen
+    assert seen > 0
+    assert not state.host_stalled(now=seen + 5)
+    assert state.host_stalled(now=seen + 11)
+    state.apply(9, _event("World", world))  # a paused game still sends snapshots
+    assert not state.host_stalled(now=state.world_seen + 1)
+
+
+def test_summary_reports_host_stalled() -> None:
+    state = GameState()
+    state.apply(9, _event("Finance", _node("Finance", [("v.6", 1, _int(7))])))
+    assert state.summary()["host_stalled"] is False  # no World snapshot yet
+    state.world_seen = 1.0  # long ago
+    assert state.summary()["host_stalled"] is True
