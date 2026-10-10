@@ -85,6 +85,29 @@ def test_alerts_from_staff_and_speech() -> None:
     assert len(lines) == 2 and len(state.summary()["alerts"]) == 2
 
 
+def test_area_from_cell_data() -> None:
+    state = GameState()
+    items = [
+        _node(
+            "[i 0]",
+            [("x", 1, _int(1)), ("y", 1, _int(1)), ("Mat", 4, _str("ConcreteWall"))],
+        ),
+        _node(
+            "[i 1]",
+            [("x", 1, _int(2)), ("y", 1, _int(1)), ("Mat", 4, _str("BuildingFrame"))],
+        ),
+        _node(
+            "[i 2]",
+            [("x", 1, _int(1)), ("y", 1, _int(2)), ("Mat", 4, _str("ConcreteFloor"))],
+        ),
+    ]
+    tree = _node("CellData", [], [_node("CellData", [], items)])
+    state.apply(9, _event("CellData", tree))
+    area = state.area(1, 1, 2, 2)
+    assert area["rows"] == ["WB", "F."]
+    assert area["materials"]["nothing"] == 1
+
+
 def test_bad_payload_counts_an_error() -> None:
     state = GameState()
     state.apply(9, b"\x12\x05World\x12\x02xx")

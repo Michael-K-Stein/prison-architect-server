@@ -10,6 +10,7 @@ and send RPCs. Listens on 127.0.0.1 only. Endpoints::
     POST /send   {"action", "args"}  parse, build and raise an RPC
     POST /build  {"jobs": [spec]}    build jobs (foundation/wall/floor/room/place)
     GET  /names/<table>?q=text       game ids by name (objects, materials, rooms...)
+    GET  /area?x=&y=&w=&h=           what the map cells there are made of (a grid)
     POST /refresh {"seconds"}        re-fetch the full save (rooms, problems), then /state
     GET  /events                     numbered feed lines (?since=N&limit=M)
     POST /wait   {"seconds"}         sleep (max 30 s), then /state
@@ -44,6 +45,7 @@ NAME_TABLES = {
     "intake": enums.INTAKE_TYPES,
 }
 """``/names/<table>``: the game's id -> name tables."""
+AREA_DEFAULTS = (("x", 0), ("y", 0), ("w", 10), ("h", 10))
 
 
 class ControlServer:
@@ -273,6 +275,9 @@ class _Handler(BaseHTTPRequestHandler):
                 self._reply(200, c.actions(query.get("kind") or None, show_all))
             elif url.path.startswith("/actions/"):
                 self._reply(*c.action(unquote(url.path[9:])))
+            elif url.path == "/area":
+                x, y, w, h = (int(query.get(k, d)) for k, d in AREA_DEFAULTS)
+                self._reply(200, c.session.state.area(x, y, min(w, 60), min(h, 60)))
             elif url.path.startswith("/names/"):
                 self._reply(*c.names(url.path[7:], query.get("q", "")))
             elif url.path == "/events":

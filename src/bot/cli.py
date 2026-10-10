@@ -350,6 +350,18 @@ def ctl_build(
     _show(ctx, "POST", "/build", {"jobs": [spec]})
 
 
+@ctl.command("area")
+def ctl_area(
+    ctx: typer.Context,
+    x: Annotated[int, typer.Argument(help="Left cell.")],
+    y: Annotated[int, typer.Argument(help="Top cell.")],
+    width: Annotated[int, typer.Argument(help="Cells wide.")] = 10,
+    height: Annotated[int, typer.Argument(help="Cells high.")] = 10,
+) -> None:
+    """What the map cells in an area are made of (walls, floor, frame, nothing)."""
+    _show(ctx, "GET", f"/area?x={x}&y={y}&w={width}&h={height}")
+
+
 @ctl.command("refresh")
 def ctl_refresh(ctx: typer.Context) -> None:
     """Re-fetch the full save (rooms, occupants, problems), then print the state."""

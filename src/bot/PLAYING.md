@@ -47,15 +47,25 @@ finished first.
 
 ## Recipe: a prisoner cell
 
+Check progress with `ctl area X Y 5 5`: one row of letters per map row,
+`W` wall, `F` floor, `B` frame (walls not built yet), `.` nothing.
+
 1. `build foundation X Y 5 5`: a 5x5 building, inside cells `X+1..X+3`,
-   `Y+1..Y+3`. Wait until it is built (no `Foundations` job left in
-   `ctl state ConstructionSystem`).
-2. `build room X+1 Y+1 3 3 -n Cell`, `build place X+1 Y+1 -n Bed`,
-   `build place X+3 Y+1 -n Toilet`, `build place X+2 Y+4 -n JailDoor`
-   (the door goes in the bottom wall).
-3. `send IntakeTypeChange FillCapacity`, then `send GameSpeedChange 10` and wait
-   for 08:00 game time. New prisoners show as `object added: ... Prisoner`.
-4. `ctl refresh`: the cell's `occupant` is the prisoner assigned to it.
+   `Y+1..Y+3`. Speed up and wait until `ctl area X Y 5 5` shows `F` inside and
+   `B` round the edge (a minute or two at 10x).
+2. `build place X+2 Y+4 -n JailDoor` (a door in the bottom edge). **The walls
+   are only built once the building has a door**: the `B` edge then turns
+   into `W`. Wait for that.
+3. `build room X+1 Y+1 3 3 -n Cell`, `build place X+1 Y+1 -n Bed`,
+   `build place X+3 Y+1 -n Toilet`. Wait until `ctl events` shows the Bed and
+   Toilet `object added` and a `room created: ... Cell` line.
+4. `send IntakeTypeChange FillCapacity` (if not already), `send GameSpeedChange 10`
+   and wait for 08:00 game time (`time_index` modulo 1440 = 480). New prisoners
+   show as `object added: ... Prisoner`; they only come when a cell is free.
+5. `ctl refresh`: the new Cell room's `occupant` is the prisoner assigned to it.
+
+The `Foundations` entry in `ctl state ConstructionSystem` stays listed (with
+`Hidden: true`) after the building is done; don't wait for it to disappear.
 
 A cell is only fully usable with water for the toilet (a `WaterPumpStation`
 with power, pipes to the toilet) and a canteen with a kitchen to eat in;

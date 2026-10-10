@@ -172,6 +172,9 @@ class GameState:
     last_update: float = 0.0
     type_names: dict[int, str] = field(default_factory=lambda: dict(OBJECT_TYPES))
     """Object type id -> name: the known table, plus pairs learned live."""
+    cells: dict[tuple[int, int], dict[str, Any]] = field(default_factory=dict)
+    """Map cells ``(x, y)`` -> ``Mat``, ``Ind`` (indoors), ``Room.i`` (save
+    ``Cells``, then live ``CellData``)."""
     rooms: dict[int, dict[str, Any]] = field(default_factory=dict)
     """Rooms by index: ``uId``, ``type`` id, ``name`` (save ``Rooms`` / CreateRoom)."""
     alerts: deque[str] = field(default_factory=lambda: deque(maxlen=50))
@@ -213,6 +216,12 @@ class GameState:
                 return
             if name == STAFF_ALERT:
                 self._staff_alerts(tree)
+            elif name == "CellData":
+                for group in tree.children:
+                    for item in group.children:
+                        f = dict(item.fields)
+                        if "x" in f and "y" in f:
+                            self.cells.setdefault((f["x"], f["y"]), {}).update(f)
             self.systems.setdefault(name, StateNode()).merge(tree)
             if name == "ObjectData":
                 self._learn_type_names(tree)
@@ -298,6 +307,11 @@ class GameState:
                     {"uId": f.get("Id.u"), "name": f.get("Type")}
                     | {k: f[k] for k in ("Pos.x", "Pos.y") if k in f}
                 )
+            cells = self.save.children.get("Cells")
+            for name, item in cells.children.items() if cells else ():
+                x, _, y = name.partition(" ")
+                if x.isdigit() and y.isdigit():
+                    self.cells[(int(x), int(y))] = dict(item.fields)
             rooms = self.save.children.get("Rooms")
             for item in rooms.children.values() if rooms else ():
                 f = item.fields
@@ -448,6 +462,35 @@ class GameState:
                     out[int(ident)] = (progress, desired)
             return out
 
+    def area(self, x: int, y: int, width: int, height: int) -> dict[str, Any]:
+        """What the cells in an area are made of: counts, a grid, and rooms.
+
+        ``rows`` has one string per row, a letter per cell (see ``key``):
+        ``W`` wall, ``F`` floor, ``B`` building frame (walls still to come),
+        ``.`` nothing built; lower case = indoors is not set.
+        """
+        with self.lock:
+            counts: Counter[str] = Counter()
+            rooms: set[int] = set()
+            rows = []
+            for cy in range(y, y + height):
+                row = ""
+                for cx in range(x, x + width):
+                    f = self.cells.get((cx, cy), {})
+                    mat = str(f.get("Mat") or "")
+                    counts[mat or "nothing"] += 1
+                    if f.get("Room.i", -1) not in (-1, None):
+                        rooms.add(f["Room.i"])
+                    row += _cell_letter(mat)
+                rows.append(row)
+            return {
+                "materials": dict(counts),
+                "rows": rows,
+                "rooms": sorted(rooms),
+                "key": "W wall, F floor, B frame (walls not built yet), "
+                "D door/other, . nothing",
+            }
+
     def room_list(self) -> list[dict[str, Any]]:
         """Rooms from the last save: index, type, and the assigned prisoner (cells)."""
         with self.lock:
@@ -512,6 +555,18 @@ class GameState:
                 "recent": list(self.feed)[-10:],
                 "errors": self.errors,
             }
+
+
+def _cell_letter(mat: str) -> str:
+    if not mat:
+        return "."
+    if mat.endswith("Wall") or mat == "Fence":
+        return "W"
+    if mat.endswith("Floor") or mat in ("Concrete", "Tiles"):
+        return "F"
+    if mat == "BuildingFrame":
+        return "B"
+    return "D"
 
 
 def _text(value: Any) -> str:
