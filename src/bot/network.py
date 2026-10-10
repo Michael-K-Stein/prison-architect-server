@@ -25,6 +25,8 @@ from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+
+from src.protocol.enums import ELECTRICAL
 from typing import Any
 
 Cell = tuple[int, int]
@@ -55,7 +57,9 @@ class Utility:
     """Role -> types that feed a line with that role."""
     converters: frozenset[str] = frozenset()
     passive: frozenset[str] = frozenset()
-    consumer: Callable[[dict[str, Any]], bool] = lambda obj: "Powered" in obj
+    consumer: Callable[[dict[str, Any]], bool] = lambda obj: (
+        "Powered" in obj or obj.get("Type") in ELECTRICAL
+    )
     """True for an object that draws from the line (sources, converters and passive
     parts are excluded before this is asked)."""
     adjacent: bool = True
@@ -100,7 +104,10 @@ def components(cells: set[Cell]) -> list[list[Cell]]:
 
 
 def analyze(
-    cells: set[Cell], objects: list[dict[str, Any]], utility: Utility
+    cells: set[Cell],
+    objects: list[dict[str, Any]],
+    utility: Utility,
+    with_cells: bool = False,
 ) -> dict[str, Any]:
     """The utility's networks with what touches them, and a list of problems."""
     placed = [(o, footprint(o)) for o in objects if "Pos.x" in o and "Pos.y" in o]
@@ -127,7 +134,8 @@ def analyze(
                 joins.setdefault(obj.get("Id.i"), set()).add(n)
             elif kind not in every_source | utility.passive and utility.consumer(obj):
                 consumers[kind] += 1
-                unpowered += not obj.get("Powered", True)
+                # the save omits Powered on an unpowered object
+                unpowered += not obj.get("Powered", kind not in ELECTRICAL)
         xs, ys = [c[0] for c in comp], [c[1] for c in comp]
         net: Network = {
             "id": n,
@@ -144,6 +152,8 @@ def analyze(
             "touching": dict(touching),
         }
         net["kind"] = utility.classify(net)
+        if with_cells:
+            net["cell_list"] = sorted(comp)
         networks.append(net)
         where = (
             f"network {n} ({len(comp)} cells, x{net['box'][0]}-{net['box'][2]} "

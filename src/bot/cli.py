@@ -721,6 +721,50 @@ def ctl_land(
     )
 
 
+@ctl.command("connect")
+def ctl_connect(
+    ctx: typer.Context,
+    kind: Annotated[str, typer.Argument(help="power or water.")],
+    apply: Annotated[
+        bool, typer.Option("--apply", help="Send the planned cables / pipes.")
+    ] = False,
+) -> None:
+    """Plan (and with --apply lay) the cables or pipes that connect every unserved
+    object (no power / no water) to the nearest fed network by the shortest route.
+
+    Cables never touch the raw green network; pipes end ON each appliance's cell.
+    Refresh first (`ctl refresh`), and again after the workmen finished.
+    """
+    port = ctx.obj
+    try:
+        status, plan = call("GET", f"/connect?kind={quote(kind)}", port=port)
+    except OSError as exc:
+        _fail(f"no control server: {exc}")
+    if status >= 400 or "error" in plan:
+        _fail(str(plan.get("error", plan)))
+    sent = 0
+    if apply and plan["jobs"]:
+        for i in range(0, len(plan["jobs"]), 40):
+            batch = plan["jobs"][i : i + 40]
+            status, data = call("POST", "/build", {"jobs": batch}, port=port)
+            if status >= 400:
+                _fail(f"refused: {data}")
+            sent += len(batch)
+    typer.echo(
+        json.dumps(
+            {
+                "targets": plan["targets"],
+                "runs": len(plan["jobs"]),
+                "sent": sent,
+                "skipped": plan["skipped"],
+                "jobs": [] if apply else plan["jobs"],
+                "next": "wait for the workmen, `ctl refresh`, check `problems`",
+            },
+            indent=1,
+        )
+    )
+
+
 @ctl.command("alerts")
 def ctl_alerts(
     ctx: typer.Context,

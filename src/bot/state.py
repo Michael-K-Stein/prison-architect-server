@@ -722,6 +722,33 @@ class GameState:
             fields = [i.fields for i in objects.children.values()] if objects else []
             return network.analyze(cells, fields, spec)
 
+    def connect_plan(self, kind: str) -> dict[str, Any]:
+        """Cables / pipes that would connect every unserved consumer (``connect.plan``)."""
+        from src.bot import connect
+
+        name = {
+            "power": "electricity",
+            "electricity": "electricity",
+            "water": "water",
+        }.get(kind)
+        if name is None:
+            return {"error": "kind: power or water"}
+        spec = network.UTILITIES[name]
+        with self.lock:
+            if self.save is None:
+                return {"error": "the save is not loaded yet"}
+            node = self.save.children.get(spec.node)
+            cells = set()
+            for key in node.children if node else ():
+                parts = key.split()
+                if len(parts) in (2, 3) and all(p.isdigit() for p in parts[:2]):
+                    cells.add((int(parts[0]), int(parts[1])))
+            objects = self.save.children.get("Objects")
+            fields = [i.fields for i in objects.children.values()] if objects else []
+            width = int(self.save.fields.get("NumCellsX", 100))
+            height = int(self.save.fields.get("NumCellsY", 80))
+            return connect.plan(name, cells, fields, width, height)
+
     def _no_water(self) -> list[str]:
         """Water appliances (sink, toilet, shower head...) off a pumped pipe network.
 

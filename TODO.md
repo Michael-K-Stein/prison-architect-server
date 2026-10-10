@@ -12,6 +12,15 @@ finding in `journal/journal2.md`.
   recall that a host ignores `TransactionAdded` / `Finance` writes from clients (journal2), so
   only a client-side display may be possible.
 
+## Priorities (user, 2026-10-10)
+
+1. The room goal (one verified room of every type, minimum and lavish; `ctl room`, `ctl building`, `ctl connect`).
+2. **The in-game Todo list** (2 items, 1 completed): not in the save (`Objectives/SelectedObjectives` empty, no
+   `todo` string in any section) nor in any packet seen; needs a recording while the user adds / ticks / deletes an item.
+- **Dropped:** `target_PassReform` (the last open green goal).
+- **Deferred:** the Psychologist's Needs report (`ctl needs`).
+- **Careful:** `ctl remove` is destructive (a client's `ObjectRemoved` deletes any object on the host).
+
 ## Deferred from the MKS2 session (2026-10-10)
 
 Prioritised after the main tasks (room goal, PassReform, Needs report); each is a thread that was opened and

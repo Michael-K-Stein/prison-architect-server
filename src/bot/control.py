@@ -494,6 +494,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._reply(*c.alias(None))
             elif url.path == "/staff":
                 self._reply(200, c.session.state.staff_needs())
+            elif url.path == "/connect":
+                self._reply(200, c.session.state.connect_plan(query.get("kind", "")))
             elif url.path == "/alerts":
                 state = c.session.state
                 since = int(query.get("since", 0))
