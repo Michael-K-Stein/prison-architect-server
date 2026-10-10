@@ -1521,3 +1521,12 @@ no Chief/Lawyer/Accountant/Foreman existed. `src/protocol/research_rules.py`
 - Income idea: `finance_cost_prisonerintake` pays +800 per arriving prisoner
   (host-side, seen at packet 29058). `RemovePrisoner(prisoner)` takes
   `uId,index` (`ctl send RemovePrisoner 8562964,27`).
+- **Spoofing the sender on our own server** (user idea): the local Photon server
+  (`src/server/game_server.py`) stamps `ActorNr` on every forwarded event, so
+  with `PA_SPOOF_HOST_CODES=118` events with those RPC codes from any player
+  leave the server as if sent by the master client (the host). Untested live:
+  it needs the host client and the bot both connected to the *local* server
+  (hosts redirect of `ns.exitgames.com` to this machine), not the real cloud
+  where MKS runs. Theory to test: the host's `TransactionAdded` handler (118)
+  only moves the balance when it comes from the server/host actor, which would
+  explain why a client's copy only showed up in the transaction list.
