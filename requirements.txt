@@ -1,6 +1,8 @@
 # Prison Architect Server dependencies
 pyPhotonRealtime @ https://github.com/Michael-K-Stein/pyPhotonRealtime/archive/refs/tags/v0.2.0.tar.gz  # src/server (Photon server)
-python-dotenv==1.2.2  # main.py, src/bot (.env loading)
+python-dotenv==1.2.4  # main.py, src/bot (.env loading)
 rich==15.0.0        # main.py (log output; also a typer dependency)
 typer==0.27.3        # main.py (CLI)
+click==8.5.0         # typer's parser; pinned for the same reason
+prompt_toolkit==3.0.53  # src/bot hud, src/cli console (also an InquirerPy dependency)
 InquirerPy==0.3.4    # main.py (interactive setup wizard when run with no command)

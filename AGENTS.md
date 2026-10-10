@@ -46,7 +46,7 @@ python main.py bot --log-file bot.log -v debug -o captures/bot1.sqlite   # debug
 
 ## Checks (run all before pushing)
 
-`requirements-dev.txt` pins the tools CI uses (ruff **0.16.10**, pytest). Use
+`requirements-dev.txt` pins the tools CI uses (ruff **0.17.0**, pytest). Use
 those exact versions (`python -m ruff --version`), not global ones. These are the
 commands CI runs (`.github/workflows/docker-image.yml`):
 
