@@ -18,10 +18,41 @@ from src.cli.options import (
     VerboseOpt,
     merge_common,
 )
-from src.cli.console import CommandTable, ConsolePane, loglevel_command, run_console
+from src.cli.console import (
+    Command,
+    CommandTable,
+    ConsolePane,
+    loglevel_command,
+    run_console,
+)
 from src.logs import setup_logging
 from src.server.server import PrisonArchitectServer
 from src.server.upstream import resolve_upstream
+
+
+NEW_SPEECH = 117
+"""RPC ``NewSpeechAdded(int adviser, string text)``."""
+
+
+def say_command(server: PrisonArchitectServer) -> Command:
+    """``say [host] SPEAKER MESSAGE``: an adviser speaks to every room's players."""
+    from pyphotonrealtime.server import Role
+
+    from src.bot.broadcast import speaker_index
+
+    def run(args: list[str]) -> str:
+        to = "all"
+        if args[:1] == ["host"]:
+            to, args = "host", args[1:]
+        if len(args) < 2:
+            raise ValueError("expected a speaker and a message")
+        game = server.handlers[Role.GameServer]
+        sent = game.inject_event(  # type: ignore[attr-defined]
+            NEW_SPEECH, speaker_index(args[0]), " ".join(args[1:]), to=to
+        )
+        return f"sent to {sent} player(s)"
+
+    return Command("say [host] SPEAKER TEXT", "an adviser speaks in the game", run)
 
 
 def start_local(opts: CommonOptions, upstream: Optional[str] = None) -> None:
@@ -55,7 +86,7 @@ def start_local(opts: CommonOptions, upstream: Optional[str] = None) -> None:
             *passthrough,
         )
         run_console(
-            CommandTable({"loglevel": loglevel_command()}),
+            CommandTable({"loglevel": loglevel_command(), "say": say_command(server)}),
             pane=pane,
         )
         print("\nShutting down servers...")

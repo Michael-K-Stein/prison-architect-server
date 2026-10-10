@@ -10,9 +10,11 @@ from pyphotonrealtime.protocol.param.int8_param import Int8Parameter
 from pyphotonrealtime.protocol.param.int32_param import Int32Parameter
 from pyphotonrealtime.protocol.param.parameter_key import ParameterKey
 from pyphotonrealtime.protocol.property_keys import GamePropertyKey
-from pyphotonrealtime.realtime._convert import string_array
+from pyphotonrealtime.realtime._convert import string_array, to_param
 from pyphotonrealtime.server import GameServer, PhotonServer
 from pyphotonrealtime.server.rooms import PROPS_LISTED_IN_LOBBY, Room
+
+from src.protocol.rpc import build
 
 # The game lists the host's name and the password flag in the lobby.
 LOBBY_PROPERTIES = (
@@ -43,9 +45,41 @@ class PrisonArchitectGameServer(GameServer):
 
     _spoofing = False
 
-    # TODO: inject server-originated event packets into a room, e.g. the adviser
-    # command's NewSpeechAdded (see src/bot/broadcast.py). Needs a capture-backed
-    # RaiseEvent layout first; the console command waits on this.
+    def inject_event(
+        self,
+        code: int,
+        *args: object,
+        to: str = "all",
+        room: str | None = None,
+    ) -> int:
+        """Send RPC ``code(*args)`` to a room's players as if the host raised it.
+
+        The layout is the one ``_raise_event`` relays (``ActorNr`` + ``Data``, the
+        codec's bytes), with the master client as the sender, as in the spoofing
+        above. ``to`` is ``all`` or ``host``; ``room`` limits it to one room
+        (default: every room). Returns how many players were sent it. Raises
+        ``RpcShapeError`` (a ``ValueError``) for arguments the RPC doesn't take.
+        """
+        if to not in ("all", "host"):
+            raise ValueError("to must be all or host")
+        data = to_param(build(code, *args))
+        sent = 0
+        for candidate in list(self.server.rooms.values()):
+            if room is not None and candidate.name != room:
+                continue
+            master = candidate.actors.get(candidate.master_client_id)
+            if master is None:
+                continue
+            event: Any = {
+                ParameterKey.ActorNr: Int32Parameter(master.number),
+                ParameterKey.Data: data,
+            }
+            receivers = [master] if to == "host" else list(candidate.active_actors())
+            for actor in receivers:
+                if actor.connection is not None and actor.is_active:
+                    actor.connection.send_event(code, event, encrypt=True)
+                    sent += 1
+        return sent
 
     @override
     def _raise_event(
