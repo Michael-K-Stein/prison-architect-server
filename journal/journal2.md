@@ -1682,3 +1682,40 @@ older `Grant_GreenMachine` (solar / wind / hybrid, one each) is a separate grant
   Development` program is what `target_PassReform` counts.
 - The new offices' lights had no power (grid damage around x 12-65, y 12-64
   at that time).
+
+### Green farm and the prison grid (Haiku green round + diagnosis, `bot-goal-3-bot*`)
+
+- **Footprints** (game data `materials*.txt`): SolarPanels 3x2, WindTurbine 2x3,
+  SolarWindHybrid 3x3 (the agents assumed 2x2), PowerStation 3x3, Transformer 2x2,
+  PowerExportMeter 2x2 (`Wired`), Battery 1x1, Capacitor 1x1, PracticeSolarPanel
+  1x2 (4 slots). Generators are `BlockedBy Cable`: cables run along their edges,
+  never through them. Positions in the save are centres.
+- **Generators have a `Switch`**: solar, wind and hybrid objects have
+  `Switch` / `On` / `Capacity` (75, 75, 250) / `Powertype 1` like the PowerStation
+  (`Powertype 0`?). Eighteen of them were `Switch=False` and had to be switched
+  on one by one (`ctl send ElectricalSwitch <index> true`).
+- **The farm was not wired to the prison** (cable flood fill over `Save
+  Electricity`, 718 cable cells): the PowerStation and every consumer were in one
+  network; the farm sat in three separate ones (163 + 61 + 37 cells). After the
+  two missing links (`build line 65 25 1 1` and `72 33 1 1`) everything is one
+  621-cell network with 10 hybrids, 6 solar, 5 wind, 5 Capacitors and the station.
+- **Result: the whole prison went dark** (31 problems, only the 9 lights next to
+  the farm powered), with the station on or off, at night and at 16:00 game
+  time. Every generator in that merged network reads `Overloaded=3` (and no
+  `On`), while the 9 generators in a farm island of their own (5 wind, 4 solar)
+  read `On=True` and nothing else. Reading: `Overloaded` 1 = demand over
+  capacity (seen with Capacity 50, Demand 65); **3 = generators of different
+  kinds (PowerStation + green sources) on one network = the short circuit the user
+  described**. Unproven; consistent with `target_PowerStation` needing no
+  PowerStation at all.
+- **To finish goal 8** the PowerStation must be removed from that network
+  (dismantled). The bot cannot do it: `ctl demolish` (bulldoze) over the station's
+  3x3 footprint left it standing, there is no dismantle RPC, and cables cannot be
+  removed. The user's in-game dismantle shows up on the host as a **`WorkQueue`
+  job** `Type='DismantleObject'`, `PlayerIssued=False`, `ObjAssigned.i/u` = the
+  object, `ObjType='PowerStation'`, `WorkTotal=40` (proxy packets 53702, 53748,
+  then `ObjectRemoved` 53861, 53945). Needs a client-side request that the host
+  turns into that job; not found. (A `Construction` job of type
+  `DismantleObject` is untested.)
+- `problems` now reports `Overloaded` on any generator type, with value 1 as
+  "overloaded" and any other value with the shared-network hint.

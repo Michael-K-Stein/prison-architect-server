@@ -57,6 +57,13 @@ TRACKED = frozenset(
 """Event codes (besides DirectoryData) that change the state."""
 OBJECTIVE_SYSTEM = "Objective"
 LIST_ITEM = "[i "
+GENERATORS = frozenset(
+    {"PowerStation", "SolarPanels", "WindTurbine", "SolarWindHybrid"}
+)
+"""Object types that supply power (they have ``Capacity``, ``Switch``, ``Overloaded``)."""
+OVERLOADED = 1
+"""``Overloaded`` value of a generator whose network demands more than it can supply
+(seen with Capacity 50 and 65 demand); 3 is also seen, see journal2."""
 SAVE_SYSTEM = "Save"
 """Where the join handshake's full save tree is kept in ``systems``."""
 
@@ -564,14 +571,22 @@ class GameState:
             objects = self.save.children.get("Objects")
             for item in objects.children.values() if objects else ():
                 f = item.fields
-                if f.get("Type") == "PowerStation" and f.get("Overloaded"):
-                    out.append(
-                        f"{self.named(f.get('Id.i'), f.get('Id.u'))}"
-                        f"PowerStation #{f.get('Id.i')}: overloaded (Capacity "
-                        f"{f.get('Capacity')}), all power is cut: remove electrical "
-                        "items, add Capacitors, or add a second PowerStation on "
-                        "its own cables (crossing lines short-circuit)"
-                    )
+                if f.get("Type") in GENERATORS and f.get("Overloaded"):
+                    who = self.named(f.get("Id.i"), f.get("Id.u"))
+                    if f["Overloaded"] == OVERLOADED:
+                        why = (
+                            f"overloaded (Capacity {f.get('Capacity')}), all power "
+                            "is cut: remove electrical items, add Capacitors, or add "
+                            "a second PowerStation on its own cables"
+                        )
+                    else:
+                        why = (
+                            f"Overloaded={f['Overloaded']} (seen when a PowerStation "
+                            "and green sources share one network, or a source is "
+                            "switched off): keep stations and green sources on "
+                            "separate cables (crossing lines short-circuit)"
+                        )
+                    out.append(f"{who}{f['Type']} #{f.get('Id.i')}: {why}")
                 if f.get("Type") in ELECTRICAL and not f.get("Powered"):
                     pos = f"{f.get('Pos.x', '?')},{f.get('Pos.y', '?')}"
                     hint = (
