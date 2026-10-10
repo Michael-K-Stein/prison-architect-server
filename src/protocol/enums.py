@@ -19,8 +19,18 @@ from src.protocol.game_tables import (
 OBJECT_TYPES = OBJECTS
 ROOM_TYPES = ROOMS
 
-RESEARCH: dict[int, str] = {}
-"""BeginResearch / ToggleResearchDesired id -> research name (not extracted yet)."""
+RESEARCH: dict[int, str] = dict(
+    enumerate(
+        "None Warden Maintainance Security Legal MentalHealth Finance Cctv "
+        "RemoteAccess Health Cleaning GroundsKeeping Deployment Patrols Dogs "
+        "PrisonLabour Education LandExpansion Contraband Policy Armoury BodyArmour "
+        "Tazers TazersForEveryone BankLoans LowerTaxes1 LowerTaxes2 ExtraGrant "
+        "AdvancedManagement Deathrow PermanentPunishment RemoveMinCellSize "
+        "ReduceExecutionLiability LegalPrep LegalDefense".split()
+    )
+)
+"""BeginResearch / ToggleResearchDesired id -> name: static array at
+``0x140DF4A20`` filled by ``sub_140096B10`` (IDA). Spelling is the game's."""
 
 STAFF = frozenset({"Workman", "Guard", "Doctor", "Cook", "Warden"})
 """Object type names that are staff. Partial (journal2, IDA object table)."""
@@ -54,8 +64,16 @@ ELECTRICAL = frozenset(
 """Objects with ``Properties Electrical`` in the game's ``data/materials.txt``:
 they need power (a powered one has ``Powered=True`` in the save)."""
 
-ROOM_ERRORS: dict[int, str] = {}
-"""Room ``RoomError`` -> text key (``roomerror_*``). Not extracted yet."""
+ROOM_ERRORS: dict[int, str] = {
+    1: "roomerror_nokitchen",
+    2: "roomerror_noprisoners",
+    3: "roomerror_nocanteen_kitchen",
+    4: "roomerror_nocanteen_cells",
+    5: "roomerror_deathrow_sharedcell",
+    6: "roomerror_nonursery",
+    7: "roomerror_laundryoverloaded",
+}
+"""Room ``RoomError`` -> text key: the UI's switch in ``sub_1401EB850`` (IDA)."""
 
 WALL_MATERIALS = {i: MATERIALS[i] for i in (46, 47)}
 """Wall materials seen or named for walls: ConcreteWall, BrickWall. Partial."""
