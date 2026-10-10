@@ -17,8 +17,8 @@ from src.cli.options import (
     TimeoutOpt,
     VerboseOpt,
     merge_common,
-    serve_forever,
 )
+from src.cli.console import CommandTable, run_console
 from src.logs import setup_logging
 from src.server.server import PrisonArchitectServer
 from src.server.upstream import resolve_upstream
@@ -52,7 +52,8 @@ def start_local(opts: CommonOptions, upstream: Optional[str] = None) -> None:
             opts.region,
             *passthrough,
         )
-        serve_forever()
+        run_console(CommandTable())
+        print("\nShutting down servers...")
 
 
 def local(

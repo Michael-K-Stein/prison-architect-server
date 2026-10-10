@@ -240,3 +240,58 @@ class Recorder:
     ) -> None:
         """Flush and close."""
         self.close()
+
+
+class SwitchableRecorder:
+    """A :class:`Recorder` whose output file can be changed while the proxy runs.
+
+    :meth:`open` closes the current capture (flushing it) and starts a new one;
+    :meth:`close` stops recording. Packets that arrive while no file is open
+    are not recorded and return None from :meth:`record`.
+    """
+
+    def __init__(self, path: str | Path | None = None) -> None:
+        """Start recording into ``path``, or idle if None."""
+        self._lock = threading.Lock()
+        self._recorder: Recorder | None = None
+        self.path: Path | None = None
+        if path is not None:
+            self.open(path)
+
+    def open(self, path: str | Path) -> None:
+        """Flush and close the current capture, then record into ``path``."""
+        target = Path(path)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        fresh = Recorder(target)  # may raise: keep the old file open then
+        with self._lock:
+            old, self._recorder, self.path = self._recorder, fresh, target
+        if old is not None:
+            old.close()
+
+    def close(self) -> None:
+        """Flush and close the current capture; recording stops."""
+        with self._lock:
+            old, self._recorder, self.path = self._recorder, None, None
+        if old is not None:
+            old.close()
+
+    def record(
+        self, session: ProxySession, direction: Direction, packet: PhotonPacket
+    ) -> int | None:
+        """Record into the current file, or return None when idle."""
+        with self._lock:
+            current = self._recorder
+        if current is None:
+            return None
+        return current.record(session, direction, packet)
+
+    def __enter__(self) -> SwitchableRecorder:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        self.close()

@@ -14,10 +14,12 @@ from src.cli.options import (
     VerboseOpt,
     CommonOptions,
     merge_common,
-    serve_forever,
 )
 from src.logs import setup_logging
 from src.server.upstream import NAME_SERVER_PORT, resolve_upstream
+
+
+RECORD_HELP = "show or change the capture file (record off stops)"
 
 
 def start_proxy(
@@ -40,6 +42,8 @@ def start_proxy(
     from pyphotonrealtime.protocol.param.string_param import StringParameter
     from pyphotonrealtime.server import Direction, PhotonProxy
 
+    from src.capture.recorder import SwitchableRecorder
+    from src.cli.console import Command, CommandTable, run_console
     from src.protocol.events import (
         compact_lines,
         is_hidden,
@@ -50,12 +54,8 @@ def start_proxy(
     setup_logging(opts.verbose)
 
     stack = ExitStack()
-    recorder = None
+    recorder = stack.enter_context(SwitchableRecorder(record))
     if record is not None:
-        from src.capture import Recorder
-
-        record.parent.mkdir(parents=True, exist_ok=True)
-        recorder = stack.enter_context(Recorder(record))
         logging.info("Recording traffic to %s", record)
     hops: dict[tuple[str, int], int] = {}
 
@@ -87,10 +87,8 @@ def start_proxy(
             ]
 
     def on_packet(session, direction, packet):
-        packet_id = None
-        if recorder is not None:
-            # Before the address rewrite: keep what the real server said.
-            packet_id = recorder.record(session, direction, packet)
+        # Before the address rewrite: keep what the real server said.
+        packet_id = recorder.record(session, direction, packet)
         if isinstance(packet, PhotonOperationPacket):
             if follow and direction == Direction.ToClient:
                 hijack_addresses(packet)
@@ -125,7 +123,27 @@ def start_proxy(
         logging.info(
             "Proxying %s:%d -> %s:%d", opts.listen, tunnel.port, *tunnel.upstream
         )
-        serve_forever()
+
+        def record_command(args: list[str]) -> str:
+            if not args:
+                if recorder.path is None:
+                    return "not recording (record PATH starts a capture)"
+                return f"recording to {recorder.path}"
+            if args == ["off"]:
+                recorder.close()
+                return "recording stopped"
+            if len(args) != 1:
+                raise ValueError("expected one path or off")
+            recorder.open(args[0])
+            logging.info("Recording traffic to %s", recorder.path)
+            return f"recording to {recorder.path}"
+
+        commands = CommandTable(
+            {"record": Command("record [PATH|off]", RECORD_HELP, record_command)}
+        )
+
+        run_console(commands)
+        print("\nShutting down servers...")
 
 
 def proxy(
