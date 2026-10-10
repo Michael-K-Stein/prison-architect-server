@@ -60,6 +60,9 @@ then `-n ClearIndoorArea` (as the game's own tools do).
 Power: a cable must touch each device (only lights work a few cells away);
 `ctl wire X1 Y1 X2 Y2` lays cable along x then y between two cells, end it on a
 cell next to the device (check the objects' positions with `ctl state`).
+Walls block a cable's reach to lights; doors do not. A cable along a hallway may
+power lights in a room through its door, but a room with no door on the cable's
+side needs its own cable run inside.
 Staff are hired with `ctl hire Guard 2`.
 
 ## Recipe: a prisoner cell

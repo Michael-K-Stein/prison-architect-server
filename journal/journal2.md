@@ -1419,3 +1419,14 @@ game's demolition materials (already in `MATERIALS`):
 [-n DemolishWalls]` (`build.demolish`); untested live until Haiku's round ends.
 The earlier guess that bulldozing was a separate job type or `Dismantle` flag
 was wrong: `Dismantle` is a `WorkQueue` field and stays 0 here.
+
+### Power reach (from the host user, in-game observation)
+
+- Cables are built by the bot's `Objects` line jobs, but a consumer only gets
+  power if a cable **touches** it; only `Light`s also pick up power from a cable
+  a few cells away ("induction").
+- **Walls cut that reach, doors do not**: a cable down a hallway can light a
+  room through its door; a room with no door on the cable's side needs its own
+  cable inside. (Explains Haiku round 2's "no power" on the new rooms' lights.)
+- Bot: `ctl wire X1 Y1 X2 Y2` (cable along x then y); `problems` says "a cable
+  must touch it" for unpowered non-lights.
