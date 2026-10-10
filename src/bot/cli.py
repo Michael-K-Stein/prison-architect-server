@@ -1,7 +1,7 @@
 """Interactive Prison Architect bot: pick a region, a game, then send RPCs.
 
 ``python main.py bot`` connects to Photon, lists regions, lobbies and games, joins the
-chosen game and opens a menu (game speed, incoming events, ...).
+chosen game and opens a live HUD: game state, and every known action.
 
 Debugging: ``--log-file PATH`` writes the bot's steps (and, at ``-v debug``, every
 event and ping) to a file; the console stays the TUI. ``-o PATH`` (``--record``)
@@ -11,6 +11,7 @@ saves every packet the bot sends and receives, decrypted, into a capture file th
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -18,13 +19,15 @@ from enum import Enum
 from os import environ
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import quote
 
 import typer
 from rich.console import Console
 
-from src.bot.actions import Context, menu
-from src.bot.flow import join_flow, pick
+from src.bot.control import DEFAULT_PORT, ControlServer, call
+from src.bot.flow import join_flow, join_room, pick
 from src.bot.formatting import format_region
+from src.bot.hud import run_hud
 from src.bot.session import (
     APP_VERSION,
     CLAUDE_ORANGE,
@@ -170,7 +173,7 @@ def run(opts: Options) -> None:
                 )
             log.info("region: %s", region)
             session = join_flow(opts, region, recorder)
-            menu(Context(session, opts))
+            run_hud(session, opts)
         except KeyboardInterrupt:
             log.info("interrupted by the user")
             console.print("\nInterrupted, disconnecting.")
@@ -184,3 +187,134 @@ def run(opts: Options) -> None:
         finally:
             if session is not None:
                 session.stop()
+
+
+@app.command()
+def serve(
+    ctx: typer.Context,
+    room: Annotated[
+        str | None, typer.Option(help="Game (room) name; default: the first open one.")
+    ] = None,
+    port: Annotated[int, typer.Option(help="Control server port.")] = DEFAULT_PORT,
+) -> None:
+    """Join a game headless and serve the JSON control API (see `bot ctl`)."""
+    opts: Options = ctx.obj
+    require_app_id(opts)
+    if opts.region is None:
+        raise typer.BadParameter(
+            "serve needs a region: pass --region before `serve` "
+            "(`bot regions` lists them)."
+        )
+    session: Session | None = None
+    server: ControlServer | None = None
+    with recording(opts) as recorder:
+        try:
+            session = join_room(opts, opts.region, room, recorder)
+            server = ControlServer(session, port)
+            server.start()
+            console.print(f"control server: {server.url}", markup=False)
+            reason = server.wait()
+            log.info("serve stopped: %s", reason)
+            if reason == "disconnected":
+                console.print(f"Disconnected: {session.disconnected}", markup=False)
+        except KeyboardInterrupt:
+            log.info("interrupted by the user")
+            console.print("\nInterrupted, disconnecting.")
+        except ConnectError as exc:
+            log.error("bot stopped: %s", exc)
+            console.print(f"[red]Error:[/red] {exc}", markup=True, highlight=False)
+            raise typer.Exit(1) from None
+        finally:
+            if server is not None:
+                server.stop()
+            if session is not None:
+                session.stop()
+
+
+ctl = typer.Typer(help="Talk to a running `bot serve` (prints JSON).")
+app.add_typer(ctl, name="ctl")
+
+
+@ctl.callback()
+def ctl_main(
+    ctx: typer.Context,
+    port: Annotated[int, typer.Option(help="Control server port.")] = DEFAULT_PORT,
+) -> None:
+    """Client for the control server on 127.0.0.1."""
+    ctx.obj = port
+
+
+def _show(ctx: typer.Context, method: str, path: str, body: dict | None = None) -> None:
+    try:
+        status, data = call(method, path, body, port=ctx.obj)
+    except OSError as exc:
+        typer.echo(json.dumps({"error": f"no control server: {exc}"}, indent=1))
+        raise typer.Exit(1) from None
+    typer.echo(json.dumps(data, indent=1))
+    if status >= 400:
+        raise typer.Exit(1)
+
+
+@ctl.command("state")
+def ctl_state(
+    ctx: typer.Context,
+    system: Annotated[str | None, typer.Argument(help="System, e.g. World.")] = None,
+    path: Annotated[str | None, typer.Argument(help="Child path, a/b.")] = None,
+    depth: Annotated[int, typer.Option(help="Child levels (-1: all).")] = -1,
+) -> None:
+    """The game state summary, or one system/node."""
+    if system is None:
+        _show(ctx, "GET", "/state")
+        return
+    node = "/".join(x.strip("/") for x in (system, path or "") if x.strip("/"))
+    _show(ctx, "GET", f"/state/{quote(node)}?depth={depth}")
+
+
+@ctl.command("actions")
+def ctl_actions(
+    ctx: typer.Context,
+    kind: Annotated[
+        str | None, typer.Option(help="player, host or handshake (default: all).")
+    ] = None,
+    show_all: Annotated[
+        bool, typer.Option("--all", help="Include blocked actions.")
+    ] = False,
+) -> None:
+    """The RPC actions and their arguments."""
+    query = f"?all={int(show_all)}" + (f"&kind={quote(kind)}" if kind else "")
+    _show(ctx, "GET", "/actions" + query)
+
+
+@ctl.command("send")
+def ctl_send(
+    ctx: typer.Context,
+    action: Annotated[str, typer.Argument(help="Action name or RPC code.")],
+    args: Annotated[list[str] | None, typer.Argument(help="Arguments as text.")] = None,
+) -> None:
+    """Send one RPC."""
+    _show(ctx, "POST", "/send", {"action": action, "args": args or []})
+
+
+@ctl.command("events")
+def ctl_events(
+    ctx: typer.Context,
+    since: Annotated[int, typer.Option(help="Only events after this seq.")] = 0,
+    limit: Annotated[int, typer.Option(help="At most this many.")] = 100,
+) -> None:
+    """Numbered notable game events."""
+    _show(ctx, "GET", f"/events?since={since}&limit={limit}")
+
+
+@ctl.command("wait")
+def ctl_wait(
+    ctx: typer.Context,
+    seconds: Annotated[float, typer.Argument(help="Seconds (max 30).")],
+) -> None:
+    """Let game time pass, then print the state."""
+    _show(ctx, "POST", "/wait", {"seconds": seconds})
+
+
+@ctl.command("quit")
+def ctl_quit(ctx: typer.Context) -> None:
+    """Disconnect the bot and stop the server."""
+    _show(ctx, "POST", "/quit", {})
