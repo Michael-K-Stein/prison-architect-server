@@ -2687,3 +2687,21 @@ zone-only room (Forestry, Exports, Storage...) no longer draws walls (the player
   info tabs. `ctl todo --going-green` prints the six with their texts plus the status of the related grants / goals
   (`Grant_GreenMachine`, `Grant_EcoFriendly`, `target_*`) from `Save Grants`; `active` says whether an `Objective` with that
   name is currently streamed.
+
+## In-game Todo list: where the numbers come from (IDA, Claude Sonnet 5.5 sub-agent; section written from its code)
+
+The sub-agent was cut off by the usage limit before it wrote this section; what it established is in the docstrings
+of `src/bot/todo_items.py` (14 tests) and summarised here. The game keeps the Todo numbers as counters on the Prison object
+(`Prison+18024` medical, `+18076` dead bodies, `+18136` exhausted ...), recomputed every tick from the object table; they are
+not in the save, so the bot recounts them. Confirmed from the decompile: a **dead body** is a person with `Damage >= 1.0`;
+**medical attention** is `0.25 < Damage < 1.0`; the Incident Reports item is hidden unless solitary, queued solitary,
+lockdown or medical is non-zero (dead bodies alone do not open it; `sub_14066E4D0`); **parole** (`sub_1407CD710`): a living,
+non-Insane prisoner with `SentenceF > 1`, `Bio.NextParole` `Half` (0.5) or `ThreeQuarters` (0.75) and
+`Served >= SentenceF * fraction`; `Failed` / `Succeeded` / `None` are never listed (matches the user's "1 prisoners up
+for parole" in MKS2: only the prisoner with `Half` who served more than half his sentence); `NextParole` enum order None,
+Half, ThreeQuarters, Failed, Succeeded (`sub_140052B90`); prisoner category enum MinSec, Normal(MedSec in the binary),
+MaxSec, Protected, SuperMax, DeathRow, Insane; **Staff Exhausted** counts staff with `RestState` required (type 121, the dog,
+is skipped), with the Staff Room advice when no room of type 26 exists (`sub_1402D9B40`). Still unknown: who writes the
+"due for release soon" counter (`Prison+6716`, in the Intake system; its timer text is not referenced by the exe) and the
+punishment counters (solitary, queued, lockdown). `GameState.todo()` now includes Incident Reports, Prisoner Parole and Staff
+Exhausted from these helpers.
