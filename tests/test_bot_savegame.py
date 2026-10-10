@@ -7,6 +7,7 @@ import zlib
 from src.bot.savegame import SaveTransfer
 from src.bot.state import GameState
 from src.protocol.rpc import build
+from src.protocol.snapshot import Node
 
 
 def _save_blob() -> bytes:
@@ -45,6 +46,27 @@ def test_chunks_are_acked_and_joined() -> None:
     assert state.uid_of(3) == 8426858
     assert state.object_names() == {"Light": 1}
     assert state.value("Save", "", "Balance") == 50.0
+
+
+def test_problems_and_rooms_from_the_save() -> None:
+    cell = Node(
+        "[i 0]",
+        [("Id.i", 4), ("RoomType", "Cell"), ("RoomError", 4), ("Entity.i", 65)],
+    )
+    pump = Node("[i 0]", [("Id.i", 59), ("Type", "WaterPumpStation"), ("Pos.x", 19.5)])
+    lit = Node("[i 1]", [("Id.i", 1), ("Type", "Light"), ("Powered", True)])
+    save = Node(
+        "FullSave",
+        [],
+        [Node("Rooms", [], [cell]), Node("Objects", [], [pump, lit])],
+    )
+    state = GameState()
+    state.load_save(save)
+    assert state.room_list() == [{"index": 4, "type": "Cell", "occupant": 65}]
+    assert state.problems() == [
+        "Cell #4: error 4",
+        "WaterPumpStation #59 at 19.5,?: no power",
+    ]
 
 
 def test_wrong_password_and_other_events() -> None:

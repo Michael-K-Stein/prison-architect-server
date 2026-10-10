@@ -90,6 +90,8 @@ class Session(
         self.master = self.joined = self.lobby_joined = False
         self.state = GameState()
         """What the host's events say about the game (merged snapshots)."""
+        self.password = ""
+        """The game password last sent (reused to refresh the save)."""
         self.save = SaveTransfer(self.raise_event)
         """The join handshake: the host's save game, once requested."""
         self.disconnected: object | None = None
@@ -166,7 +168,12 @@ class Session(
         )
 
     def request_save(self, password: str = "") -> None:
-        """Ask the host for the full game (``AuthoriseConnection``)."""
+        """Ask the host for the full game (``AuthoriseConnection``).
+
+        Can be repeated: the host sends a fresh save each time (``refresh``).
+        """
+        self.password = password
+        self.state.save = None  # the next save loaded replaces it
         self.save.request(password)
 
     @property

@@ -25,7 +25,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.protocol import rpc
-from src.protocol.enums import OBJECT_TYPES, ROOM_TYPES, name_of
+from src.protocol.enums import (
+    ELECTRICAL,
+    OBJECT_TYPES,
+    ROOM_ERRORS,
+    ROOM_TYPES,
+    name_of,
+)
 from src.protocol.game_text import TEXT
 from src.protocol.snapshot import Node, decode_args, decompress
 
@@ -442,6 +448,50 @@ class GameState:
                     out[int(ident)] = (progress, desired)
             return out
 
+    def room_list(self) -> list[dict[str, Any]]:
+        """Rooms from the last save: index, type, and the assigned prisoner (cells)."""
+        with self.lock:
+            rooms = self.save.children.get("Rooms") if self.save else None
+            out = []
+            for item in rooms.children.values() if rooms else ():
+                f = item.fields
+                occupant = f.get("Entity.i", -1)
+                out.append(
+                    {
+                        "index": f.get("Id.i"),
+                        "type": f.get("RoomType"),
+                        "occupant": None if occupant in (-1, None) else occupant,
+                    }
+                )
+            return out
+
+    def problems(self) -> list[str]:
+        """What the game would flag, from the last save: room errors, no power.
+
+        Only as fresh as the save (``refresh`` to update).
+        """
+        with self.lock:
+            if self.save is None:
+                return []
+            out = []
+            rooms = self.save.children.get("Rooms")
+            for item in rooms.children.values() if rooms else ():
+                f = item.fields
+                where = f"{f.get('RoomType', 'room')} #{f.get('Id.i')}"
+                if f.get("RoomError"):
+                    key = ROOM_ERRORS.get(f["RoomError"], "")
+                    text = TEXT.get(key, key) or f"error {f['RoomError']}"
+                    out.append(f"{where}: {text}")
+                if f.get("RequirementsFailed"):
+                    out.append(f"{where}: requirements not met")
+            objects = self.save.children.get("Objects")
+            for item in objects.children.values() if objects else ():
+                f = item.fields
+                if f.get("Type") in ELECTRICAL and not f.get("Powered"):
+                    pos = f"{f.get('Pos.x', '?')},{f.get('Pos.y', '?')}"
+                    out.append(f"{f['Type']} #{f.get('Id.i')} at {pos}: no power")
+            return out
+
     def summary(self) -> dict[str, Any]:
         """A JSON-able overview: money, time, speed, objectives, counts."""
         with self.lock:
@@ -456,6 +506,8 @@ class GameState:
                 "grants": self.grants(),
                 "save_loaded": self.save is not None,
                 "alerts": list(self.alerts)[-10:],
+                "problems": self.problems(),
+                "rooms": self.room_list(),
                 "systems": dict(sorted(self.updates.items())),
                 "recent": list(self.feed)[-10:],
                 "errors": self.errors,

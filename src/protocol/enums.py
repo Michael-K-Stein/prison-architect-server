@@ -26,7 +26,9 @@ STAFF = frozenset({"Workman", "Guard", "Doctor", "Cook", "Warden"})
 """Object type names that are staff. Partial (journal2, IDA object table)."""
 
 __all__ = [
+    "ELECTRICAL",
     "FOUNDATION_MATERIALS",
+    "ROOM_ERRORS",
     "INTAKE_TYPES",
     "JOB_TYPES",
     "MATERIALS",
@@ -41,6 +43,19 @@ __all__ = [
     "id_of",
     "name_of",
 ]
+
+ELECTRICAL = frozenset(
+    {"Capacitor", "Cctv", "CctvMonitor", "Cooker", "DoorControlSystem", "DoorTimer"}
+    | {"ElectricChair", "Fridge", "LargeTv", "LaundryMachine", "Light"}
+    | {"LogicBridge", "LogicCircuit", "MetalDetector", "PhoneMonitor", "PowerStation"}
+    | {"PowerSwitch", "PressurePad", "Servo", "StatusLight", "Tv", "WaterBoiler"}
+    | {"WaterPumpStation", "WorkshopPress", "WorkshopSaw"}
+)
+"""Objects with ``Properties Electrical`` in the game's ``data/materials.txt``:
+they need power (a powered one has ``Powered=True`` in the save)."""
+
+ROOM_ERRORS: dict[int, str] = {}
+"""Room ``RoomError`` -> text key (``roomerror_*``). Not extracted yet."""
 
 WALL_MATERIALS = {i: MATERIALS[i] for i in (46, 47)}
 """Wall materials seen or named for walls: ConcreteWall, BrickWall. Partial."""

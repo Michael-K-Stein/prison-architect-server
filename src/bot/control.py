@@ -10,6 +10,7 @@ and send RPCs. Listens on 127.0.0.1 only. Endpoints::
     POST /send   {"action", "args"}  parse, build and raise an RPC
     POST /build  {"jobs": [spec]}    build jobs (foundation/wall/floor/room/place)
     GET  /names/<table>?q=text       game ids by name (objects, materials, rooms...)
+    POST /refresh {"seconds"}        re-fetch the full save (rooms, problems), then /state
     GET  /events                     numbered feed lines (?since=N&limit=M)
     POST /wait   {"seconds"}         sleep (max 30 s), then /state
     POST /quit                       disconnect and stop the server
@@ -291,6 +292,10 @@ class _Handler(BaseHTTPRequestHandler):
                 self._reply(*c.send(body))
             elif path == "/build":
                 self._reply(*c.build(body))
+            elif path == "/refresh":
+                c.session.request_save(c.session.password)
+                c.stopped.wait(min(float(body.get("seconds", 5)), MAX_WAIT))
+                self._reply(200, c.state())
             elif path == "/wait":
                 seconds = min(max(float(body.get("seconds", 1)), 0.0), MAX_WAIT)
                 c.stopped.wait(seconds)

@@ -46,6 +46,7 @@ class SaveTransfer:
     def request(self, password: str = "") -> None:
         """Send ``AuthoriseConnection(password)``: the host then sends the save."""
         self.status = "requested"
+        self.tree = None
         self.send(AUTHORISE, rpc.build(AUTHORISE, password))
 
     def on_event(self, code: int, data: object) -> str | None:

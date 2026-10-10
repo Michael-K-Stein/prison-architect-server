@@ -350,6 +350,12 @@ def ctl_build(
     _show(ctx, "POST", "/build", {"jobs": [spec]})
 
 
+@ctl.command("refresh")
+def ctl_refresh(ctx: typer.Context) -> None:
+    """Re-fetch the full save (rooms, occupants, problems), then print the state."""
+    _show(ctx, "POST", "/refresh", {"seconds": 5})
+
+
 @ctl.command("names")
 def ctl_names(
     ctx: typer.Context,
