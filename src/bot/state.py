@@ -34,6 +34,7 @@ OBJECT_REMOVED = 14
 OBJECTIVE_REMOVED = 21
 TRANSACTION_ADDED = 118
 OBJECTIVE_SYSTEM = "Objective"
+LIST_ITEM = "[i "
 
 
 @dataclass
@@ -57,6 +58,11 @@ class StateNode:
             else:
                 self.fields[key] = value
         self.fields.update(repeated)
+        if any(child.name.startswith(LIST_ITEM) for child in node.children):
+            # "[i N]" items are a list sent whole (CellData's changed cells), not
+            # stable keys: replace the old items.
+            for name in [n for n in self.children if n.startswith(LIST_ITEM)]:
+                del self.children[name]
         for child in node.children:
             self.children.setdefault(child.name, StateNode()).merge(child)
 

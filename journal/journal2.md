@@ -1063,5 +1063,10 @@ events. A node may repeat a field (`Bio.Traits` x4); the state keeps a list.
 - Limitation: a joiner only knows what changed since it joined, so e.g. the
   balance is unknown until `Finance` next changes, and most objects are
   unknown until they move.
-- Parser gap: 76 of 91 `CellData` snapshots in run5 fail with
-  `expected '<' at 34` (not yet investigated).
+- Parser gap (fixed): 76 of 91 `CellData` snapshots in run5 failed with
+  `expected '<' at 34`. A node with 255+ children writes its child count as
+  `ff` + int32, the same escape as long strings (packet 2348:
+  `ff 7a 01 00 00` = 378, matching the node's `Size=378`). Field counts get
+  the same reader. All 91 parse now.
+- `[i N]` children (`CellData`'s changed cells, `Convictions`) are a list sent
+  whole, not stable keys, so the state replaces them instead of merging.

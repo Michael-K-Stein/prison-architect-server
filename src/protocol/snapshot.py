@@ -71,6 +71,11 @@ class _Reader:
                 return None
         return self.take(size).decode("utf-8", "replace")
 
+    def count(self) -> int:
+        """A u8 field/child count; ``0xff`` escapes to an int32 (``CellData``)."""
+        size = self.u8()
+        return struct.unpack("<i", self.take(4))[0] if size == 0xFF else size
+
     @property
     def done(self) -> bool:
         return self.pos >= len(self.data)
@@ -139,10 +144,10 @@ def _node(reader: _Reader) -> Node:
         msg = f"expected '<' at {reader.pos - 1}"
         raise ValueError(msg)
     node = Node(reader.str8())
-    for _ in range(reader.u8()):
+    for _ in range(reader.count()):
         name = reader.str8()
         node.fields.append((name, _value(reader, reader.u8())))
-    node.children.extend(_node(reader) for _ in range(reader.u8()))
+    node.children.extend(_node(reader) for _ in range(reader.count()))
     if reader.u8() != ord(">"):
         msg = f"expected '>' at {reader.pos - 1}"
         raise ValueError(msg)
@@ -154,7 +159,8 @@ def decode_tree(raw: bytes) -> Node:
 
     A node is ``'<'``, its name, a count of fields (each a name, a type byte
     and a value), a count of child nodes, the children, then ``'>'``. Names
-    and counts are single bytes.
+    and counts are single bytes; ``0xff`` escapes to an int32 (long string,
+    or 255+ children).
     """
     reader = _Reader(raw)
     node = _node(reader)

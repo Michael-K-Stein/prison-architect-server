@@ -69,6 +69,13 @@ def test_int64_field() -> None:
     assert decode_tree(raw).fields == [("has", -5)]
 
 
+def test_child_count_escape() -> None:
+    # CellData (run5 packet 2348): 255+ children, count is ff + int32.
+    child = b"<\x01c\x00\x00>"
+    raw = b"<\x01X\x00\xff" + (300).to_bytes(4, "little") + child * 300 + b">"
+    assert len(decode_tree(raw).children) == 300
+
+
 def test_payloads() -> None:
     data = bytes(packet(CASHFLOW).get_payload().params[245].value)
     assert decode_args(data) == [35, b"finance_cost_cashflow", 0, 0]

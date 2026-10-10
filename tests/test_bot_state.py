@@ -43,6 +43,16 @@ def test_deltas_merge_by_node_name() -> None:
     assert state.updates == {"Finance": 2, "World": 2}
 
 
+def test_list_items_are_replaced_not_merged() -> None:
+    state = GameState()
+    cell = _node("[i 0]", [("x", 1, _int(1))])
+    two = [cell, _node("[i 1]", [("x", 1, _int(2))])]
+    state.apply(9, _event("CellData", _node("CellData", [], two)))
+    one = [_node("[i 0]", [("y", 1, _int(9))])]
+    state.apply(9, _event("CellData", _node("CellData", [], one)))
+    assert state.systems["CellData"].to_dict() == {"/[i 0]": {"y": 9}}
+
+
 def test_objects_objectives_and_money() -> None:
     state = GameState()
     state.apply(13, build(13, (8427316, 17), 139))
