@@ -38,3 +38,17 @@ def setup_logging(
     logging.basicConfig(
         level=level.upper(), format="%(message)s", datefmt="%H:%M:%S", handlers=handlers
     )
+
+
+def set_log_level(level: str) -> str:
+    """Change the root logger's level at runtime; returns the new level name."""
+    name = level.strip().lower()
+    if name not in LOG_LEVELS:
+        raise ValueError(f"level must be one of {', '.join(LOG_LEVELS)}")
+    logging.getLogger().setLevel(name.upper())
+    return name
+
+
+def current_log_level() -> str:
+    """The root logger's level as a lowercase name."""
+    return logging.getLevelName(logging.getLogger().getEffectiveLevel()).lower()

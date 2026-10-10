@@ -13,6 +13,7 @@ from src.bot.actions import ACCEPT_GRANT, CANCEL_GRANT, FIRST_GRANT
 from src.bot.catalog import ACTIONS, choices
 from src.bot.session import Options
 from src.bot.speed import GAME_SPEED_CHANGE
+from src.bot.state import NEW_SPEECH
 from src.bot.state import GameState, StateNode
 from src.protocol import rpc
 
@@ -31,7 +32,8 @@ class FakeSession:
         room = SimpleNamespace(name="Prison", players={1: player})
         self.client = SimpleNamespace(current_room=room, local_player=player)
 
-    def raise_event(self, code: int, data: bytes) -> bool:
+    def raise_event(self, code: int, data: bytes, *, broadcast: bool = False) -> bool:
+
         self.sent.append((code, data))
         return True
 
@@ -60,6 +62,15 @@ def test_quick_items_speed_values_and_grants() -> None:
         (i.action.code, i.values) for i in items if i.action and "grant" in i.label
     }
     assert grants == {(ACCEPT_GRANT, ("x",)), (CANCEL_GRANT, ("x",))}
+
+
+def test_speech_quick_items_and_broadcast() -> None:
+    items = hud.quick_items([])
+    warden = next(i for i in items if i.label == "Warden calls everyone")
+    assert warden.values == (2,) and warden.action.code == NEW_SPEECH
+    session = FakeSession()
+    assert hud.send(session, warden.action, ["2", "Lockdown"]).startswith("sent")
+    assert session.sent == [(NEW_SPEECH, rpc.build(NEW_SPEECH, 2, "Lockdown"))]
 
 
 def test_all_items_cover_catalog_and_filter() -> None:

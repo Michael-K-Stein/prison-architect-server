@@ -45,6 +45,11 @@ def test_quit_raises() -> None:
         _table([]).run("quit")
 
 
+def test_exit_is_quit() -> None:
+    with pytest.raises(Quit):
+        _table([]).run("exit")
+
+
 def test_bad_arguments_are_reported_not_raised() -> None:
     def strict(args: list[str]) -> str:
         raise ValueError("expected one path")
@@ -89,3 +94,21 @@ def test_failed_open_keeps_the_current_file(tmp_path: Path) -> None:
         rec.open(blocked / "x.sqlite")
     assert rec.path == good
     rec.close()
+
+
+def test_pane_handler_collects_log_records() -> None:
+    import logging
+    from collections import deque
+
+    from src.cli.console import PaneHandler
+
+    pane: deque = deque()
+    handler = PaneHandler(pane)
+    logging.getLogger("test").addHandler(handler)
+    try:
+        logging.getLogger("test").warning("hello pane")
+    finally:
+        logging.getLogger("test").removeHandler(handler)
+    row = pane[-1]
+    assert ("", "hello pane") in row
+    assert ("fg:ansiyellow", "WARNING  ") in row

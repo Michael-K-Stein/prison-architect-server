@@ -43,6 +43,10 @@ class PrisonArchitectGameServer(GameServer):
 
     _spoofing = False
 
+    # TODO: inject server-originated event packets into a room, e.g. the adviser
+    # command's NewSpeechAdded (see src/bot/broadcast.py). Needs a capture-backed
+    # RaiseEvent layout first; the console command waits on this.
+
     @override
     def _raise_event(
         self, connection: Any, operation: int, params: Any, *, encrypted: bool

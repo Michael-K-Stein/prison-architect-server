@@ -11,10 +11,13 @@ from typing import Any
 
 from prompt_toolkit import Application
 from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.filters import Condition
 from prompt_toolkit.formatted_text import StyleAndTextTuples
 from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
 from prompt_toolkit.layout import HSplit, Layout, Window
 from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
+from prompt_toolkit.layout.processors import AfterInput, ConditionalProcessor
+from prompt_toolkit.widgets import Frame
 
 from src.bot.actions import (
     ACCEPT_GRANT,
@@ -34,13 +37,17 @@ from src.bot.catalog import (
     parse_args,
     source,
 )
+from src.bot.broadcast import SPEAKERS
 from src.bot.session import Options, Session
 from src.bot.speed import GAME_SPEED_CHANGE
+from src.bot.state import NEW_SPEECH
+from src.cli.frame import DIM, RULE
 from src.protocol import rpc
 from src.protocol.enums import VEHICLES
 
 REFRESH = 0.25  # seconds between HUD redraws
 LOG_LINES = 500
+LOG_VIEW = 8  # message lines shown above the input
 BROWSE_DEPTH = 2
 HELP = {
     "list": "type: filter  up/down/PgUp/PgDn: move  Enter: run  F2: state  "
@@ -67,6 +74,11 @@ class Item:
     def blocked(self) -> str:
         """Why it can't be sent, or ''."""
         return self.action.blocked if self.action is not None else ""
+
+
+def _rule() -> Window:
+    """A one-line separator across the screen."""
+    return Window(height=1, char=RULE, style=DIM)
 
 
 def _text(value: Any) -> str:
@@ -122,6 +134,11 @@ def quick_items(
             )
             for o in squads
         ]
+    # Adviser speech: the index is fixed, the message is typed in the form.
+    items += [
+        Item(f"{name} calls everyone", "speech", ACTIONS[NEW_SPEECH], (index,))
+        for name, index in SPEAKERS.items()
+    ]
     items.append(
         Item("Read the CEO's letter", "quick", removed, (CEO_LETTER_OBJECTIVE, False))
     )
@@ -251,7 +268,8 @@ def send(session: Any, action: Action, values: Sequence[Any]) -> str:
         data = rpc.build(action.code, *args)
     except (ArgError, ValueError, TypeError) as exc:
         return f"error {action.name}: {exc}"
-    ok = session.raise_event(action.code, data)
+    # Adviser speech is for every player (the host also shows it); the rest go to the host.
+    ok = session.raise_event(action.code, data, broadcast=action.code == NEW_SPEECH)
     shown = ", ".join(repr(a) for a in args)
     return f"sent {action.name}({shown}) -> {'queued' if ok else 'NOT queued'}"
 
@@ -387,7 +405,7 @@ class Hud:
         arg = self.current_arg()
         if arg is None or not source(arg):
             return out
-        dim = "fg:ansibrightblack"
+        dim = DIM
         out.append(("bold", f"\n{arg.name} ({arg.type}): pick one\n"))
         if not self.all_choices():
             out.append((dim, f"  (no {source(arg)} available yet; type a value)\n"))
@@ -410,26 +428,67 @@ class Hud:
         return [("bold fg:ansicyan", "filter> ")]
 
     def _log(self) -> StyleAndTextTuples:
-        self._pull_feed()
-        return [("", "\n".join(list(self.ui.log)[-8:]))]
+        # Read-only: the feed is pulled in _watch, never during a redraw.
+        return [("", "\n".join(list(self.ui.log)[-LOG_VIEW:]))]
+
+    def _title(self) -> str:
+        """The name of the input box's top rule: what the input is for."""
+        if self.ui.mode == "args" and self.ui.item and self.ui.item.action:
+            return self.ui.item.action.signature
+        if self.ui.mode == "browse":
+            return "state"
+        if self.ui.mode == "args":
+            return "args"
+        return f"actions {len(self.items())}"
+
+    def _placeholder(self) -> str:
+        """Dim hint shown in the empty input line."""
+        if self.ui.mode == "args":
+            return "type a value, or pick one above"
+        if self.ui.mode == "browse":
+            return "System/child/path"
+        return "type to filter the actions"
 
     def _layout(self) -> HSplit:
-        dim = "fg:ansibrightblack"
+        """Status, actions, then messages and instructions pinned above the input box."""
+        dim = DIM
+        empty = Condition(lambda: not self.buffer.text)
         return HSplit(
             [
                 Window(FormattedTextControl(self._hud), height=7),
-                Window(height=1, char="─", style=dim),
+                Window(height=1, char=RULE, style=dim),
                 Window(FormattedTextControl(self._list), wrap_lines=False),
-                Window(height=1, char="─", style=dim),
+                Window(height=1, char=RULE, style=dim),
+                # Fixed-height pane: new messages scroll in at the bottom and
+                # nothing above it moves. Lines are not wrapped, so the height
+                # never changes with message length.
                 Window(
-                    BufferControl(self.buffer),
-                    height=1,
-                    get_line_prefix=lambda *_: self._prompt(),
+                    FormattedTextControl(self._log),
+                    height=LOG_VIEW,
+                    wrap_lines=False,
+                    dont_extend_height=True,
+                    always_hide_cursor=True,
                 ),
-                Window(height=1, char="─", style=dim),
-                Window(FormattedTextControl(self._log), height=8, wrap_lines=True),
                 Window(
                     FormattedTextControl(lambda: [(dim, HELP[self.ui.mode])]), height=1
+                ),
+                # The input in a full box; the frame's title says what it is for.
+                Frame(
+                    Window(
+                        BufferControl(
+                            self.buffer,
+                            input_processors=[
+                                ConditionalProcessor(
+                                    AfterInput(lambda: [(dim, self._placeholder())]),
+                                    filter=empty,
+                                )
+                            ],
+                        ),
+                        height=1,
+                        get_line_prefix=lambda *_: [("", " ")] + self._prompt(),
+                    ),
+                    title=self._title,
+                    style=dim,
                 ),
             ]
         )
@@ -477,10 +536,14 @@ class Hud:
             self._reset("browse")
         elif item.blocked or item.action is None:
             self.add_log(f"blocked {item.label}: {item.blocked}")
-        elif item.values is not None or not item.action.args:
+        elif not item.action.args or (
+            item.values is not None and len(item.values) >= len(item.action.args)
+        ):
             self.add_log(send(self.session, item.action, item.values or ()))
         else:
-            self.ui.mode, self.ui.item, self.ui.values = "args", item, []
+            # Fixed leading values (a speaker) are filled in; the form asks for the rest.
+            prefilled = [str(v) for v in item.values or ()]
+            self.ui.mode, self.ui.item, self.ui.values = "args", item, prefilled
             self.buffer.text = ""
             self.ui.choice = 0
 
@@ -556,6 +619,7 @@ class Hud:
                 self.add_log(f"disconnected: {self.session.disconnected}")
                 self.app.exit()
                 return
+            self._pull_feed()
             await asyncio.sleep(REFRESH)
 
     def run(self) -> None:

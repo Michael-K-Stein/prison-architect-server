@@ -43,7 +43,13 @@ def start_proxy(
     from pyphotonrealtime.server import Direction, PhotonProxy
 
     from src.capture.recorder import SwitchableRecorder
-    from src.cli.console import Command, CommandTable, run_console
+    from src.cli.console import (
+        Command,
+        CommandTable,
+        ConsolePane,
+        loglevel_command,
+        run_console,
+    )
     from src.protocol.events import (
         compact_lines,
         is_hidden,
@@ -52,6 +58,8 @@ def start_proxy(
     )
 
     setup_logging(opts.verbose)
+    pane = ConsolePane("Prison Architect proxy")
+    pane.install_logging()  # startup lines go into the pane too
 
     stack = ExitStack()
     recorder = stack.enter_context(SwitchableRecorder(record))
@@ -139,10 +147,13 @@ def start_proxy(
             return f"recording to {recorder.path}"
 
         commands = CommandTable(
-            {"record": Command("record [PATH|off]", RECORD_HELP, record_command)}
+            {
+                "record": Command("record [PATH|off]", RECORD_HELP, record_command),
+                "loglevel": loglevel_command(),
+            }
         )
 
-        run_console(commands)
+        run_console(commands, pane=pane)
         print("\nShutting down servers...")
 
 

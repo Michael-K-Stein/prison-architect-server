@@ -18,7 +18,7 @@ from src.cli.options import (
     VerboseOpt,
     merge_common,
 )
-from src.cli.console import CommandTable, run_console
+from src.cli.console import CommandTable, ConsolePane, loglevel_command, run_console
 from src.logs import setup_logging
 from src.server.server import PrisonArchitectServer
 from src.server.upstream import resolve_upstream
@@ -32,6 +32,8 @@ def start_local(opts: CommonOptions, upstream: Optional[str] = None) -> None:
     ip_address(opts.listen)
     ip_address(opts.ip)
     setup_logging(opts.verbose)
+    pane = ConsolePane("Prison Architect server")
+    pane.install_logging()  # startup lines go into the pane too
     passthrough = resolve_upstream(upstream)
     server = PrisonArchitectServer(
         opts.listen,
@@ -52,7 +54,10 @@ def start_local(opts: CommonOptions, upstream: Optional[str] = None) -> None:
             opts.region,
             *passthrough,
         )
-        run_console(CommandTable())
+        run_console(
+            CommandTable({"loglevel": loglevel_command()}),
+            pane=pane,
+        )
         print("\nShutting down servers...")
 
 
