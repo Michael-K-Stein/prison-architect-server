@@ -1967,3 +1967,16 @@ panel shows `d11_transformer_input_power` (Production), `output_power` (Expendit
 `spare_power` (Excess). Consequence for the 30 generators: they must go into a Transformer
 (indoors, e.g. in the battery hall) whose output cable feeds the prison network, and
 the farm's cables must not touch the prison's directly. Hint added to the green objects.
+
+### Timed green grants completed (MKS2)
+
+With no PowerStation ever built in MKS2, the clocks ran by themselves at game speed 10:
+`Grant_EcoFriendly` (`TimePassedGreen`, `Deadline 7200` = 5 days, `GreenDeadline`
+20879.9) read `Completed` by game minute 24385, and `target_PowerStation`
+(`Deadline 14400` = 10 days, `GreenDeadline` 23972.4) read `Completed` at 24499, a few
+minutes after its deadline (the grant flips on the next update). The completion
+minute is exactly the acceptance/last-station minute plus the deadline, so the progress
+node needs no polling, only waiting. Current MKS2 grants: Completed GreenMachine,
+EcoFriendly, target_SolarPanels, target_WindTurbine, target_PowerStation; open
+Grant_Administration, target_ExportPower1-3, target_PassReform, target_ChargeBattery
+(`target_GreenEnergySource` has not appeared in this game's list yet).
