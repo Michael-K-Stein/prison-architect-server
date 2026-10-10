@@ -30,7 +30,7 @@ from typing import Any
 from urllib import error, request
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from src.bot import build, catalog
+from src.bot import build, catalog, hints
 from src.protocol.grants import GRANTS
 from src.protocol import enums, rpc
 
@@ -231,6 +231,7 @@ class ControlServer:
             "signature": a.signature,
             "args": args,
             "blocked": a.blocked,
+            "hints": hints.for_action(a.name),
         }
 
     def send(self, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
@@ -259,6 +260,7 @@ class ControlServer:
             "code": action.code,
             "name": action.name,
             "data_hex": data.hex(),
+            "hints": hints.for_action(action.name),
         }
 
     def build(self, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
@@ -272,7 +274,11 @@ class ControlServer:
             return 400, {"error": str(exc)}
         sent = self.session.build(jobs)
         log.info("control /build %r -> sent=%s", specs, sent)
-        return 200, {"sent": bool(sent), "jobs": [vars(j) for j in jobs]}
+        return 200, {
+            "sent": bool(sent),
+            "jobs": [vars(j) for j in jobs],
+            "hints": hints.for_jobs(specs),
+        }
 
     def names(self, table: str, query: str) -> tuple[int, dict[str, Any]]:
         """``/names/<table>``: id -> name for objects/materials/rooms/..."""
@@ -356,6 +362,20 @@ class _Handler(BaseHTTPRequestHandler):
                 self._reply(*c.names(url.path[7:], query.get("q", "")))
             elif url.path == "/alias":
                 self._reply(*c.alias(None))
+            elif url.path == "/hints":
+                topic = query.get("topic", "")
+                found = hints.TOPICS.get(topic) if topic else None
+                if topic and found is None:
+                    self._reply(404, {"error": f"topics: {', '.join(hints.TOPICS)}"})
+                else:
+                    self._reply(
+                        200,
+                        {
+                            k: list(v)
+                            for k, v in hints.TOPICS.items()
+                            if not topic or k == topic
+                        },
+                    )
             elif url.path == "/events":
                 since = int(query.get("since", 0))
                 self._reply(200, c.recent(since, int(query.get("limit", 100))))

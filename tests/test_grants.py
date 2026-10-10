@@ -31,3 +31,19 @@ def test_accept_grant_takes_any_spelling():
         assert catalog.parse_args(action, [typed], state) == ["Grant_GreenMachine"]
     labels = [c.label for c in catalog.choices(action.args[0], state)]
     assert "Grant_GreenMachine: Green Machine" in labels
+
+
+def test_hints_for_commands():
+    from src.bot import hints
+
+    assert any("None" in h for h in hints.for_action("IntakeTypeChange"))
+    assert any(
+        "Workmen CANNOT" in h
+        for h in hints.for_jobs([{"tool": "place", "object": "JailDoor"}])
+    )
+    assert any(
+        "indoor" in h.lower()
+        for h in hints.for_jobs([{"tool": "place", "object": "Battery"}])
+    )
+    action = catalog.find("IntakeTypeChange")
+    assert catalog.parse_args(action, ["None"], GameState()) == [0]

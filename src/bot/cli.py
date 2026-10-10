@@ -443,6 +443,17 @@ def ctl_raw(
     _show(ctx, "POST", "/build", {"jobs": [spec]})
 
 
+@ctl.command("hints")
+def ctl_hints(
+    ctx: typer.Context,
+    topic: Annotated[
+        str | None, typer.Argument(help="doors, power, people, grants or build.")
+    ] = None,
+) -> None:
+    """Game rules to remember (also shown in action details and command replies)."""
+    _show(ctx, "GET", "/hints" + (f"?topic={topic}" if topic else ""))
+
+
 @ctl.command("hire")
 def ctl_hire(
     ctx: typer.Context,

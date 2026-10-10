@@ -126,3 +126,11 @@ takes the name in any spelling (`greenmachine`, `Grant_GreenMachine`). A grant w
 the prison already meets completes at once; read the tasks in `src/protocol/grants.py`
 (`GRANTS[...]['tasks']`) and compare with `ctl state`. Check `grants` in `ctl state` after
 accepting: an unknown name is ignored without an error.
+
+## Hints
+
+Replies from `ctl send`, `ctl build`, `ctl hire` and `ctl action NAME` carry a `hints` list
+with the rules that matter for that command; `ctl hints` prints them all (topics: doors,
+power, people, grants, build). Read them before building: workmen cannot open JailDoors,
+a building needs a Door or StaffDoor first, Batteries are indoor only, unhoused prisoners
+die (pause intake with `ctl send IntakeTypeChange None`).

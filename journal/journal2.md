@@ -1894,3 +1894,24 @@ its prefix.
   grants` prints the table.
 - The Haiku test of "pick the easiest grant" found Green Machine on its own (compared
   seven grants) but could not accept it because of the name; the fix above is that.
+
+### Doors, workmen and intake (tips from the game's owner, MKS2)
+
+- Buildings stuck on **"Requires Entrance"**: the housing foundations had no door and the
+  farm agent's battery hall had only a `JailDoor`; about 26 Workmen stood outside it
+  (x 30-34, y 50-52) while 360 `Construct` work items sat unclaimed. **Workmen cannot open
+  jail doors** (only guards and above); workmen, staff and guards open a `StaffDoor`
+  (prisoners cannot); every entity opens a plain `Door`. Staff and prisoners cannot pass
+  through walls (the "Super Guards" toggle, default off, lifts that). Workmen blocked at a
+  jail door wait for a guard to open it. Fix tried: `Door` on each new foundation's bottom
+  edge and a `StaffDoor` at the hall's top edge (delivery pending when logged).
+- **Intake**: `Save Intake.IntakeType` was 4 (AllAvailable), so prisoners kept arriving
+  (37 -> 59) with no cells; deaths and escapes cost reputation and income. Paused with
+  `IntakeTypeChange 0` (`None`; the host showed `IntakeType=0` after a refresh). The
+  bot rejected the named form (`None` is not a whole number) because the arg had no
+  choices; `intake` is now a choice list (`INTAKE_TYPES`), so `ctl send IntakeTypeChange None`
+  works.
+- **Hints in the bot**: `src/bot/hints.py` holds these rules; they come back as `hints` in
+  `ctl action NAME`, in the replies of `ctl send`, `ctl build` and `ctl hire` (matched by
+  action, tool and object name, e.g. JailDoor, Battery, PowerStation) and from
+  `ctl hints [doors|power|people|grants|build]`, so the agent can steer itself.

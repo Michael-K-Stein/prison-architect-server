@@ -18,7 +18,14 @@ from dataclasses import dataclass
 from typing import Any
 
 from src.protocol.grants import GRANTS, canonical
-from src.protocol.enums import RESEARCH, ROOM_TYPES, STAFF, VEHICLES, name_of
+from src.protocol.enums import (
+    INTAKE_TYPES,
+    RESEARCH,
+    ROOM_TYPES,
+    STAFF,
+    VEHICLES,
+    name_of,
+)
 from src.protocol.rpc import COMPONENTS, COMPOSITE_ARITY
 from src.protocol.rpc_table import RPCS
 
@@ -87,7 +94,7 @@ ARG_NAMES: dict[int, tuple[str, ...]] = {
     75: ("on", "value?"),
     76: ("object",),
     77: ("category", "ratio"),
-    78: ("type",),
+    78: ("intake",),  # IntakeTypeChange: 0 None ... 4 AllAvailable (INTAKE_TYPES)
     79: ("total",),
     80: ("time",),
     81: ("on",),
@@ -355,6 +362,7 @@ SOURCES: dict[str, str] = {
     "cell": "room",
     "other": "room",
     "speed": "speed",
+    "intake": "intake",
 }
 """Argument name -> where its choices come from (see :func:`choices`)."""
 
@@ -383,6 +391,8 @@ def choices(arg: Arg, state: Any = None) -> list[Choice]:
         return [Choice(True, "true"), Choice(False, "false")]
     if kind == "speed":
         return [Choice(v, label) for v, label in SPEEDS.items()]
+    if kind == "intake":
+        return [Choice(v, n) for v, n in sorted(INTAKE_TYPES.items())]
     if kind == "vehicle":
         return [Choice(v, n) for v, n in sorted(VEHICLES.items()) if v]
     if kind == "research":
