@@ -57,6 +57,9 @@ Fridge, Sink"). Notably: HoldingCell needs 5x5 inside, Toilet and Bench; Yard
 cooker); Canteen ServingTable, Table, Bench or DiningChair; Shower ShowerHead.
 Clear an old building with `ctl demolish X Y W H`, then `-n DemolishWalls`,
 then `-n ClearIndoorArea` (as the game's own tools do).
+Power: a cable must touch each device (only lights work a few cells away);
+`ctl wire X1 Y1 X2 Y2` lays cable along x then y between two cells, end it on a
+cell next to the device (check the objects' positions with `ctl state`).
 Staff are hired with `ctl hire Guard 2`.
 
 ## Recipe: a prisoner cell

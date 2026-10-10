@@ -65,7 +65,7 @@ def test_problems_and_rooms_from_the_save() -> None:
     assert state.room_list() == [{"index": 4, "type": "Cell", "occupant": 65}]
     assert state.problems() == [
         "Cell #4: There are no canteens accessible by this cell. Prisoners in this cell will have nowhere to eat",
-        "WaterPumpStation #59 at 19.5,?: no power",
+        "WaterPumpStation #59 at 19.5,?: no power (a cable must touch it; only lights reach over a gap)",
     ]
 
 

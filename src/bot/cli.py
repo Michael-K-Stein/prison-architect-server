@@ -409,6 +409,41 @@ def ctl_demolish(
     _show(ctx, "POST", "/build", {"jobs": [{**spec, "material": name}]})
 
 
+@ctl.command("wire")
+def ctl_wire(
+    ctx: typer.Context,
+    x1: Annotated[
+        int, typer.Argument(help="Start cell x (e.g. beside the power source).")
+    ],
+    y1: Annotated[int, typer.Argument(help="Start cell y.")],
+    x2: Annotated[int, typer.Argument(help="End cell x: a cell touching the device.")],
+    y2: Annotated[int, typer.Argument(help="End cell y.")],
+    name: Annotated[
+        str, typer.Option("--name", "-n", help="ElectricalCable.")
+    ] = "ElectricalCable",
+) -> None:
+    """Lay cable from one cell to another: along x, then along y (both ends included)."""
+    jobs = [
+        {
+            "tool": "line",
+            "object": name,
+            "x": min(x1, x2),
+            "y": y1,
+            "width": abs(x2 - x1) + 1,
+            "height": 1,
+        },
+        {
+            "tool": "line",
+            "object": name,
+            "x": x2,
+            "y": min(y1, y2),
+            "width": 1,
+            "height": abs(y2 - y1) + 1,
+        },
+    ]
+    _show(ctx, "POST", "/build", {"jobs": jobs})
+
+
 @ctl.command("area")
 def ctl_area(
     ctx: typer.Context,

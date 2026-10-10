@@ -544,7 +544,12 @@ class GameState:
                 f = item.fields
                 if f.get("Type") in ELECTRICAL and not f.get("Powered"):
                     pos = f"{f.get('Pos.x', '?')},{f.get('Pos.y', '?')}"
-                    out.append(f"{f['Type']} #{f.get('Id.i')} at {pos}: no power")
+                    hint = (
+                        ""
+                        if f["Type"] == "Light"
+                        else " (a cable must touch it; only lights reach over a gap)"
+                    )
+                    out.append(f"{f['Type']} #{f.get('Id.i')} at {pos}: no power{hint}")
             return out
 
     def _rule_problems(self) -> list[str]:
