@@ -448,8 +448,12 @@ def building_plan(
         raise typer.Exit(1)
 
 
-def run_building(port: int, b: building.Building, timeout: int) -> None:
-    """Build a validated building: stages in order with waits, door swaps, then print."""
+def run_building(
+    port: int, b: building.Building, timeout: int, resume: bool = False
+) -> None:
+    """Build a validated building: stages in order with waits, door swaps, then print.
+
+    ``resume``: the foundation is already there (a build that was cut off): skip that stage."""
     timeout = min(timeout, STAGE_TIMEOUT_MAX)
     done: list[str] = []
     warnings: list[str] = []
@@ -464,10 +468,14 @@ def run_building(port: int, b: building.Building, timeout: int) -> None:
         return _area(port, b.x, b.y, b.width, b.height)
 
     try:
-        if any(set(r) & set("WFB") for r in read()):
+        started = any(set(r) & set("WFB") for r in read())
+        if started and not resume:
             _fail("the area has walls/floor/frames already; use `ctl room clear` first")
         call("POST", "/send", {"action": "GameSpeedChange", "args": ["10"]}, port=port)
         for name, jobs in building.stages(b):
+            if name == "foundation" and resume and started:
+                done.append("foundation (already there)")
+                continue
             status, data = call("POST", "/build", {"jobs": jobs}, port=port)
             if status >= 400:
                 _fail(f"stage {name} refused", detail=data, done=done)
@@ -525,6 +533,12 @@ def building_build(
     timeout: Annotated[
         int, typer.Option(help=f"Seconds per wait (at most {STAGE_TIMEOUT_MAX}).")
     ] = 150,
+    resume: Annotated[
+        bool,
+        typer.Option(
+            help="Continue a cut-off build: skip the foundation if it is there."
+        ),
+    ] = False,
 ) -> None:
     """Build a planned building: foundation, entrance doors, internal walls, internal
     doors, room zones, objects, waiting for each stage. Blocks for minutes.
@@ -538,7 +552,7 @@ def building_build(
             json.dumps({"refused": errors, "picture": building.render(b)}, indent=1)
         )
         raise typer.Exit(1)
-    run_building(ctx.obj, b, timeout)
+    run_building(ctx.obj, b, timeout, resume)
 
 
 @room_app.command("prefabs")
@@ -569,6 +583,12 @@ def room_prefab(
     timeout: Annotated[
         int, typer.Option(help=f"Seconds per wait (at most {STAGE_TIMEOUT_MAX}).")
     ] = 150,
+    resume: Annotated[
+        bool,
+        typer.Option(
+            help="Continue a cut-off build: skip the foundation if it is there."
+        ),
+    ] = False,
 ) -> None:
     """Build the game's own layout for a room (a standard / lavish design with the right
     facing and doors): it is checked against the rules like any building first."""
@@ -588,4 +608,4 @@ def room_prefab(
             )
         )
         raise typer.Exit(1 if errors else 0)
-    run_building(ctx.obj, b, timeout)
+    run_building(ctx.obj, b, timeout, resume)
