@@ -98,8 +98,18 @@ def room_plan(
     typer.echo(json.dumps(rooms.constraints(_kind(room)), indent=1))
 
 
+def _say(port: int, payload: dict) -> None:
+    """Print a command's result with any staff alerts that arrived meanwhile."""
+    status, data = call("GET", "/alerts?new=1", port=port)
+    if status < 400 and data.get("alerts"):
+        payload = {**payload, "alerts_new": data["alerts"]}
+    typer.echo(json.dumps(payload, indent=1))
+
+
 def _area(port: int, x: int, y: int, w: int, h: int) -> list[str]:
-    status, data = call("GET", f"/area?x={x}&y={y}&w={w}&h={h}", port=port)
+    status, data = call(
+        "GET", f"/area?x={x}&y={y}&w={w}&h={h}", port=port, interrupts=False
+    )
     if status >= 400:
         raise RuntimeError(str(data))
     return data["rows"]
@@ -133,7 +143,7 @@ def _wait_for(port: int, check: Callable[[], bool], timeout: float) -> bool:
     while time.monotonic() < end:
         if check():
             return True
-        call("POST", "/wait", {"seconds": 3}, port=port)
+        call("POST", "/wait", {"seconds": 3}, port=port, interrupts=False)
     return check()
 
 
@@ -183,9 +193,7 @@ def room_clear(
     except OSError as exc:
         _fail(f"no control server: {exc}")
     left = sum(len(set(r) & set("WFB")) > 0 for r in rows)
-    typer.echo(
-        json.dumps({"cleared": left == 0, "rows_with_leftovers": left, "area": rows})
-    )
+    _say(port, {"cleared": left == 0, "rows_with_leftovers": left, "area": rows})
 
 
 @room_app.command("build")
@@ -297,18 +305,16 @@ def room_build(
                     warnings.append("the walls did not go up (is the door usable?)")
     except OSError as exc:
         _fail(f"no control server: {exc}")
-    typer.echo(
-        json.dumps(
-            {
-                "built": plan.room,
-                "at": [x, y],
-                "interior": [plan.w, plan.h],
-                "stages": done,
-                "warnings": warnings,
-                "next": "`ctl refresh`, then check `problems` for this room",
-            },
-            indent=1,
-        )
+    _say(
+        port,
+        {
+            "built": plan.room,
+            "at": [x, y],
+            "interior": [plan.w, plan.h],
+            "stages": done,
+            "warnings": warnings,
+            "next": "`ctl refresh`, then check `problems` for this room",
+        },
     )
 
 
@@ -418,15 +424,13 @@ def building_build(
                     warnings.append("some internal walls were not built in time")
     except OSError as exc:
         _fail(f"no control server: {exc}")
-    typer.echo(
-        json.dumps(
-            {
-                "built": [r.type for r in b.rooms],
-                "at": [b.x, b.y],
-                "stages": done,
-                "warnings": warnings,
-                "next": "`ctl refresh`, then check `problems` for these rooms",
-            },
-            indent=1,
-        )
+    _say(
+        port,
+        {
+            "built": [r.type for r in b.rooms],
+            "at": [b.x, b.y],
+            "stages": done,
+            "warnings": warnings,
+            "next": "`ctl refresh`, then check `problems` for these rooms",
+        },
     )

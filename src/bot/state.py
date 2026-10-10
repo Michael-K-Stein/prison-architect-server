@@ -16,6 +16,7 @@ objective per snapshot, keyed by ``Name``).
 from __future__ import annotations
 
 import logging
+import re
 import threading
 import time
 import zlib
@@ -170,6 +171,58 @@ class GameObject:
 
 
 @dataclass(frozen=True)
+class Alert:
+    """A message for the player: a staff alert (with the game's own advice) or speech."""
+
+    seq: int
+    who: str
+    text: str
+    kind: str = "staff"
+    urgent: bool = False
+    id: str = ""
+    """The alert's id (``DOCTOR01``): the key the game's texts are filed under."""
+    title: str = ""
+    why: str = ""
+    advice: str = ""
+
+    def as_dict(self) -> dict[str, Any]:
+        out: dict[str, Any] = {"seq": self.seq, "from": self.who, "text": self.text}
+        if self.urgent:
+            out["urgent"] = True
+        for key, value in (
+            ("id", self.id),
+            ("title", self.title),
+            ("why", self.why),
+            ("advice", self.advice),
+        ):
+            if value:
+                out[key] = value
+        return out
+
+
+_ALERT_KEY = re.compile(
+    r"^d11_staffalert_(summary|urgentsummary|title|details|hint)_(\w+)$"
+)
+
+
+def alert_texts(key: str) -> dict[str, Any]:
+    """The game's texts for a staff alert key: ``id``, ``urgent``, ``title``, ``why``,
+    ``advice`` (``d11_staffalert_{title,details,hint}_<ID>`` in the language files)."""
+    match = _ALERT_KEY.match(key)
+    if match is None:
+        return {}
+    kind, ident = match.groups()
+    pick = lambda part: TEXT.get(f"d11_staffalert_{part}_{ident}", "")  # noqa: E731
+    return {
+        "id": ident,
+        "urgent": kind == "urgentsummary",
+        "title": pick("title"),
+        "why": pick("details"),
+        "advice": pick("hint"),
+    }
+
+
+@dataclass(frozen=True)
 class Transaction:
     """One ``TransactionAdded``: signed amount and ledger key."""
 
@@ -211,6 +264,10 @@ class GameState:
     """Messages for the player (staff alerts, advisor speech), newest last."""
     staff_alerts: list[str] = field(default_factory=list)
     """The staff alerts currently shown (``StaffAlert``)."""
+    alert_log: list[Alert] = field(default_factory=list)
+    """Every alert and advisor speech, with sequence numbers (``alerts_since``)."""
+    alerts_delivered: int = 0
+    """Highest ``Alert.seq`` already handed out by :meth:`take_new_alerts`."""
     save: StateNode | None = None
     """The host's full save game, once the join handshake delivered it."""
     names: ObjectNames = field(default_factory=lambda: ObjectNames(None))
@@ -282,6 +339,12 @@ class GameState:
             text = f"{who}: {text}" if who else text
             self.alerts.append(text)
             self.note(f"alert: {text}")
+            self._log_alert(
+                who or "advisor",
+                _text(args[1]),
+                TEXT.get(_text(args[1]), text),
+                "speech",
+            )
         elif code == CREATE_ROOM:
             (uid, index), type_id = args
             self.rooms[index] = {"uId": uid, "type": type_id}
@@ -306,17 +369,51 @@ class GameState:
     def _staff_alerts(self, tree: Node) -> None:
         """Note each new staff alert (``sa [i N] {tts=<text key>, aa=<staff type>}``)."""
         current = []
+        keys: dict[str, tuple[str, str]] = {}
         for group in tree.children:
             for item in group.children:
                 f = dict(item.fields)
                 if f.get("tts"):
                     who = self.type_names.get(f.get("aa", -1), "staff")
-                    current.append(f"{who}: {TEXT.get(f['tts'], f['tts'])}")
+                    line = f"{who}: {TEXT.get(f['tts'], f['tts'])}"
+                    current.append(line)
+                    keys[line] = (who, f["tts"])
         for line in current:
             if line not in self.staff_alerts:
                 self.alerts.append(line)
                 self.note(f"alert: {line}")
+                who, key = keys[line]
+                self._log_alert(who, key, line.split(": ", 1)[-1], "staff")
         self.staff_alerts = current
+
+    def _log_alert(self, who: str, key: str, text: str, kind: str) -> None:
+        extra = alert_texts(key)
+        self.alert_log.append(
+            Alert(
+                seq=len(self.alert_log) + 1,
+                who=who,
+                text=text,
+                kind=kind,
+                urgent=bool(extra.get("urgent")),
+                id=str(extra.get("id", "")),
+                title=str(extra.get("title", "")),
+                why=str(extra.get("why", "")),
+                advice=str(extra.get("advice", "")),
+            )
+        )
+
+    def alerts_since(self, seq: int = 0) -> list[Alert]:
+        """Alerts with a sequence number above ``seq`` (oldest first)."""
+        with self.lock:
+            return [a for a in self.alert_log if a.seq > seq]
+
+    def take_new_alerts(self) -> list[Alert]:
+        """Alerts not yet handed out (each is returned once): the bot's interrupts."""
+        with self.lock:
+            new = [a for a in self.alert_log if a.seq > self.alerts_delivered]
+            if new:
+                self.alerts_delivered = new[-1].seq
+            return new
 
     def _learn_type_names(self, tree: Node) -> None:
         """A full object entry (with ``t``) for an object named by the save."""

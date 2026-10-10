@@ -133,3 +133,24 @@ def test_summary_reports_host_stalled() -> None:
     assert state.summary()["host_stalled"] is False  # no World snapshot yet
     state.world_seen = 1.0  # long ago
     assert state.summary()["host_stalled"] is True
+
+
+def test_staff_alerts_are_interrupts_with_the_games_advice() -> None:
+    state = GameState()
+    item = _node(
+        "[i 0]",
+        [
+            ("tts", 4, _str("d11_staffalert_urgentsummary_DOCTOR01")),
+            ("aa", 1, _int(132)),
+        ],
+    )
+    alert = _node("StaffAlert", [], [_node("sa", [("Size", 1, _int(1))], [item])])
+    state.apply(9, _event("StaffAlert", alert))
+    (first,) = state.take_new_alerts()
+    assert first.urgent and first.id == "DOCTOR01"
+    assert "Doctors" in first.text
+    assert first.title == "Nobody is working in the Infirmary."
+    assert first.advice.startswith("We can't treat anyone")
+    assert state.take_new_alerts() == []  # delivered once
+    assert [a.seq for a in state.alerts_since(0)] == [1]
+    assert first.as_dict()["urgent"] is True

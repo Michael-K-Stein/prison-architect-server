@@ -721,6 +721,19 @@ def ctl_land(
     )
 
 
+@ctl.command("alerts")
+def ctl_alerts(
+    ctx: typer.Context,
+    since: Annotated[int, typer.Option(help="Only alerts after this number.")] = 0,
+    new: Annotated[bool, typer.Option(help="Only the ones not yet delivered.")] = False,
+) -> None:
+    """Staff alerts and advisor speech with the game's advice (what to do next).
+
+    Unseen alerts also ride on the next reply of any command as `alerts_new`.
+    """
+    _show(ctx, "GET", f"/alerts?since={since}" + ("&new=1" if new else ""))
+
+
 @ctl.command("hire")
 def ctl_hire(
     ctx: typer.Context,

@@ -443,6 +443,11 @@ class _Handler(BaseHTTPRequestHandler):
         log.debug("control: " + format, *args)
 
     def _reply(self, status: int, body: Any) -> None:
+        if isinstance(body, dict) and self.headers.get("X-Interrupts") != "0":
+            # staff alerts are interrupts: each unseen one rides on the next reply
+            new = self.control.session.state.take_new_alerts()
+            if new:
+                body = {**body, "alerts_new": [a.as_dict() for a in new]}
         raw = json.dumps(body).encode()
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
@@ -489,6 +494,21 @@ class _Handler(BaseHTTPRequestHandler):
                 self._reply(*c.alias(None))
             elif url.path == "/staff":
                 self._reply(200, c.session.state.staff_needs())
+            elif url.path == "/alerts":
+                state = c.session.state
+                since = int(query.get("since", 0))
+                found = (
+                    state.take_new_alerts()
+                    if query.get("new")
+                    else state.alerts_since(since)
+                )
+                self._reply(
+                    200,
+                    {
+                        "alerts": [a.as_dict() for a in found],
+                        "last": state.alert_log[-1].seq if state.alert_log else 0,
+                    },
+                )
             elif url.path == "/wires":
                 self._reply(200, c.wires("request" in query))
             elif url.path == "/hints" and "object" in query:
@@ -551,14 +571,19 @@ def call(
     body: dict[str, Any] | None = None,
     port: int = DEFAULT_PORT,
     timeout: float = MAX_WAIT + 10,
+    interrupts: bool = True,
 ) -> tuple[int, Any]:
-    """Client helper: ``(status, json)`` for one request to a control server."""
+    """Client helper: ``(status, json)`` for one request to a control server.
+
+    ``interrupts=False`` keeps the reply from consuming the unseen staff alerts (for
+    polling inside a longer command, which shows them itself at the end).
+    """
     data = json.dumps(body).encode() if body is not None else None
+    headers = {"Content-Type": "application/json"}
+    if not interrupts:
+        headers["X-Interrupts"] = "0"
     req = request.Request(
-        f"http://127.0.0.1:{port}{path}",
-        data=data,
-        method=method,
-        headers={"Content-Type": "application/json"},
+        f"http://127.0.0.1:{port}{path}", data=data, method=method, headers=headers
     )
     try:
         with request.urlopen(req, timeout=timeout) as resp:
