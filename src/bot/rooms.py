@@ -309,6 +309,39 @@ def constraints(room: str) -> dict:
     }
 
 
+def check(
+    room: str, width: int, height: int, objects: list[tuple[str, int, int]]
+) -> list[str]:
+    """Rule violations of a layout (size, bounds, overlaps, required objects); the door
+    is not looked at. Empty list: it meets the requirements."""
+    min_size, _flags, required = ROOM_RULES[room]
+    errors: list[str] = []
+    if min_size and (width < min_size[0] or height < min_size[1]):
+        errors.append(f"interior {width}x{height} is below the minimum {min_size}")
+    taken: dict[tuple[int, int], str] = {}
+    for name, dx, dy in objects:
+        if not _usable(name):
+            errors.append(f"{name}: not a placeable object (see `ctl names objects`)")
+            continue
+        w, h = size_of(name)
+        for j in range(h):
+            for i in range(w):
+                cell = (dx + i, dy + j)
+                if not (0 <= cell[0] < width and 0 <= cell[1] < height):
+                    errors.append(f"{name} at {dx},{dy} leaves the room")
+                    break
+                if cell in taken:
+                    errors.append(f"{name} overlaps {taken[cell]} at {cell}")
+                taken[cell] = name
+    names = {n for n, _, _ in objects}
+    for name, alts in required:
+        if not names & {name, *alts}:
+            errors.append(
+                f"needs {name} (or {', '.join(alts)})" if alts else f"needs {name}"
+            )
+    return errors
+
+
 def design(
     room: str,
     width: int,
@@ -319,38 +352,20 @@ def design(
 ) -> tuple[RoomPlan, list[str]]:
     """A player's own layout as a :class:`RoomPlan`, with the rule violations found
     (empty = it meets the requirements): size, door, bounds, overlaps, required objects."""
-    min_size, flags, required = ROOM_RULES[room]
-    errors: list[str] = []
+    _min_size, flags, _required = ROOM_RULES[room]
+    errors = check(room, width, height, objects)
     placements = tuple(Placement(n, x, y) for n, x, y in objects)
-    if min_size and (width < min_size[0] or height < min_size[1]):
-        errors.append(f"interior {width}x{height} is below the minimum {min_size}")
     if not 0 <= door < width:
         errors.append(f"door column {door} is outside the interior (0..{width - 1})")
-    taken: dict[tuple[int, int], str] = {}
-    for obj in placements:
-        if not _usable(obj.name):
-            errors.append(
-                f"{obj.name}: not a placeable object (see `ctl names objects`)"
-            )
-            continue
-        w, h = size_of(obj.name)
-        for j in range(h):
-            for i in range(w):
-                cell = (obj.dx + i, obj.dy + j)
-                if not (0 <= cell[0] < width and 0 <= cell[1] < height):
-                    errors.append(f"{obj.name} at {obj.dx},{obj.dy} leaves the room")
-                    break
-                if cell in taken:
-                    errors.append(f"{obj.name} overlaps {taken[cell]} at {cell}")
-                taken[cell] = obj.name
+    taken = {
+        (x + i, y + j)
+        for n, x, y in objects
+        if _usable(n)
+        for j in range(size_of(n)[1])
+        for i in range(size_of(n)[0])
+    }
     if (door, height - 1) in taken:
         errors.append(f"the cell inside the door ({door},{height - 1}) is blocked")
-    names = {o.name for o in placements}
-    for name, alts in required:
-        if not names & {name, *alts}:
-            errors.append(
-                f"needs {name} (or {', '.join(alts)})" if alts else f"needs {name}"
-            )
     building = constraints(room)["needs_building"]
     plan = RoomPlan(
         room=room,

@@ -16,7 +16,7 @@ from typing import Annotated
 
 import typer
 
-from src.bot import rooms
+from src.bot import building, rooms
 from src.bot.control import call
 from src.protocol.room_rules import ROOM_RULES
 
@@ -306,6 +306,126 @@ def room_build(
                 "stages": done,
                 "warnings": warnings,
                 "next": "`ctl refresh`, then check `problems` for this room",
+            },
+            indent=1,
+        )
+    )
+
+
+building_app = typer.Typer(
+    help="Plan and build a whole building: one foundation, then internal walls, rooms."
+)
+
+
+def _load_building(path: str) -> building.Building:
+    try:
+        with open(path, encoding="utf-8") as fh:
+            spec = json.load(fh)
+        return building.parse(spec)
+    except (OSError, ValueError) as exc:
+        _fail(f"{path}: {exc}")
+        raise  # unreachable: _fail exits
+
+
+@building_app.command("plan")
+def building_plan(
+    file: Annotated[
+        str, typer.Argument(help="Building spec (JSON), see src/bot/building.py.")
+    ],
+) -> None:
+    """Check a building spec against the rules and show it (nothing is built)."""
+    b = _load_building(file)
+    errors = building.validate(b)
+    typer.echo(
+        json.dumps(
+            {"ok": not errors, "problems": errors, "picture": building.render(b)},
+            indent=1,
+        )
+    )
+    if errors:
+        raise typer.Exit(1)
+
+
+@building_app.command("build")
+def building_build(
+    ctx: typer.Context,
+    file: Annotated[str, typer.Argument(help="Building spec (JSON).")],
+    timeout: Annotated[
+        int, typer.Option(help=f"Seconds per wait (at most {STAGE_TIMEOUT_MAX}).")
+    ] = 150,
+) -> None:
+    """Build a planned building: foundation, entrance doors, internal walls, internal
+    doors, room zones, objects, waiting for each stage. Blocks for minutes.
+
+    The whole area must be empty ground; the plan is validated first.
+    """
+    port = ctx.obj
+    timeout = min(timeout, STAGE_TIMEOUT_MAX)
+    b = _load_building(file)
+    errors = building.validate(b)
+    if errors:
+        typer.echo(
+            json.dumps({"refused": errors, "picture": building.render(b)}, indent=1)
+        )
+        raise typer.Exit(1)
+    done: list[str] = []
+    warnings: list[str] = []
+    inner_walls = building.walls(b) - {
+        (x, y)
+        for x in range(b.width)
+        for y in range(b.height)
+        if x in (0, b.width - 1) or y in (0, b.height - 1)
+    }
+
+    def read() -> list[str]:
+        return _area(port, b.x, b.y, b.width, b.height)
+
+    try:
+        if any(set(r) & set("WFB") for r in read()):
+            _fail("the area has walls/floor/frames already; use `ctl room clear` first")
+        call("POST", "/send", {"action": "GameSpeedChange", "args": ["10"]}, port=port)
+        for name, jobs in building.stages(b):
+            status, data = call("POST", "/build", {"jobs": jobs}, port=port)
+            if status >= 400:
+                _fail(f"stage {name} refused", detail=data, done=done)
+            done.append(name)
+            if name == "foundation":
+                # only wait for the job to start: its middle stalls until a door exists
+                _wait_for(
+                    port,
+                    lambda: any(set(r) & set("BF") for r in read()),
+                    min(timeout, 60),
+                )
+            elif name == "entrances":
+                floored = _wait_for(
+                    port,
+                    lambda: all(set(r[1:-1]) <= {"F"} for r in read()[1:-1]),
+                    timeout,
+                )
+                if not floored:
+                    warnings.append("the floor was not finished in time")
+                if not _wait_for(port, lambda: "W" in "".join(read()[0]), timeout):
+                    warnings.append(
+                        "the outer walls did not go up (is an entrance usable?)"
+                    )
+            elif name == "walls":
+
+                def built() -> bool:
+                    rows = read()
+                    return all(rows[y][x] == "W" for x, y in inner_walls)
+
+                if not _wait_for(port, built, timeout):
+                    warnings.append("some internal walls were not built in time")
+    except OSError as exc:
+        _fail(f"no control server: {exc}")
+    typer.echo(
+        json.dumps(
+            {
+                "built": [r.type for r in b.rooms],
+                "at": [b.x, b.y],
+                "stages": done,
+                "warnings": warnings,
+                "next": "`ctl refresh`, then check `problems` for these rooms",
             },
             indent=1,
         )
