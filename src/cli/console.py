@@ -1,22 +1,27 @@
-"""A fixed input line at the bottom of a running server's terminal.
+"""A full-screen console for a running server: scrollable, expandable message pane
+above a fixed input box.
 
-Log lines print above it (``patch_stdout``); typed lines go to a command table.
-Without a terminal (piped stdin, a service) there is no input line and the
-process just waits for Ctrl+C, as before.
+Log lines and command output go into a :class:`~src.cli.pane.ConsolePane`;
+typed lines go to a command table. Without a terminal (piped stdin, a service)
+there is no screen and the process just waits for Ctrl+C, as before.
+
+Keys: mouse wheel / PgUp / PgDn scroll, Ctrl+End follows the newest line, a click
+on an event (or Ctrl+O for all) expands it, Ctrl+L clears, Tab completes a
+command, Up/Down and the grey suggestion use the saved history.
 """
 
 from __future__ import annotations
 
-import logging
+import os
 import shlex
-import shutil
 import sys
 import time
-from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
-from src.cli.frame import BEGIN, DIM, ECHO, EDGE, RULE, banner
+from src.cli.frame import BEGIN, DIM, ECHO, EDGE, RULE
+from src.cli.pane import ConsolePane
 
 CommandFn = Callable[[list[str]], str]
 """Takes the arguments after the command name, returns a line to print."""
@@ -87,74 +92,6 @@ class CommandTable:
         return "type a command, help for the list, quit to stop"
 
 
-PANE_LINES = 500
-"""Lines kept in the console's message pane."""
-
-
-LEVEL_STYLES = {
-    logging.DEBUG: DIM,
-    logging.INFO: "fg:ansigreen",
-    logging.WARNING: "fg:ansiyellow",
-    logging.ERROR: "fg:ansired bold",
-    logging.CRITICAL: "fg:ansired bold",
-}
-"""Pane colour for each log level, matching the terminal logger's look."""
-
-
-class PaneHandler(logging.Handler):
-    """Sends log records into the console's message pane instead of stdout."""
-
-    def __init__(self, lines: deque[list[tuple[str, str]]]) -> None:
-        super().__init__()
-        self.lines = lines
-
-    def emit(self, record: logging.LogRecord) -> None:
-        when = time.strftime("%H:%M:%S", time.localtime(record.created))
-        level = LEVEL_STYLES.get(record.levelno, "")
-        row = [
-            (DIM, f"{when} "),
-            (level, f"{record.levelname:<8} "),
-            ("", record.getMessage()),
-        ]
-        if record.exc_info:
-            row.append(
-                (
-                    "fg:ansired",
-                    "\n" + logging.Formatter().formatException(record.exc_info),
-                )
-            )
-        self.lines.append(row)
-
-
-class ConsolePane:
-    """The message pane: log records and command output, shown by run_console.
-
-    Create it right after logging is set up, so the startup lines land in it too.
-    """
-
-    def __init__(self, title: str = "Prison Architect") -> None:
-        self.lines: deque[list[tuple[str, str]]] = deque(maxlen=PANE_LINES)
-        self.interactive = sys.stdin.isatty()
-        self._saved: list[logging.Handler] | None = None
-        width = min(shutil.get_terminal_size().columns, 60)
-        for text in banner(title, width):
-            self.lines.append([("bold fg:ansicyan", text)])
-        self.lines.append([("", "")])
-
-    def install_logging(self) -> None:
-        """Route log records here. Without a terminal nothing is shown, so nothing changes."""
-        if not self.interactive or self._saved is not None:
-            return
-        root = logging.getLogger()
-        self._saved = root.handlers[:]
-        root.handlers = [PaneHandler(self.lines)]
-
-    def restore_logging(self) -> None:
-        if self._saved is not None:
-            logging.getLogger().handlers = self._saved
-            self._saved = None
-
-
 def run_console(commands: CommandTable, pane: ConsolePane | None = None) -> None:
     """Full-screen console: messages scroll in the pane, the input box stays at the bottom."""
     if not sys.stdin.isatty():
@@ -168,81 +105,163 @@ def run_console(commands: CommandTable, pane: ConsolePane | None = None) -> None
         pane.restore_logging()
 
 
+HISTORY_FILE = Path.home() / ".pa_console_history"
+"""Commands typed in any console, kept between runs."""
+
+WHEEL_ROWS = 3
+"""Rows a mouse-wheel tick scrolls."""
+
+KEYS_HINT = "click to expand · Ctrl+O all · wheel/PgUp/PgDn scroll · Ctrl+L clear"
+
+
+def complete(commands: CommandTable, text: str) -> tuple[str, list[str]]:
+    """Tab completion of the command name: ``(new text, ambiguous matches)``."""
+    if " " in text:
+        return text, []
+    matches = sorted(n for n in commands.commands if n.startswith(text.lower()))
+    if not matches:
+        return text, []
+    if len(matches) == 1:
+        return matches[0] + " ", []
+    return os.path.commonprefix(matches), matches
+
+
 def _run_app(commands: CommandTable, pane: ConsolePane) -> None:
     from prompt_toolkit import Application
+    from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
     from prompt_toolkit.buffer import Buffer
     from prompt_toolkit.document import Document
     from prompt_toolkit.filters import Condition
+    from prompt_toolkit.history import FileHistory, InMemoryHistory
     from prompt_toolkit.key_binding import KeyBindings, KeyPressEvent
     from prompt_toolkit.layout import HSplit, Layout, VSplit, Window
     from prompt_toolkit.layout.controls import BufferControl, FormattedTextControl
     from prompt_toolkit.layout.processors import AfterInput, ConditionalProcessor
+    from prompt_toolkit.mouse_events import MouseEvent, MouseEventType
     from prompt_toolkit.styles import Style
 
-    log = pane.lines
     hint = commands.bottom_hint()
     fresh = [True]  # the hint is the placeholder until the first command
-    history: list[str] = []  # commands entered, oldest first
-    recall = [0]  # index into history; len(history) means "the new line"
 
-    def on_accept(buf: Buffer) -> None:
+    def on_accept(buf: Buffer) -> bool:
         line = buf.text
-        if line:
-            history.append(line)
-        recall[0] = len(history)
-        buf.reset()
         fresh[0] = False
-        log.append([(ECHO, f"{BEGIN}{line}")])
+        pane.echo(line)
+        pane.follow()
         try:
             out = commands.run(line)
         except Quit:
             app.exit()
-            return
-        log.extend([("", text)] for text in out.splitlines())
+            return False
+        for text in out.splitlines():
+            pane.say(text)
+        return False  # the buffer resets itself, after saving the line to history
 
-    buffer = Buffer(multiline=False, accept_handler=on_accept)
+    try:
+        history = FileHistory(str(HISTORY_FILE))
+    except OSError:
+        history = InMemoryHistory()
+    buffer = Buffer(
+        multiline=False,
+        accept_handler=on_accept,
+        history=history,
+        auto_suggest=AutoSuggestFromHistory(),
+    )
     keys = KeyBindings()
 
     @keys.add("enter")
     def _(event: KeyPressEvent) -> None:
         buffer.validate_and_handle()
 
-    def show_recalled(index: int) -> None:
-        recall[0] = index
-        text = history[index] if index < len(history) else ""
-        buffer.document = Document(text, len(text))
-
-    # Up/down step through the commands entered so far; down past the newest clears.
     @keys.add("up", eager=True)
     def _(event: KeyPressEvent) -> None:
-        if recall[0] > 0:
-            show_recalled(recall[0] - 1)
+        buffer.history_backward()
 
     @keys.add("down", eager=True)
     def _(event: KeyPressEvent) -> None:
-        if recall[0] < len(history):
-            show_recalled(recall[0] + 1)
+        buffer.history_forward()
+
+    @keys.add("tab")
+    def _(event: KeyPressEvent) -> None:
+        text, matches = complete(commands, buffer.text)
+        if matches:
+            pane.say("  ".join(matches), DIM)
+        buffer.document = Document(text, len(text))
+
+    def page() -> int:
+        return max(pane.height - 2, 1)
+
+    @keys.add("pageup")
+    def _(event: KeyPressEvent) -> None:
+        pane.scroll(page())
+
+    @keys.add("pagedown")
+    def _(event: KeyPressEvent) -> None:
+        pane.scroll(-page())
+
+    @keys.add("c-home")
+    def _(event: KeyPressEvent) -> None:
+        pane.jump_top()
+
+    @keys.add("c-end")
+    def _(event: KeyPressEvent) -> None:
+        pane.follow()
+
+    @keys.add("c-o")
+    def _(event: KeyPressEvent) -> None:
+        pane.toggle_all()
+
+    @keys.add("c-l")
+    def _(event: KeyPressEvent) -> None:
+        pane.clear()
 
     @keys.add("c-c")
     @keys.add("c-d")
     def _(event: KeyPressEvent) -> None:
         event.app.exit()
 
-    height = [0]  # the pane's visible rows, learned from the last render
+    class PaneControl(FormattedTextControl):
+        """Turns the mouse wheel into scrolling; clicks go to the entries."""
 
-    def scroll(window: Window) -> int:
-        height[0] = window.render_info.window_height if window.render_info else 0
-        return max(0, len(log) - height[0])
+        def mouse_handler(self, mouse_event: MouseEvent):  # type: ignore[no-untyped-def]
+            if mouse_event.event_type == MouseEventType.SCROLL_UP:
+                pane.scroll(WHEEL_ROWS)
+                return None
+            if mouse_event.event_type == MouseEventType.SCROLL_DOWN:
+                pane.scroll(-WHEEL_ROWS)
+                return None
+            return super().mouse_handler(mouse_event)
 
-    def lines() -> list[tuple[str, str]]:
-        # A short pane is padded at the top, so the newest line sits just above the box.
-        pad = [("", "\n")] * max(0, height[0] - len(log))
-        return pad + [frag for line in log for frag in (*line, ("", "\n"))]
+    def toggler(entry):  # type: ignore[no-untyped-def]
+        def handler(event: MouseEvent):  # type: ignore[no-untyped-def]
+            if event.event_type != MouseEventType.MOUSE_UP:
+                return NotImplemented
+            entry.toggle()
+            return None
 
-    messages = Window(
-        FormattedTextControl(lines), wrap_lines=False, get_vertical_scroll=scroll
-    )
-    entry = VSplit(
+        return handler
+
+    def lines():  # type: ignore[no-untyped-def]
+        info = messages.render_info
+        if info is not None:  # the size is learned from the previous render
+            pane.width, pane.height = info.window_width, info.window_height
+        out = []
+        for entry, row in pane.view():
+            handler = toggler(entry) if entry is not None and entry.expandable else None
+            out.extend((s, t, handler) if handler else (s, t) for s, t in row)
+            out.append(("", "\n"))
+        return out
+
+    def status():  # type: ignore[no-untyped-def]
+        style = "fg:ansiyellow" if pane.up else DIM
+        frags = []
+        if pane.attached is not None:
+            text, on = pane.attached()
+            frags.append(("bold fg:ansigreen" if on else DIM, f" {text}  ·"))
+        return [*frags, (style, f" {pane.status()}"), (DIM, f"  ·  {KEYS_HINT}")]
+
+    messages = Window(PaneControl(lines), wrap_lines=False)
+    entry_box = VSplit(
         [
             Window(
                 BufferControl(
@@ -262,11 +281,22 @@ def _run_app(commands: CommandTable, pane: ConsolePane) -> None:
     )
     rule = Window(height=1, char=RULE, style=DIM)
     app: Application[None] = Application(
-        layout=Layout(HSplit([messages, rule, entry, rule]), focused_element=buffer),
+        layout=Layout(
+            HSplit(
+                [
+                    messages,
+                    Window(FormattedTextControl(status), height=1),
+                    rule,
+                    entry_box,
+                    rule,
+                ]
+            ),
+            focused_element=buffer,
+        ),
         key_bindings=keys,
         style=Style.from_dict({"echo": ECHO}),
         full_screen=True,
-        mouse_support=False,
+        mouse_support=True,
         refresh_interval=0.25,
     )
     app.run()

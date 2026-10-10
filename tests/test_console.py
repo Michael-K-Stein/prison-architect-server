@@ -100,7 +100,7 @@ def test_pane_handler_collects_log_records() -> None:
     import logging
     from collections import deque
 
-    from src.cli.console import PaneHandler
+    from src.cli.pane import PaneHandler
 
     pane: deque = deque()
     handler = PaneHandler(pane)
@@ -109,6 +109,6 @@ def test_pane_handler_collects_log_records() -> None:
         logging.getLogger("test").warning("hello pane")
     finally:
         logging.getLogger("test").removeHandler(handler)
-    row = pane[-1]
+    (row,) = pane[-1].head
     assert ("", "hello pane") in row
     assert ("fg:ansiyellow", "WARNING  ") in row
