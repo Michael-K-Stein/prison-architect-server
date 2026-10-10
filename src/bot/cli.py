@@ -314,6 +314,51 @@ def ctl_send(
     _show(ctx, "POST", "/send", {"action": action, "args": args or []})
 
 
+@ctl.command("build")
+def ctl_build(
+    ctx: typer.Context,
+    tool: Annotated[
+        str, typer.Argument(help="foundation, wall, floor, room or place.")
+    ],
+    x: Annotated[int, typer.Argument(help="Left cell.")],
+    y: Annotated[int, typer.Argument(help="Top cell.")],
+    width: Annotated[int, typer.Argument(help="Cells wide (not for place).")] = 1,
+    height: Annotated[int, typer.Argument(help="Cells high (not for place).")] = 1,
+    name: Annotated[
+        str | None,
+        typer.Option(
+            "--name",
+            "-n",
+            help="Material (foundation/wall/floor), room kind (room, default "
+            "Cell) or object (place, e.g. Bed). See `ctl names`.",
+        ),
+    ] = None,
+    facing: Annotated[
+        str | None, typer.Option(help="place: down, up, left or right.")
+    ] = None,
+) -> None:
+    """Build: e.g. `build foundation 10 10 5 5`, `build place 11 11 -n Bed`."""
+    spec: dict = {"tool": tool, "x": x, "y": y, "width": width, "height": height}
+    key = {"room": "kind", "place": "object"}.get(tool, "material")
+    if name:
+        spec[key] = name
+    if facing:
+        spec["facing"] = facing
+    _show(ctx, "POST", "/build", {"jobs": [spec]})
+
+
+@ctl.command("names")
+def ctl_names(
+    ctx: typer.Context,
+    table: Annotated[
+        str, typer.Argument(help="objects, materials, rooms, vehicles or intake.")
+    ],
+    query: Annotated[str, typer.Argument(help="Part of the name.")] = "",
+) -> None:
+    """The game's ids by name, e.g. `names objects bed`."""
+    _show(ctx, "GET", f"/names/{quote(table)}?q={quote(query)}")
+
+
 @ctl.command("events")
 def ctl_events(
     ctx: typer.Context,

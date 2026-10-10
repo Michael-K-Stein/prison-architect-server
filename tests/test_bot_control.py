@@ -34,6 +34,29 @@ class FakeSession:
         self.sent.append((code, data))
         return True
 
+    def build(self, jobs: list[Any]) -> bool:
+        self.sent.append((9, b"Construction"))
+        self.built = jobs
+        return True
+
+
+def test_build_and_names(served: tuple[ControlServer, FakeSession]) -> None:
+    server, session = served
+    spec = {"tool": "place", "object": "Bed", "x": 3, "y": 4}
+    status, body = call("POST", "/build", {"jobs": [spec]}, port=server.port)
+    assert status == 200 and body["sent"] is True
+    assert body["jobs"][0]["material"] == 5
+    assert session.built[0].type == "Objects"
+    status, body = call("POST", "/build", {"jobs": [{"tool": "x"}]}, port=server.port)
+    assert status == 400 and "unknown tool" in body["error"]
+    status, body = call("GET", "/names/rooms?q=cell", port=server.port)
+    assert body["1"] == "Cell" and all("cell" in n.lower() for n in body.values())
+    assert call("GET", "/names/nope", port=server.port)[0] == 404
+    port = ["ctl", "--port", str(server.port)]
+    result = CliRunner().invoke(app, [*port, "build", "room", "1", "2", "3", "3"])
+    assert result.exit_code == 0, result.output
+    assert session.built[0].type == "Designation"
+
 
 @pytest.fixture
 def served() -> Iterator[tuple[ControlServer, FakeSession]]:

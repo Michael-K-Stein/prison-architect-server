@@ -8,6 +8,8 @@ and send RPCs. Listens on 127.0.0.1 only. Endpoints::
     GET  /actions                    the RPC catalog (?kind=player&all=0)
     GET  /actions/<name-or-code>     one action, each arg's choices from live state
     POST /send   {"action", "args"}  parse, build and raise an RPC
+    POST /build  {"jobs": [spec]}    build jobs (foundation/wall/floor/room/place)
+    GET  /names/<table>?q=text       game ids by name (objects, materials, rooms...)
     GET  /events                     numbered feed lines (?since=N&limit=M)
     POST /wait   {"seconds"}         sleep (max 30 s), then /state
     POST /quit                       disconnect and stop the server
@@ -26,13 +28,21 @@ from typing import Any
 from urllib import error, request
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from src.bot import catalog
-from src.protocol import rpc
+from src.bot import build, catalog
+from src.protocol import enums, rpc
 
 log = logging.getLogger(__name__)
 
 DEFAULT_PORT = 8765
 MAX_WAIT = 30.0
+NAME_TABLES = {
+    "objects": enums.OBJECTS,
+    "materials": enums.MATERIALS,
+    "rooms": enums.ROOMS,
+    "vehicles": enums.VEHICLES,
+    "intake": enums.INTAKE_TYPES,
+}
+"""``/names/<table>``: the game's id -> name tables."""
 
 
 class ControlServer:
@@ -176,6 +186,27 @@ class ControlServer:
             "data_hex": data.hex(),
         }
 
+    def build(self, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        """``/build``: ``{"jobs": [spec, ...]}`` (see :func:`build.job_from`)."""
+        specs = body.get("jobs")
+        if not isinstance(specs, list) or not specs:
+            return 400, {"error": "jobs must be a non-empty list of job specs"}
+        try:
+            jobs = [build.job_from(s) for s in specs]
+        except build.BuildError as exc:
+            return 400, {"error": str(exc)}
+        sent = self.session.build(jobs)
+        log.info("control /build %r -> sent=%s", specs, sent)
+        return 200, {"sent": bool(sent), "jobs": [vars(j) for j in jobs]}
+
+    def names(self, table: str, query: str) -> tuple[int, dict[str, Any]]:
+        """``/names/<table>``: id -> name for objects/materials/rooms/..."""
+        found = NAME_TABLES.get(table)
+        if found is None:
+            return 404, {"error": f"unknown table; one of {', '.join(NAME_TABLES)}"}
+        q = query.lower()
+        return 200, {str(i): n for i, n in found.items() if q in n.lower()}
+
     def recent(self, since: int, limit: int) -> dict[str, Any]:
         """``/events``: logged lines with ``seq > since`` (at most ``limit``)."""
         state = self.session.state
@@ -241,6 +272,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._reply(200, c.actions(query.get("kind") or None, show_all))
             elif url.path.startswith("/actions/"):
                 self._reply(*c.action(unquote(url.path[9:])))
+            elif url.path.startswith("/names/"):
+                self._reply(*c.names(url.path[7:], query.get("q", "")))
             elif url.path == "/events":
                 since = int(query.get("since", 0))
                 self._reply(200, c.recent(since, int(query.get("limit", 100))))
@@ -256,6 +289,8 @@ class _Handler(BaseHTTPRequestHandler):
             body = self._body()
             if path == "/send":
                 self._reply(*c.send(body))
+            elif path == "/build":
+                self._reply(*c.build(body))
             elif path == "/wait":
                 seconds = min(max(float(body.get("seconds", 1)), 0.0), MAX_WAIT)
                 c.stopped.wait(seconds)

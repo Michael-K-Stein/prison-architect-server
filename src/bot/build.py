@@ -15,6 +15,7 @@ Names and ids come from :mod:`src.protocol.enums`.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from src.protocol import rpc
 from src.protocol.enums import MATERIALS, OBJECTS, ROOMS, id_of
@@ -91,6 +92,50 @@ def room(x: int, y: int, width: int, height: int, kind: str = "Cell") -> Job:
 def place(obj: str, x: int, y: int, facing: str = "down") -> Job:
     """Install an object (``Objects`` tool; ``Material`` is the object type)."""
     return Job("Objects", id_of(OBJECTS, obj), x, y, facing=facing)
+
+
+TOOLS = {
+    "foundation": (foundation, ("x", "y", "width", "height"), "material"),
+    "wall": (wall, ("x", "y", "width", "height"), "material"),
+    "floor": (floor, ("x", "y", "width", "height"), "material"),
+    "room": (room, ("x", "y", "width", "height"), "kind"),
+    "place": (place, ("x", "y"), "object"),
+}
+"""Tool name -> (job maker, required coordinates, its name argument)."""
+
+
+class BuildError(ValueError):
+    """A build request names an unknown tool, object, material or room."""
+
+
+def job_from(spec: dict[str, Any]) -> Job:
+    """A :class:`Job` from a JSON spec.
+
+    ``{"tool": "foundation", "x": 10, "y": 10, "width": 5, "height": 5}``,
+    ``{"tool": "room", "kind": "Cell", ...}``, ``{"tool": "place", "object":
+    "Bed", "x": 11, "y": 11, "facing": "down"}``; ``material`` is optional for
+    foundation/wall/floor.
+    """
+    tool = str(spec.get("tool", "")).lower()
+    if tool not in TOOLS:
+        raise BuildError(f"unknown tool {tool!r}; one of {', '.join(TOOLS)}")
+    make, coords, name_key = TOOLS[tool]
+    try:
+        kwargs: dict[str, Any] = {k: int(spec[k]) for k in coords}
+    except (KeyError, TypeError, ValueError) as exc:
+        raise BuildError(f"{tool} needs whole numbers {', '.join(coords)}") from exc
+    if spec.get(name_key):
+        kwargs[name_key if tool != "place" else "obj"] = str(spec[name_key])
+    elif tool == "place":
+        raise BuildError("place needs an object name (e.g. Bed)")
+    if tool == "place" and spec.get("facing"):
+        if spec["facing"] not in ORIENTATIONS:
+            raise BuildError(f"facing is one of {', '.join(ORIENTATIONS)}")
+        kwargs["facing"] = spec["facing"]
+    try:
+        return make(**kwargs)
+    except KeyError as exc:
+        raise BuildError(f"unknown {name_key} {exc.args[0]!r}") from None
 
 
 def construction_tree(jobs: list[Job], actor: int) -> Node:
