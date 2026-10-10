@@ -350,6 +350,16 @@ def ctl_build(
     _show(ctx, "POST", "/build", {"jobs": [spec]})
 
 
+@ctl.command("hire")
+def ctl_hire(
+    ctx: typer.Context,
+    role: Annotated[str, typer.Argument(help="Guard, Cook, Doctor, Warden, Workman.")],
+    count: Annotated[int, typer.Argument(help="How many to hire.")] = 1,
+) -> None:
+    """Hire staff (a `Staff` construction job per person), e.g. `hire Guard 2`."""
+    _show(ctx, "POST", "/build", {"jobs": [{"tool": "hire", "role": role}] * count})
+
+
 @ctl.command("area")
 def ctl_area(
     ctx: typer.Context,

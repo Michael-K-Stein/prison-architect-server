@@ -35,6 +35,7 @@ python main.py bot ctl build foundation X Y W H            # floor + walls round
 python main.py bot ctl build room X Y W H -n Cell          # zone a room inside walls
 python main.py bot ctl build place X Y -n Bed              # one object
 python main.py bot ctl build line X Y W H -n ElectricalCable   # cables/pipes as a line
+python main.py bot ctl hire Guard 2                         # hire staff: Guard, Cook, Doctor, Warden, Workman
 python main.py bot ctl send GameSpeedChange 10             # 0 paused, 1, 2, 5, 10
 python main.py bot ctl send IntakeTypeChange FillCapacity  # prisoners arrive daily at 08:00
 python main.py bot ctl action NAME                         # an action's arguments and choices

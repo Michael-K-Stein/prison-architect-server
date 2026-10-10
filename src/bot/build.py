@@ -128,6 +128,8 @@ def job_from(spec: dict[str, Any]) -> Job:
         kwargs["obj" if name_key == "object" else name_key] = str(spec[name_key])
     elif name_key == "object":
         raise BuildError("place needs an object name (e.g. Bed)")
+    if tool == "hire" and not spec.get("role"):
+        raise BuildError("hire needs a role (Guard, Cook, Doctor, Warden, Workman)")
     if tool == "place" and spec.get("facing"):
         if spec["facing"] not in ORIENTATIONS:
             raise BuildError(f"facing is one of {', '.join(ORIENTATIONS)}")
@@ -145,6 +147,15 @@ def line(obj: str, x: int, y: int, width: int = 1, height: int = 1) -> Job:
 
 
 TOOLS["line"] = (line, ("x", "y", "width", "height"), "object")
+
+
+def hire(role: str) -> Job:
+    """Hire one staff member (``Staff`` tool; ``Material`` is the staff object
+    type, e.g. ``Guard`` 105, ``Cook`` 113, ``Warden`` 132). Position is unused."""
+    return Job("Staff", id_of(OBJECTS, role), 0, 0)
+
+
+TOOLS["hire"] = (hire, (), "role")
 
 
 def construction_tree(jobs: list[Job], actor: int) -> Node:
