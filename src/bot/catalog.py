@@ -128,6 +128,10 @@ ARG_NAMES: dict[int, tuple[str, ...]] = {
     133: ("x?", "y?", "on"),
     135: ("prisoner",),
     136: ("staff", "rank"),
+    117: (
+        "adviser",
+        "text_key",
+    ),  # NewSpeechAdded: adviser index (ADVISERS), language key or free text
     137: ("on",),
     138: ("object",),
     139: ("on",),

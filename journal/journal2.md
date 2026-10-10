@@ -1803,3 +1803,18 @@ kingpin) is recorded as `ADVISERS`. There is no dismiss RPC: the speech is
 host -> clients only and closing it is local to the client. `ObjectiveRemoved(
 "ReadCeosLetter", False)` (the CEO letter) did not remove it. The bot now shows
 `The CEO: ...` in its alerts.
+
+### Injecting an adviser message (MKS2, user confirmed)
+
+`ctl send NewSpeechAdded 2 "Hello from the bot: this is an injected Warden message."`
+(RPC 117, sent by the bot to the host only) showed up in the host user's game
+as a message from the Warden with that exact text. So the **host raises a
+`NewSpeechAdded` it receives from a client**, and the second argument can be
+free text, not only a language key (a missing key shows the string as is). The
+first argument is the adviser index (`ADVISERS`, 1 = The CEO, 2 = The Warden).
+The same message sent with `--broadcast` to every other player (adviser 1,
+"The CEO here. Great work, Claude. Keep the station OFF.") was not reported by
+the user; whether a client displays an event from a non-host sender is open.
+Contrast `TransactionAdded` (118): the host shows the amount in its list but
+does not change the bank balance, so what a host does with a client-sent event
+depends on the handler, not only on the sender.
