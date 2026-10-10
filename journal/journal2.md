@@ -1456,3 +1456,22 @@ was wrong: `Dismantle` is a `WorkQueue` field and stays 0 here.
   `Progress` is `9.99999974e-05` (a 0.0001 seed, not real progress).
 - Unexplained: `CategoryChange` values None/Up/SetMax, `Grants.CancelCost` and
   `ResetTime` (0 here), `PolicyChange` arg 2 and `MealPolicyChange` ints.
+
+### Haiku round 3: wires, demolish, power station (`bot-goal-2`)
+
+- **Demolish works from the bot**: `ctl demolish 48 52 5 5` (Material 2, default)
+  took the whole 5x5 foundation (floor and walls) to nothing in about 20 s and
+  the room was removed; `DemolishWalls` / `ClearIndoorArea` were then sent on an
+  empty area, so their individual effect on a standing building is untested.
+- **Wires**: `ctl wire` bridged the cooker/fridge cable piece (x41..45, y63..64)
+  and Cooker #96's piece (x65..67, y53) into the main 237-cell network with one
+  cell each (41,62 and 65,52): one 252-cell component. Afterwards the
+  PowerStation was `on=false`, lights that had been powered went dark: this is
+  the overload described above (merging grids put every consumer on one station
+  of Capacity 50). The "cable must touch it" hint is wrong for that case.
+- Fix to try: a Capacitor, or a second PowerStation on cables that never touch
+  the first, instead of bridging. `ElectricalSwitch(uId, true)` did nothing
+  while overloaded.
+- Open: `target_PowerStation` has the only progress task (`TimePassedGreen` 5,
+  deadline 14400): it needs a running station; no data for the other targets in
+  the save.
