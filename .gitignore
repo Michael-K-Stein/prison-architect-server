@@ -2,4 +2,13 @@ __pycache__/
 .vscode/PythonImportHelper-v2-Completion.json
 venv/
 venv2/
+captures/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
 .env
+bot-names.json
+bot-zones.json
+*.log
+serve*.out
+bot-issues.jsonl

@@ -1,0 +1,2520 @@
+{
+"generated_from": "materials.txt, materials_dlc.txt",
+"objects": {
+"Accountant": {
+"h": 1,
+"w": 1
+},
+"Actor": {
+"h": 1,
+"w": 1
+},
+"AdvancedAutoGatherer": {
+"h": 2,
+"io": 1,
+"w": 2
+},
+"AdvancedSearchLight": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"AirPestControlHeli": {
+"h": 3,
+"w": 8
+},
+"Altar": {
+"h": 2,
+"w": 3,
+"wall": true
+},
+"Ambulance": {
+"h": 5,
+"w": 2
+},
+"AnatomyModel": {
+"h": 1,
+"w": 1
+},
+"AnimalTherapist": {
+"h": 1,
+"w": 1
+},
+"AppealsLawyer": {
+"h": 1,
+"w": 1
+},
+"AppealsMagistrate": {
+"h": 1,
+"w": 1
+},
+"ArcadeCabinet": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"ArmedGuard": {
+"h": 1,
+"w": 1
+},
+"ArmourySign": {
+"h": 1,
+"w": 1
+},
+"AutoHarvester": {
+"h": 1,
+"io": 1,
+"w": 4
+},
+"AutoScythe": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"Avatar": {
+"h": 1,
+"w": 1
+},
+"BackupGenerator": {
+"h": 3,
+"io": 1,
+"w": 3
+},
+"BakeryCookedProduct": {
+"h": 1,
+"w": 1
+},
+"BakeryRawProduct": {
+"h": 1,
+"w": 1
+},
+"BakerySign": {
+"h": 1,
+"w": 1
+},
+"BambooDoor": {
+"h": 1,
+"w": 1
+},
+"BambooGuardTower": {
+"h": 2,
+"io": 2,
+"w": 2
+},
+"Banner": {
+"h": 1,
+"w": 4
+},
+"BarbedWire": {
+"h": 1,
+"w": 1
+},
+"BareTree": {
+"h": 3,
+"w": 3
+},
+"Barley": {
+"h": 1,
+"w": 1
+},
+"BarnDoor": {
+"h": 1,
+"w": 1
+},
+"BasicAutoGatherer": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"BathroomHandDryer": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"BathroomSink": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"Battery": {
+"h": 1,
+"io": 0,
+"w": 1
+},
+"Bed": {
+"h": 2,
+"w": 1,
+"wall": true
+},
+"Bench": {
+"h": 1,
+"w": 4
+},
+"Bin": {
+"h": 1,
+"w": 1
+},
+"BirthdayPresent": {
+"h": 1,
+"w": 1
+},
+"Blackboard": {
+"h": 1,
+"w": 2
+},
+"Bleach": {
+"h": 1,
+"w": 1
+},
+"Bleachers": {
+"h": 3,
+"w": 4
+},
+"BoatDock": {
+"h": 5,
+"w": 10
+},
+"Bookshelf": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"BoomBoxRoundhouse": {
+"h": 1,
+"w": 1
+},
+"Boombox": {
+"h": 1,
+"w": 1
+},
+"BorderPlantA": {
+"h": 1,
+"w": 1
+},
+"BorderPlantB": {
+"h": 1,
+"w": 1
+},
+"BorderPlantC": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"BountyHunter": {
+"h": 1,
+"w": 1
+},
+"BountyHunterTrike": {
+"h": 3,
+"w": 2
+},
+"Box": {
+"h": 1,
+"w": 1
+},
+"BoxingRing": {
+"h": 5,
+"w": 5,
+"wall": true
+},
+"Brick": {
+"h": 1,
+"w": 1
+},
+"BunkBed": {
+"h": 2,
+"w": 1
+},
+"Buoy": {
+"h": 1,
+"w": 1
+},
+"Bush": {
+"h": 1,
+"w": 1
+},
+"CactusTree": {
+"h": 3,
+"w": 3
+},
+"CageGate": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"CakeStand": {
+"h": 1,
+"w": 1
+},
+"CameraPillar": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"CampBed": {
+"h": 2,
+"w": 1,
+"wall": true
+},
+"CancelJobs": {
+"h": 1,
+"w": 1
+},
+"CanteenSign": {
+"h": 1,
+"w": 1
+},
+"Canvas": {
+"h": 1,
+"w": 1
+},
+"Capacitor": {
+"h": 1,
+"w": 1
+},
+"CarpenterTable": {
+"h": 2,
+"w": 3
+},
+"Cctv": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"CctvCamo": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"CctvMonitor": {
+"h": 1,
+"w": 3
+},
+"Chair": {
+"h": 1,
+"w": 1
+},
+"ChairYellow": {
+"h": 1,
+"w": 1
+},
+"Chandelier": {
+"h": 1,
+"w": 1
+},
+"CheckPoint": {
+"h": 2,
+"w": 5
+},
+"ChessTable": {
+"h": 1,
+"w": 1
+},
+"ChestOfDrawers": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"Chief": {
+"h": 1,
+"w": 1
+},
+"CinemaProjector": {
+"h": 1,
+"w": 1
+},
+"CinemaScreen": {
+"h": 1,
+"w": 3
+},
+"CivilianChild": {
+"h": 1,
+"w": 1
+},
+"ClimbingRope": {
+"h": 1,
+"w": 1
+},
+"CoatStand": {
+"h": 1,
+"io": 2,
+"w": 1
+},
+"CoffeeMachine": {
+"h": 1,
+"w": 1
+},
+"CoffinBed": {
+"h": 2,
+"w": 1
+},
+"Collectable": {
+"h": 1,
+"w": 1
+},
+"ComfyBed": {
+"h": 2,
+"w": 1,
+"wall": true
+},
+"CompostBin": {
+"h": 1,
+"w": 1
+},
+"CompostFertilizer": {
+"h": 1,
+"w": 1
+},
+"ComputerStation": {
+"h": 2,
+"w": 1
+},
+"Concrete": {
+"h": 1,
+"w": 1
+},
+"ConstructionHeli": {
+"h": 3,
+"w": 8
+},
+"ConstructionVan": {
+"h": 6,
+"w": 2
+},
+"Cook": {
+"h": 1,
+"w": 1
+},
+"Cooker": {
+"h": 1,
+"w": 2
+},
+"Corn": {
+"h": 1,
+"w": 1
+},
+"CoupletBanner": {
+"h": 1,
+"w": 1
+},
+"Crib": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"CropAppleTree": {
+"h": 3,
+"io": 1,
+"w": 3
+},
+"CropBananaTree": {
+"h": 3,
+"io": 1,
+"w": 3
+},
+"CropBarleyPlant": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"CropCabbagePlant": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"CropCarrotPlant": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"CropCornPlant": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"CropOrangeTree": {
+"h": 3,
+"io": 1,
+"w": 3
+},
+"CropPeachTree": {
+"h": 3,
+"io": 1,
+"w": 3
+},
+"CropPotatoPlant": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"CropSprinkler": {
+"h": 1,
+"w": 1
+},
+"CropTomatoPlant": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"CropWheatPlant": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"CrumpledPrisonerUniform": {
+"h": 1,
+"w": 1
+},
+"CutsceneCamera": {
+"h": 1,
+"w": 1
+},
+"CutsceneCaption": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"CutsceneCue": {
+"h": 1,
+"w": 1
+},
+"CutscenePolaroid": {
+"h": 1,
+"w": 1
+},
+"DamagedElectricalCable": {
+"h": 1,
+"w": 1
+},
+"DeckChair": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"DecoratedTree": {
+"h": 3,
+"w": 3
+},
+"DinerBooth": {
+"h": 3,
+"w": 2
+},
+"DiningChair": {
+"h": 1,
+"w": 1
+},
+"DiningTableLarge": {
+"h": 4,
+"w": 1
+},
+"DiningTableSmall": {
+"h": 2,
+"w": 1
+},
+"DirtyPrisonerUniform": {
+"h": 1,
+"w": 1
+},
+"DismantleObject": {
+"h": 1,
+"w": 1
+},
+"DismantleUtility": {
+"h": 1,
+"w": 1
+},
+"DisplayCounter": {
+"h": 1,
+"w": 3
+},
+"DistractionContraption": {
+"h": 1,
+"w": 1
+},
+"Doctor": {
+"h": 1,
+"w": 1
+},
+"Dog": {
+"h": 1,
+"w": 1
+},
+"DogBowl": {
+"h": 1,
+"w": 1
+},
+"DogCrate": {
+"h": 2,
+"w": 1
+},
+"DogDoo": {
+"h": 1,
+"w": 1
+},
+"DogHandler": {
+"h": 1,
+"w": 1
+},
+"Door": {
+"h": 1,
+"w": 1
+},
+"DoorControlSystem": {
+"h": 1,
+"w": 2
+},
+"DoorMat": {
+"h": 1,
+"w": 1
+},
+"DoorTimer": {
+"h": 1,
+"w": 1
+},
+"DoubleDoor": {
+"h": 1,
+"w": 2
+},
+"DoubleGate": {
+"h": 1,
+"io": 0,
+"w": 2
+},
+"DoubleStaffDoor": {
+"h": 1,
+"w": 2
+},
+"DoubleStaffDoorBlue": {
+"h": 1,
+"w": 2
+},
+"DoubleStaffDoorOrange": {
+"h": 1,
+"w": 2
+},
+"DoubleVisitorDoor": {
+"h": 1,
+"w": 2
+},
+"DoughMixer": {
+"h": 1,
+"w": 1
+},
+"Drain": {
+"h": 1,
+"w": 1
+},
+"DrainageHeli": {
+"h": 3,
+"w": 8
+},
+"DrainageVan": {
+"h": 6,
+"w": 2
+},
+"DrinkMachine": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"DrinkingFountain": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"DripPipe": {
+"h": 1,
+"w": 1
+},
+"DumbbellRack": {
+"h": 1,
+"w": 1
+},
+"Dummy": {
+"h": 1,
+"w": 1
+},
+"DumpObject": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"EbonyLog": {
+"h": 1,
+"w": 1
+},
+"EbonyWood": {
+"h": 1,
+"w": 1
+},
+"ElectricChair": {
+"h": 2,
+"w": 2
+},
+"ElectricalCable": {
+"h": 1,
+"w": 1
+},
+"EliteOps": {
+"h": 1,
+"w": 1
+},
+"EliteOpsHeli": {
+"h": 3,
+"w": 8
+},
+"EntityDeliveryMan": {
+"h": 1,
+"w": 1
+},
+"Equipment": {
+"h": 1,
+"w": 1
+},
+"ExecutionWitness": {
+"h": 1,
+"w": 1
+},
+"FallenTree": {
+"h": 1,
+"w": 3
+},
+"FallenTreeBig": {
+"h": 1,
+"w": 7
+},
+"Fan": {
+"h": 1,
+"w": 1
+},
+"FancyDesk": {
+"h": 1,
+"w": 2
+},
+"Farmer": {
+"h": 1,
+"w": 1
+},
+"FenceGateGuard": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"FenceGateStaff": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"FenceGateStandard": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"FenceGateVisitor": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"FernBush": {
+"h": 1,
+"w": 1
+},
+"FerryBoat": {
+"h": 4,
+"w": 7
+},
+"FerryDock": {
+"h": 5,
+"w": 10
+},
+"FightRing": {
+"h": 4,
+"w": 4,
+"wall": true
+},
+"FilingCabinet": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"FilingCabinetFancy": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"Fire": {
+"h": 1,
+"w": 1
+},
+"FireAlarm": {
+"h": 1,
+"w": 1
+},
+"FireEngine": {
+"h": 7,
+"w": 2
+},
+"FireExtinguisher": {
+"h": 1,
+"w": 1
+},
+"FireHeli": {
+"h": 3,
+"w": 8
+},
+"FirePit": {
+"h": 2,
+"io": 1,
+"w": 2
+},
+"FireSafetyTeacher": {
+"h": 1,
+"w": 1
+},
+"Fireman": {
+"h": 1,
+"w": 1
+},
+"FirstAidStation": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"Flipboard": {
+"h": 1,
+"w": 1
+},
+"FloodLight": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"Flour": {
+"h": 1,
+"w": 1
+},
+"FlowerHeatherBushes": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"FlowerHydrangeaPlant": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"FlowerMixedBegonias": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"FlowerPlanterWateringCan": {
+"h": 1,
+"w": 1
+},
+"FlowerPlanterWellies": {
+"h": 1,
+"w": 1
+},
+"FlowerPlanterWheelbarrow": {
+"h": 1,
+"w": 1
+},
+"FlowerRoseBush": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"FlowerSunflower": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"FoodBowl": {
+"h": 1,
+"w": 1
+},
+"FoodTray": {
+"h": 1,
+"w": 1
+},
+"FoodTrayDirty": {
+"h": 1,
+"w": 1
+},
+"FoodTrayPack": {
+"h": 1,
+"w": 1
+},
+"FoodWaste": {
+"h": 1,
+"w": 1
+},
+"Footbridge": {
+"h": 1,
+"w": 1
+},
+"FootbridgeB": {
+"h": 1,
+"w": 1
+},
+"FootbridgeSteel": {
+"h": 1,
+"w": 1
+},
+"FootbridgeSteelB": {
+"h": 1,
+"io": 2,
+"w": 1
+},
+"Foreman": {
+"h": 1,
+"w": 1
+},
+"Fountain": {
+"h": 1,
+"w": 1
+},
+"Fridge": {
+"h": 1,
+"w": 2
+},
+"GangGraffiti": {
+"h": 1,
+"w": 1
+},
+"Garbage": {
+"h": 1,
+"w": 1
+},
+"GardenGnome": {
+"h": 1,
+"w": 1
+},
+"Gardener": {
+"h": 1,
+"w": 1
+},
+"Gate": {
+"h": 1,
+"io": 0,
+"w": 1
+},
+"GlassWindow": {
+"h": 1,
+"w": 1
+},
+"GlassWindowLarge": {
+"h": 1,
+"w": 2
+},
+"GrassBridge": {
+"h": 3,
+"w": 1
+},
+"GrassTurf": {
+"h": 1,
+"w": 1
+},
+"Gravestone": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"GritBin": {
+"h": 1,
+"w": 1
+},
+"GritterDriver": {
+"h": 1,
+"w": 1
+},
+"Guard": {
+"h": 1,
+"w": 1
+},
+"GuardLocker": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"GuardPavilion": {
+"h": 3,
+"w": 3
+},
+"GuardPavilionCorner": {
+"h": 3,
+"w": 3
+},
+"GuardTower": {
+"h": 2,
+"w": 2
+},
+"GymInstructor": {
+"h": 1,
+"w": 1
+},
+"GymMat": {
+"h": 1,
+"w": 1
+},
+"GymSign": {
+"h": 1,
+"w": 1
+},
+"HayBale": {
+"h": 1,
+"w": 1
+},
+"HealthMonitor": {
+"h": 1,
+"io": 0,
+"w": 1
+},
+"Hearse": {
+"h": 5,
+"w": 2
+},
+"HearseBoat": {
+"h": 4,
+"w": 7
+},
+"HearseHeli": {
+"h": 3,
+"w": 8
+},
+"HeavyDutyElectricalCable": {
+"h": 1,
+"w": 1
+},
+"Helipad": {
+"h": 7,
+"w": 7
+},
+"HighQualityFertilizer": {
+"h": 1,
+"w": 1
+},
+"IndoorTreePlanter": {
+"h": 1,
+"w": 1
+},
+"InfirmarySign": {
+"h": 1,
+"w": 1
+},
+"Ingredients": {
+"h": 1,
+"w": 1
+},
+"IngredientsCooked": {
+"h": 1,
+"w": 1
+},
+"IngredientsCooking": {
+"h": 1,
+"w": 1
+},
+"IngredientsSpoiled": {
+"h": 1,
+"w": 1
+},
+"IroningBoard": {
+"h": 1,
+"w": 3
+},
+"IroningBoardShort": {
+"h": 1,
+"w": 2
+},
+"Ivy": {
+"h": 1,
+"w": 1
+},
+"JackOLantern": {
+"h": 1,
+"w": 1
+},
+"JailBars": {
+"h": 1,
+"w": 1
+},
+"JailDoor": {
+"h": 1,
+"w": 1
+},
+"JailDoorGrey": {
+"h": 1,
+"w": 1
+},
+"JailDoorLarge": {
+"h": 1,
+"w": 2
+},
+"JailDoorLargeGrey": {
+"h": 1,
+"w": 2
+},
+"JailDoorLargeOrange": {
+"h": 1,
+"w": 2
+},
+"JailDoorLargeRed": {
+"h": 1,
+"w": 2
+},
+"JailDoorLargeRusty": {
+"h": 1,
+"w": 2
+},
+"JailDoorLargeWhite": {
+"h": 1,
+"w": 2
+},
+"JailDoorLargeYellow": {
+"h": 1,
+"w": 2
+},
+"JailDoorOrange": {
+"h": 1,
+"w": 1
+},
+"JailDoorRed": {
+"h": 1,
+"w": 1
+},
+"JailDoorRusty": {
+"h": 1,
+"w": 1
+},
+"JailDoorWhite": {
+"h": 1,
+"w": 1
+},
+"JailDoorYellow": {
+"h": 1,
+"w": 1
+},
+"Janitor": {
+"h": 1,
+"w": 1
+},
+"JungleBench": {
+"h": 1,
+"w": 4
+},
+"JungleServingTable": {
+"h": 1,
+"w": 5
+},
+"JungleTable": {
+"h": 1,
+"w": 4,
+"wall": true
+},
+"KayuMalamTree": {
+"h": 3,
+"w": 3
+},
+"KeycardDoor": {
+"h": 1,
+"w": 1
+},
+"KeycardDoorLarge": {
+"h": 1,
+"w": 2
+},
+"KneeRaise": {
+"h": 2,
+"w": 1
+},
+"Lamp": {
+"h": 1,
+"io": 2,
+"w": 1
+},
+"LargeTv": {
+"h": 1,
+"w": 2
+},
+"LaundryBasket": {
+"h": 1,
+"w": 1
+},
+"LaundryMachine": {
+"h": 1,
+"w": 1
+},
+"Lawyer": {
+"h": 1,
+"w": 1
+},
+"LeatherChair": {
+"h": 1,
+"w": 1
+},
+"LeatherSofa": {
+"h": 1,
+"w": 2
+},
+"LeftArrowSign": {
+"h": 1,
+"w": 1
+},
+"LibraryBookSorted": {
+"h": 1,
+"w": 1
+},
+"LibraryBookUnsorted": {
+"h": 1,
+"w": 1
+},
+"LibraryBookshelf": {
+"h": 1,
+"w": 3
+},
+"LicensePlate": {
+"h": 1,
+"w": 1
+},
+"LicensePlateBlank": {
+"h": 1,
+"w": 1
+},
+"LifeRing": {
+"h": 1,
+"w": 1
+},
+"Light": {
+"h": 1,
+"w": 1
+},
+"LightGreen": {
+"h": 1,
+"w": 1
+},
+"LightRed": {
+"h": 1,
+"w": 1
+},
+"LightningRod": {
+"h": 1,
+"w": 1
+},
+"Limo": {
+"h": 5,
+"w": 2
+},
+"Log": {
+"h": 1,
+"w": 1
+},
+"LogicBridge": {
+"h": 1,
+"w": 1
+},
+"LogicCircuit": {
+"h": 1,
+"w": 1
+},
+"LoveLetter": {
+"h": 1,
+"w": 1
+},
+"LoveLetterOpened": {
+"h": 1,
+"w": 1
+},
+"MailSatchel": {
+"h": 1,
+"w": 1
+},
+"MailSorted": {
+"h": 1,
+"w": 1
+},
+"MailUnsorted": {
+"h": 1,
+"w": 1
+},
+"Mattress": {
+"h": 2,
+"io": 1,
+"w": 1,
+"wall": true
+},
+"Meal": {
+"h": 1,
+"w": 1
+},
+"MedicalBed": {
+"h": 2,
+"w": 2,
+"wall": true
+},
+"MedicalBox": {
+"h": 1,
+"w": 1
+},
+"MedicineCabinetPsych": {
+"h": 1,
+"w": 1
+},
+"MetalBarrel": {
+"h": 1,
+"w": 1
+},
+"MetalDetector": {
+"h": 1,
+"w": 1
+},
+"MetalStool": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"MooringBollard": {
+"h": 1,
+"w": 1
+},
+"MooseHead": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"MorgueSlab": {
+"h": 2,
+"w": 1,
+"wall": true
+},
+"NettedBed": {
+"h": 2,
+"w": 1
+},
+"Newspaper": {
+"h": 1,
+"w": 1
+},
+"NoEntrySign": {
+"h": 1,
+"w": 1
+},
+"OakBench": {
+"h": 1,
+"w": 3
+},
+"OakTable": {
+"h": 2,
+"w": 3,
+"wall": true
+},
+"OfficeChair": {
+"h": 1,
+"w": 2
+},
+"OfficeDesk": {
+"h": 1,
+"w": 2,
+"wall": true
+},
+"OldBed": {
+"h": 2,
+"w": 1,
+"wall": true
+},
+"Orderly": {
+"h": 1,
+"w": 1
+},
+"OrganicWaste": {
+"h": 1,
+"w": 1
+},
+"OrnamentalGravestone": {
+"h": 1,
+"w": 1
+},
+"OrnateLantern": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"OutdoorTable": {
+"h": 3,
+"w": 3
+},
+"OvalStaffTable": {
+"h": 2,
+"w": 1
+},
+"Oven": {
+"h": 2,
+"w": 2
+},
+"OxStatue": {
+"h": 1,
+"w": 1
+},
+"PASystem": {
+"h": 1,
+"w": 1
+},
+"Painting1": {
+"h": 1,
+"w": 1
+},
+"Painting2": {
+"h": 1,
+"w": 1
+},
+"PalmTree": {
+"h": 3,
+"w": 3
+},
+"PaperDragonBody": {
+"h": 1,
+"w": 1
+},
+"PaperDragonHead": {
+"h": 1,
+"w": 1
+},
+"PaperDragonTail": {
+"h": 1,
+"w": 1
+},
+"PaperLantern": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"Paramedic": {
+"h": 1,
+"w": 1
+},
+"ParamedicsHeli": {
+"h": 3,
+"w": 8
+},
+"ParkBench": {
+"h": 1,
+"io": 1,
+"w": 3
+},
+"ParoleLawyer": {
+"h": 1,
+"w": 1
+},
+"ParoleOfficer": {
+"h": 1,
+"w": 1
+},
+"PestControlTeacher": {
+"h": 1,
+"w": 1
+},
+"PestControlTruck": {
+"h": 5,
+"w": 2
+},
+"PestControlWorker": {
+"h": 1,
+"w": 1
+},
+"PetBird": {
+"h": 1,
+"w": 1
+},
+"Pews": {
+"h": 1,
+"w": 4,
+"wall": true
+},
+"PhoneBooth": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"PhoneMonitor": {
+"h": 1,
+"w": 1
+},
+"PhoneSign": {
+"h": 1,
+"w": 1
+},
+"PinkFlamingo": {
+"h": 1,
+"w": 1
+},
+"PipeHotLagged": {
+"h": 1,
+"w": 1
+},
+"PipeHotWater": {
+"h": 1,
+"w": 1
+},
+"PipeLarge": {
+"h": 1,
+"w": 1
+},
+"PipeSmall": {
+"h": 1,
+"w": 1
+},
+"PipeSmallLagged": {
+"h": 1,
+"w": 1
+},
+"PipeValve": {
+"h": 1,
+"w": 1
+},
+"PipeValveLagged": {
+"h": 1,
+"w": 1
+},
+"Plant": {
+"h": 1,
+"w": 1
+},
+"PlantCactus": {
+"h": 1,
+"w": 1
+},
+"PlayMat": {
+"h": 1,
+"w": 1
+},
+"Polaroid": {
+"h": 1,
+"w": 1
+},
+"PoolTable": {
+"h": 2,
+"w": 3
+},
+"PowerExportMeter": {
+"h": 2,
+"w": 2
+},
+"PowerStation": {
+"h": 3,
+"w": 3
+},
+"PowerSwitch": {
+"h": 1,
+"w": 1
+},
+"PracticeSolarPanel": {
+"h": 2,
+"io": 2,
+"w": 1
+},
+"PrayerMat": {
+"h": 1,
+"w": 1
+},
+"PressurePad": {
+"h": 1,
+"w": 1
+},
+"PrisonBoat": {
+"h": 4,
+"w": 7
+},
+"PrisonHeli": {
+"h": 3,
+"w": 8
+},
+"Prisoner": {
+"h": 1,
+"w": 1
+},
+"PrisonerBus": {
+"h": 8,
+"w": 2
+},
+"PrisonerLetter": {
+"h": 1,
+"w": 1
+},
+"PrisonerMail": {
+"h": 1,
+"w": 1
+},
+"PrisonerMailOpened": {
+"h": 1,
+"w": 1
+},
+"PrisonerUniform": {
+"h": 1,
+"w": 1
+},
+"Prop": {
+"h": 1,
+"w": 1
+},
+"Psychiatrist": {
+"h": 1,
+"w": 1
+},
+"Psychologist": {
+"h": 1,
+"w": 1
+},
+"PullUpBars": {
+"h": 1,
+"w": 3
+},
+"PunchBag": {
+"h": 1,
+"w": 1
+},
+"PushUpStones": {
+"h": 2,
+"w": 1
+},
+"QuickConnect": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"Radiator": {
+"h": 1,
+"io": 2,
+"w": 1,
+"wall": true
+},
+"Radio": {
+"h": 1,
+"w": 1
+},
+"Rat": {
+"h": 1,
+"w": 1
+},
+"RatDroppings": {
+"h": 1,
+"w": 1
+},
+"RatTrap": {
+"h": 1,
+"w": 1
+},
+"RecyclingBag": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"RecyclingBin": {
+"h": 1,
+"w": 1
+},
+"RehabilitatedPrisoner": {
+"h": 1,
+"w": 1
+},
+"RemoteDoor": {
+"h": 1,
+"w": 1
+},
+"RemoteDoorOrange": {
+"h": 1,
+"w": 1
+},
+"RemoteDoorRed": {
+"h": 1,
+"w": 1
+},
+"RemoteDoorWhite": {
+"h": 1,
+"w": 1
+},
+"RemoteDoorYellow": {
+"h": 1,
+"w": 1
+},
+"Repairman": {
+"h": 1,
+"w": 1
+},
+"RestaurantCustomer": {
+"h": 1,
+"w": 1
+},
+"RestaurantIngredientsCooking": {
+"h": 1,
+"w": 1
+},
+"RestaurantMeal": {
+"h": 1,
+"w": 1
+},
+"RestaurantPlateDirty": {
+"h": 1,
+"w": 1
+},
+"RestaurantSign": {
+"h": 1,
+"w": 1
+},
+"RightArrowSign": {
+"h": 1,
+"w": 1
+},
+"RiotGuard": {
+"h": 1,
+"w": 1
+},
+"RiotVan": {
+"h": 5,
+"w": 2
+},
+"RoadBarrier": {
+"h": 1,
+"w": 7
+},
+"RoadGate": {
+"h": 1,
+"w": 7
+},
+"RoadMaintenanceVehicle": {
+"h": 5,
+"w": 2
+},
+"RobotDogDoo": {
+"h": 1,
+"io": 0,
+"w": 1
+},
+"RorschachTest": {
+"h": 1,
+"w": 1
+},
+"Router": {
+"h": 1,
+"io": 0,
+"w": 1,
+"wall": true
+},
+"Rubble": {
+"h": 1,
+"w": 1
+},
+"RuinedBook": {
+"h": 1,
+"w": 1
+},
+"SakuraTree": {
+"h": 3,
+"w": 3
+},
+"SaloonDoor": {
+"h": 1,
+"w": 2
+},
+"ScannerMachine": {
+"h": 4,
+"w": 2
+},
+"ScannerMonitor": {
+"h": 1,
+"w": 1
+},
+"SchoolDesk": {
+"h": 2,
+"w": 1,
+"wall": true
+},
+"SearchLight": {
+"h": 1,
+"w": 1
+},
+"SecretDoor": {
+"h": 1,
+"w": 1
+},
+"SecureDoor": {
+"h": 1,
+"w": 1
+},
+"SellObject": {
+"h": 1,
+"w": 1
+},
+"SellUtility": {
+"h": 1,
+"w": 1
+},
+"ServingTable": {
+"h": 1,
+"w": 5
+},
+"Servo": {
+"h": 2,
+"w": 1
+},
+"Shed": {
+"h": 2,
+"io": 1,
+"w": 2
+},
+"SheetMetal": {
+"h": 1,
+"w": 1
+},
+"ShopCounter": {
+"h": 1,
+"w": 2
+},
+"ShopFront": {
+"h": 1,
+"w": 2
+},
+"ShopGoods": {
+"h": 1,
+"w": 1
+},
+"ShopShelf": {
+"h": 1,
+"w": 3
+},
+"ShortBookcase": {
+"h": 1,
+"w": 3,
+"wall": true
+},
+"ShowAllWires": {
+"h": 1,
+"w": 1
+},
+"ShowerHead": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"ShowerPillar": {
+"h": 1,
+"io": 2,
+"w": 1
+},
+"ShowerSign": {
+"h": 1,
+"w": 1
+},
+"SignLetterA": {
+"h": 1,
+"w": 1
+},
+"SignLetterB": {
+"h": 1,
+"w": 1
+},
+"SignLetterC": {
+"h": 1,
+"w": 1
+},
+"SignLetterD": {
+"h": 1,
+"w": 1
+},
+"SignLetterE": {
+"h": 1,
+"w": 1
+},
+"SignLetterF": {
+"h": 1,
+"w": 1
+},
+"SignLetterG": {
+"h": 1,
+"w": 1
+},
+"SignLetterH": {
+"h": 1,
+"w": 1
+},
+"SignLetterI": {
+"h": 1,
+"w": 1
+},
+"SignLetterJ": {
+"h": 1,
+"w": 1
+},
+"SignLetterK": {
+"h": 1,
+"w": 1
+},
+"SignLetterL": {
+"h": 1,
+"w": 1
+},
+"SignLetterM": {
+"h": 1,
+"w": 1
+},
+"SignLetterN": {
+"h": 1,
+"w": 1
+},
+"SignLetterO": {
+"h": 1,
+"w": 1
+},
+"SignLetterP": {
+"h": 1,
+"w": 1
+},
+"SignLetterQ": {
+"h": 1,
+"w": 1
+},
+"SignLetterR": {
+"h": 1,
+"w": 1
+},
+"SignLetterS": {
+"h": 1,
+"w": 1
+},
+"SignLetterT": {
+"h": 1,
+"w": 1
+},
+"SignLetterU": {
+"h": 1,
+"w": 1
+},
+"SignLetterV": {
+"h": 1,
+"w": 1
+},
+"SignLetterW": {
+"h": 1,
+"w": 1
+},
+"SignLetterX": {
+"h": 1,
+"w": 1
+},
+"SignLetterY": {
+"h": 1,
+"w": 1
+},
+"SignLetterZ": {
+"h": 1,
+"w": 1
+},
+"SignNumber0": {
+"h": 1,
+"w": 1
+},
+"SignNumber1": {
+"h": 1,
+"w": 1
+},
+"SignNumber2": {
+"h": 1,
+"w": 1
+},
+"SignNumber3": {
+"h": 1,
+"w": 1
+},
+"SignNumber4": {
+"h": 1,
+"w": 1
+},
+"SignNumber5": {
+"h": 1,
+"w": 1
+},
+"SignNumber6": {
+"h": 1,
+"w": 1
+},
+"SignNumber7": {
+"h": 1,
+"w": 1
+},
+"SignNumber8": {
+"h": 1,
+"w": 1
+},
+"SignNumber9": {
+"h": 1,
+"w": 1
+},
+"Sink": {
+"h": 1,
+"w": 3
+},
+"SinkMirror": {
+"h": 1,
+"io": 1,
+"w": 1,
+"wall": true
+},
+"SmallBench": {
+"h": 1,
+"w": 2
+},
+"SmallServingTable": {
+"h": 1,
+"w": 3
+},
+"SmallTable": {
+"h": 1,
+"w": 2,
+"wall": true
+},
+"SnackMachine": {
+"h": 1,
+"io": 2,
+"w": 1,
+"wall": true
+},
+"Sniper": {
+"h": 1,
+"w": 1
+},
+"SnowyConiferTree": {
+"h": 3,
+"w": 3
+},
+"SofaChairBrown": {
+"h": 1,
+"w": 1
+},
+"SofaChairDouble": {
+"h": 1,
+"w": 2,
+"wall": true
+},
+"SofaChairDoubleBrown": {
+"h": 1,
+"w": 2
+},
+"SofaChairSingle": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"SoftPillow": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"SolarLight": {
+"h": 1,
+"w": 1
+},
+"SolarPanels": {
+"h": 2,
+"io": 1,
+"w": 3
+},
+"SolarWallLight": {
+"h": 1,
+"w": 1
+},
+"SolarWindHybrid": {
+"h": 3,
+"io": 1,
+"w": 3
+},
+"Soldier": {
+"h": 1,
+"w": 1
+},
+"SoldiersHeli": {
+"h": 3,
+"w": 8
+},
+"SolitaryDoor": {
+"h": 1,
+"w": 1
+},
+"SonicDeterrent": {
+"h": 1,
+"w": 1
+},
+"SortingTable": {
+"h": 1,
+"w": 3
+},
+"SpiderWeb": {
+"h": 1,
+"w": 1
+},
+"SpiritualLeader": {
+"h": 1,
+"w": 1
+},
+"SpookyTree": {
+"h": 3,
+"w": 3
+},
+"Sprinkler": {
+"h": 1,
+"w": 1
+},
+"Stack": {
+"h": 1,
+"w": 1
+},
+"StaffDoor": {
+"h": 1,
+"w": 1
+},
+"StaffDoorBlue": {
+"h": 1,
+"w": 1
+},
+"StaffDoorOrange": {
+"h": 1,
+"w": 1
+},
+"StaffFood": {
+"h": 1,
+"w": 1
+},
+"StaffFoodBoxed": {
+"h": 1,
+"w": 1
+},
+"StainGlassWindow": {
+"h": 1,
+"w": 1
+},
+"StatusLight": {
+"h": 1,
+"w": 1
+},
+"Steel": {
+"h": 1,
+"w": 1
+},
+"SteppingStone": {
+"h": 1,
+"w": 1
+},
+"SteppingStoneIceBlock": {
+"h": 1,
+"w": 1
+},
+"SteppingStoneLillyPad": {
+"h": 1,
+"w": 1
+},
+"SteppingStonePallet": {
+"h": 1,
+"w": 1
+},
+"StoneWaterSpout": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"StorageShelf": {
+"h": 2,
+"w": 3
+},
+"StreetLamp": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"StrikeFire": {
+"h": 1,
+"w": 1
+},
+"SuperiorBed": {
+"h": 2,
+"w": 1,
+"wall": true
+},
+"SupplyBoat": {
+"h": 4,
+"w": 7
+},
+"SupplyHeli": {
+"h": 3,
+"w": 8
+},
+"SupplyTruck": {
+"h": 8,
+"w": 2
+},
+"SwivelChair": {
+"h": 1,
+"w": 2
+},
+"Table": {
+"h": 1,
+"w": 4,
+"wall": true
+},
+"TableFootball": {
+"h": 2,
+"w": 3
+},
+"TableTennis": {
+"h": 2,
+"w": 3
+},
+"TallFridge": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"TattooRemovalMachine": {
+"h": 2,
+"w": 3
+},
+"Teacher": {
+"h": 1,
+"w": 1
+},
+"TherapyAnimal": {
+"h": 1,
+"w": 1
+},
+"TherapyAnimalContainer": {
+"h": 1,
+"w": 1
+},
+"TidyWires": {
+"h": 1,
+"w": 1
+},
+"Toilet": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"ToiletSign": {
+"h": 1,
+"w": 1
+},
+"TopiaryBush": {
+"h": 1,
+"w": 1
+},
+"TopiaryBushBall": {
+"h": 1,
+"w": 1
+},
+"TopiaryBushCat": {
+"h": 1,
+"w": 1
+},
+"TopiaryBushDeer": {
+"h": 1,
+"w": 1
+},
+"TopiaryBushDog": {
+"h": 1,
+"w": 1
+},
+"TopiaryBushRex": {
+"h": 1,
+"w": 1
+},
+"TopiaryBushSwan": {
+"h": 1,
+"w": 1
+},
+"TopiaryBushWarden": {
+"h": 1,
+"w": 1
+},
+"TrackingMonitor": {
+"h": 1,
+"io": 0,
+"w": 2
+},
+"TrainingDummy": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"TrainingElectricalCable": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"Transformer": {
+"h": 2,
+"io": 0,
+"w": 2
+},
+"TrayDispenser": {
+"h": 1,
+"w": 1
+},
+"Treadmill": {
+"h": 2,
+"w": 1
+},
+"Tree": {
+"h": 3,
+"w": 3
+},
+"TreeStump": {
+"h": 1,
+"w": 1
+},
+"TreeVines": {
+"h": 3,
+"io": 1,
+"w": 3
+},
+"TroopTruck": {
+"h": 5,
+"w": 2
+},
+"TruckDriver": {
+"h": 1,
+"w": 1
+},
+"Tv": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"TyreApparatus": {
+"h": 1,
+"w": 3
+},
+"TyreStack": {
+"h": 1,
+"w": 1
+},
+"VideoCallBooth": {
+"h": 3,
+"w": 2,
+"wall": true
+},
+"VisitationSign": {
+"h": 1,
+"w": 1
+},
+"Visitor": {
+"h": 1,
+"w": 1
+},
+"VisitorBoat": {
+"h": 4,
+"w": 7
+},
+"VisitorDoor": {
+"h": 1,
+"w": 1
+},
+"VisitorHeli": {
+"h": 3,
+"w": 8
+},
+"VisitorTable": {
+"h": 2,
+"w": 3
+},
+"VisitorTableSecure": {
+"h": 2,
+"w": 2
+},
+"WalkwayStairs": {
+"h": 1,
+"w": 1
+},
+"WallLight": {
+"h": 1,
+"w": 1
+},
+"WallPanel": {
+"h": 1,
+"w": 1
+},
+"WallPanelCorner_A": {
+"h": 1,
+"w": 1
+},
+"WallPanelCorner_B": {
+"h": 1,
+"w": 1
+},
+"WallPanelStone": {
+"h": 1,
+"w": 1
+},
+"WallPanelStoneCorner_A": {
+"h": 1,
+"w": 1
+},
+"WallPanelStoneCorner_B": {
+"h": 1,
+"w": 1
+},
+"WallPanelWood": {
+"h": 1,
+"w": 1
+},
+"WallPanelWoodCorner_A": {
+"h": 1,
+"w": 1
+},
+"WallPanelWoodCorner_B": {
+"h": 1,
+"w": 1
+},
+"Warden": {
+"h": 1,
+"w": 1
+},
+"WardenStatue": {
+"h": 1,
+"w": 1
+},
+"WaterBoiler": {
+"h": 1,
+"w": 2
+},
+"WaterBoilerLagged": {
+"h": 1,
+"w": 2
+},
+"WaterCooler": {
+"h": 1,
+"w": 1,
+"wall": true
+},
+"WaterPumpStation": {
+"h": 3,
+"w": 3
+},
+"WaterStationLagged": {
+"h": 3,
+"w": 3
+},
+"Waterman": {
+"h": 1,
+"w": 1
+},
+"WeaponRack": {
+"h": 1,
+"w": 2,
+"wall": true
+},
+"WeatherAntenna": {
+"h": 1,
+"w": 1
+},
+"WeatherMachine": {
+"h": 1,
+"w": 3
+},
+"WeightsBench": {
+"h": 1,
+"w": 1
+},
+"Wheat": {
+"h": 1,
+"w": 1
+},
+"WhitePicketGate": {
+"h": 1,
+"w": 1
+},
+"WillBeDamagedElectricalCable": {
+"h": 1,
+"w": 1
+},
+"WillowTree": {
+"h": 3,
+"w": 3
+},
+"WindSock": {
+"h": 1,
+"io": 1,
+"w": 1
+},
+"WindTurbine": {
+"h": 3,
+"io": 1,
+"w": 2
+},
+"Window": {
+"h": 1,
+"w": 1
+},
+"WindowClassy": {
+"h": 1,
+"w": 1
+},
+"WindowClassyLarge": {
+"h": 1,
+"w": 2
+},
+"WindowLarge": {
+"h": 1,
+"w": 2
+},
+"Wire": {
+"h": 1,
+"w": 1
+},
+"Wood": {
+"h": 1,
+"w": 1
+},
+"WoodDrain": {
+"h": 1,
+"w": 1
+},
+"WoodenBarrel": {
+"h": 1,
+"w": 1
+},
+"WoodenStool": {
+"h": 1,
+"w": 1
+},
+"WoodenTable": {
+"h": 1,
+"w": 1
+},
+"WoodenWindowLarge": {
+"h": 1,
+"w": 2
+},
+"WoodenWindowSmall": {
+"h": 1,
+"w": 1
+},
+"Workman": {
+"h": 1,
+"w": 1
+},
+"WorkshopPress": {
+"h": 1,
+"w": 3
+},
+"WorkshopSaw": {
+"h": 1,
+"w": 3
+},
+"Zombie": {
+"h": 1,
+"io": 2,
+"w": 1
+},
+"ZombieChum": {
+"h": 1,
+"w": 1
+}
+}
+}

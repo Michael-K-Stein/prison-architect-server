@@ -25,7 +25,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install pinned ruff
-        run: python -m pip install ruff==0.16.10
+        run: python -m pip install ruff==0.17.0  # same pin as requirements-dev.txt
       # Only correctness rules: the default rule set fails on the existing baseline.
       - name: Ruff check
         run: python -m ruff check --select E9,F63,F7,F82 .
@@ -41,9 +41,11 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - run: python -m pip install -r requirements.txt
+      - run: python -m pip install -r requirements-dev.txt
       - name: Run tests
         run: |
+          python -m pytest tests -q
+          # Script-style end-to-end test (no test_ functions for pytest to collect).
           python tests/test_prison_architect.py
 
   build-and-push:

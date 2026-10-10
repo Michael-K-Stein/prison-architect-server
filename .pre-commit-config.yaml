@@ -1,0 +1,15 @@
+# Runs the pinned ruff from requirements-dev.txt (same version as CI).
+# Setup: python -m pip install -r requirements-dev.txt && pre-commit install
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: python -m ruff check --select E9,F63,F7,F82
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff format --check
+        entry: python -m ruff format --check
+        language: system
+        types: [python]

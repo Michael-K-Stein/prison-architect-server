@@ -1,0 +1,3440 @@
+{
+ "objects": {
+  "Accountant": {
+   "name": "Accountant",
+   "hint": "",
+   "extra": []
+  },
+  "Actor": {
+   "name": "Actor",
+   "hint": "",
+   "extra": []
+  },
+  "AdvancedAutoGatherer": {
+   "name": "Advanced Auto Gatherer",
+   "hint": "",
+   "extra": []
+  },
+  "AdvancedSearchLight": {
+   "name": "Advanced Searchlight",
+   "hint": "A cutting edge surveillance device designed to detect and deter escaping prisoners, utilizing facial recognition.\nYou must connect a CCTV Monitor to this object for it to work",
+   "extra": []
+  },
+  "AirPestControlHeli": {
+   "name": "Air Pest Control",
+   "hint": "",
+   "extra": []
+  },
+  "Altar": {
+   "name": "Altar",
+   "hint": "",
+   "extra": []
+  },
+  "Ambulance": {
+   "name": "Ambulance",
+   "hint": "",
+   "extra": []
+  },
+  "AnatomyModel": {
+   "name": "Anatomy Model",
+   "hint": "",
+   "extra": []
+  },
+  "AnimalTherapist": {
+   "name": "Animal Therapist",
+   "hint": "",
+   "extra": []
+  },
+  "AppealsLawyer": {
+   "name": "Appeals Lawyer",
+   "hint": "",
+   "extra": []
+  },
+  "AppealsMagistrate": {
+   "name": "Appeals Magistrate",
+   "hint": "",
+   "extra": []
+  },
+  "ArcadeCabinet": {
+   "name": "Arcade Cabinet",
+   "hint": "",
+   "extra": []
+  },
+  "ArmedGuard": {
+   "name": "Armed Guard",
+   "hint": "",
+   "extra": []
+  },
+  "ArmourySign": {
+   "name": "Sign (Armoury)",
+   "hint": "",
+   "extra": []
+  },
+  "AutoHarvester": {
+   "name": "Auto Harvester",
+   "hint": "",
+   "extra": []
+  },
+  "AutoScythe": {
+   "name": "Auto Scythe",
+   "hint": "",
+   "extra": []
+  },
+  "Avatar": {
+   "name": "Avatar",
+   "hint": "",
+   "extra": []
+  },
+  "BackupGenerator": {
+   "name": "Backup Generator",
+   "hint": "Stores solar energy that will automatically power the electricity in the event of a power cut when connected to the prison's electricity cables. Backup Generators are limited to one per circuit.",
+   "extra": []
+  },
+  "BakeryCookedProduct": {
+   "name": "Baked Bakery Product",
+   "hint": "",
+   "extra": []
+  },
+  "BakeryRawProduct": {
+   "name": "Raw Bakery Product",
+   "hint": "",
+   "extra": []
+  },
+  "BakerySign": {
+   "name": "Sign (bakery)",
+   "hint": "",
+   "extra": []
+  },
+  "BambooDoor": {
+   "name": "Door (Bamboo)",
+   "hint": "",
+   "extra": []
+  },
+  "BambooGuardTower": {
+   "name": "Guard Tower (Wooden)",
+   "hint": "",
+   "extra": []
+  },
+  "Banner": {
+   "name": "Banner",
+   "hint": "",
+   "extra": []
+  },
+  "BarbedWire": {
+   "name": "Barbed Wire",
+   "hint": "",
+   "extra": []
+  },
+  "BareTree": {
+   "name": "Tree (Bare)",
+   "hint": "",
+   "extra": []
+  },
+  "Barley": {
+   "name": "Barley",
+   "hint": "",
+   "extra": []
+  },
+  "BarnDoor": {
+   "name": "Barn Door",
+   "hint": "",
+   "extra": []
+  },
+  "BasicAutoGatherer": {
+   "name": "Basic Auto Gatherer",
+   "hint": "",
+   "extra": []
+  },
+  "BathroomHandDryer": {
+   "name": "Hand Dryer",
+   "hint": "",
+   "extra": []
+  },
+  "BathroomSink": {
+   "name": "Bathroom Sink",
+   "hint": "",
+   "extra": []
+  },
+  "Battery": {
+   "name": "Battery",
+   "hint": "Stores the excess energy converted by Transformers for emergencies or to be used as an export, must be placed adjacent to a Transformer to function.",
+   "extra": []
+  },
+  "Bed": {
+   "name": "Bed",
+   "hint": "",
+   "extra": []
+  },
+  "Bench": {
+   "name": "Bench",
+   "hint": "",
+   "extra": []
+  },
+  "Bin": {
+   "name": "Bin",
+   "hint": "",
+   "extra": [
+    "The Compost Bin will turn food and plant waste along with other substances into Compost Fertilizer for free."
+   ]
+  },
+  "BirthdayPresent": {
+   "name": "Birthday Present",
+   "hint": "",
+   "extra": []
+  },
+  "Blackboard": {
+   "name": "Blackboard",
+   "hint": "",
+   "extra": []
+  },
+  "Bleach": {
+   "name": "Bleach",
+   "hint": "",
+   "extra": []
+  },
+  "Bleachers": {
+   "name": "Bleachers",
+   "hint": "",
+   "extra": []
+  },
+  "BoatDock": {
+   "name": "Boat Dock",
+   "hint": "",
+   "extra": []
+  },
+  "Bookshelf": {
+   "name": "Bookshelf",
+   "hint": "",
+   "extra": []
+  },
+  "BoomBoxRoundhouse": {
+   "name": "BoomBox",
+   "hint": "",
+   "extra": []
+  },
+  "Boombox": {
+   "name": "Boombox",
+   "hint": "",
+   "extra": []
+  },
+  "BorderPlantA": {
+   "name": "Border Plant A",
+   "hint": "",
+   "extra": []
+  },
+  "BorderPlantB": {
+   "name": "Border Plant B",
+   "hint": "",
+   "extra": []
+  },
+  "BorderPlantC": {
+   "name": "Border Plant C",
+   "hint": "",
+   "extra": []
+  },
+  "BountyHunter": {
+   "name": "Bounty Hunter",
+   "hint": "",
+   "extra": []
+  },
+  "BountyHunterTrike": {
+   "name": "Bounty Hunter Trike",
+   "hint": "",
+   "extra": []
+  },
+  "Box": {
+   "name": "Box",
+   "hint": "",
+   "extra": []
+  },
+  "BoxingRing": {
+   "name": "Boxing Ring",
+   "hint": "",
+   "extra": []
+  },
+  "Brick": {
+   "name": "Brick",
+   "hint": "",
+   "extra": []
+  },
+  "BunkBed": {
+   "name": "Bunk Bed",
+   "hint": "",
+   "extra": []
+  },
+  "Buoy": {
+   "name": "Buoy",
+   "hint": "",
+   "extra": []
+  },
+  "Bush": {
+   "name": "Bush",
+   "hint": "",
+   "extra": []
+  },
+  "CactusTree": {
+   "name": "Tree (Cactus)",
+   "hint": "",
+   "extra": []
+  },
+  "CageGate": {
+   "name": "Cage Gate",
+   "hint": "",
+   "extra": []
+  },
+  "CakeStand": {
+   "name": "Cake Stand",
+   "hint": "",
+   "extra": []
+  },
+  "CameraPillar": {
+   "name": "Camera Pillar",
+   "hint": "",
+   "extra": []
+  },
+  "CampBed": {
+   "name": "Camp Bed",
+   "hint": "",
+   "extra": []
+  },
+  "CancelJobs": {
+   "name": "Cancel Jobs",
+   "hint": "",
+   "extra": []
+  },
+  "CanteenSign": {
+   "name": "Sign (Canteen)",
+   "hint": "",
+   "extra": []
+  },
+  "Canvas": {
+   "name": "Canvas & Paints",
+   "hint": "",
+   "extra": []
+  },
+  "Capacitor": {
+   "name": "Capacitor",
+   "hint": "Increases the amount of electricity generated when placed next to a power station.",
+   "extra": []
+  },
+  "CarpenterTable": {
+   "name": "Carpenter Table",
+   "hint": "",
+   "extra": []
+  },
+  "Cctv": {
+   "name": "CCTV",
+   "hint": "Keep an eye on your prison without the need for guards to be everywhere at once.\nYou must Connect a CCTV Monitor to this camera for it to work.",
+   "extra": [
+    "CCTV Cameras allow us to monitor areas of the prison even when no Guards are in the area. A single CCTV Monitor allows one Guard to view 8 different CCTV Cameras. They're a no brainer!",
+    "We need to install CCTV Cameras."
+   ]
+  },
+  "CctvCamo": {
+   "name": "CCTV (Camouflaged)",
+   "hint": "Keep an eye on your prison without the need for guards to be everywhere at once. This camera comes in camo-print.\nYou must Connect a CCTV Monitor to this camera for it to work.",
+   "extra": []
+  },
+  "CctvMonitor": {
+   "name": "CCTV Monitor",
+   "hint": "Designed to be built in a Security Room, and operated by a Guard. Monitors the CCTV cameras around your prison remotely.\nUse the Connect tool to connect this monitor to your CCTV cameras.\nNote: A maximum of eight cameras can be viewed at once. If you connect more than eight cameras, the monitor will cycle through them gradually, giving only partial coverage.",
+   "extra": [
+    "CCTV Cameras allow us to monitor areas of the prison even when no Guards are in the area. A single CCTV Monitor allows one Guard to view 8 different CCTV Cameras. They're a no brainer!"
+   ]
+  },
+  "Chair": {
+   "name": "Chair",
+   "hint": "",
+   "extra": []
+  },
+  "ChairYellow": {
+   "name": "Chair (Yellow)",
+   "hint": "",
+   "extra": []
+  },
+  "Chandelier": {
+   "name": "Chandelier",
+   "hint": "",
+   "extra": []
+  },
+  "CheckPoint": {
+   "name": "Checkpoint",
+   "hint": "",
+   "extra": []
+  },
+  "ChessTable": {
+   "name": "Chess Table",
+   "hint": "",
+   "extra": []
+  },
+  "ChestOfDrawers": {
+   "name": "Chest of Drawers",
+   "hint": "",
+   "extra": []
+  },
+  "Chief": {
+   "name": "Chief",
+   "hint": "",
+   "extra": []
+  },
+  "CinemaProjector": {
+   "name": "Projector",
+   "hint": "",
+   "extra": []
+  },
+  "CinemaScreen": {
+   "name": "Projector Screen",
+   "hint": "",
+   "extra": []
+  },
+  "CivilianChild": {
+   "name": "Delinquent",
+   "hint": "",
+   "extra": []
+  },
+  "ClimbingRope": {
+   "name": "Climbing Rope",
+   "hint": "",
+   "extra": []
+  },
+  "CoatStand": {
+   "name": "Coat Stand",
+   "hint": "",
+   "extra": []
+  },
+  "CoffeeMachine": {
+   "name": "Coffee Machine",
+   "hint": "",
+   "extra": []
+  },
+  "CoffinBed": {
+   "name": "Coffin Bed",
+   "hint": "",
+   "extra": []
+  },
+  "Collectable": {
+   "name": "Notebook Page",
+   "hint": "",
+   "extra": []
+  },
+  "ComfyBed": {
+   "name": "Comfy Bed",
+   "hint": "",
+   "extra": []
+  },
+  "CompostBin": {
+   "name": "Compost Bin",
+   "hint": "",
+   "extra": [
+    "The Compost Bin will turn food and plant waste along with other substances into Compost Fertilizer for free."
+   ]
+  },
+  "CompostFertilizer": {
+   "name": "Compost Fertilizer",
+   "hint": "",
+   "extra": [
+    "The Compost Bin will turn food and plant waste along with other substances into Compost Fertilizer for free."
+   ]
+  },
+  "ComputerStation": {
+   "name": "Computer Station",
+   "hint": "",
+   "extra": []
+  },
+  "Concrete": {
+   "name": "Concrete",
+   "hint": "",
+   "extra": []
+  },
+  "ConstructionHeli": {
+   "name": "Repair Helicopter",
+   "hint": "",
+   "extra": []
+  },
+  "ConstructionVan": {
+   "name": "Repair Van",
+   "hint": "",
+   "extra": []
+  },
+  "Cook": {
+   "name": "Cook",
+   "hint": "",
+   "extra": []
+  },
+  "Cooker": {
+   "name": "Cooker",
+   "hint": "",
+   "extra": []
+  },
+  "Corn": {
+   "name": "Corn",
+   "hint": "",
+   "extra": []
+  },
+  "CoupletBanner": {
+   "name": "Couplet Banner",
+   "hint": "",
+   "extra": []
+  },
+  "Crib": {
+   "name": "Crib",
+   "hint": "",
+   "extra": []
+  },
+  "CropAppleTree": {
+   "name": "Apple Tree",
+   "hint": "",
+   "extra": []
+  },
+  "CropBananaTree": {
+   "name": "Banana Tree",
+   "hint": "",
+   "extra": []
+  },
+  "CropBarleyPlant": {
+   "name": "Barley Plant",
+   "hint": "",
+   "extra": []
+  },
+  "CropCabbagePlant": {
+   "name": "Cabbage Plant",
+   "hint": "",
+   "extra": []
+  },
+  "CropCarrotPlant": {
+   "name": "Carrot Plant",
+   "hint": "",
+   "extra": []
+  },
+  "CropCornPlant": {
+   "name": "Corn Plant",
+   "hint": "",
+   "extra": []
+  },
+  "CropOrangeTree": {
+   "name": "Orange Tree",
+   "hint": "",
+   "extra": []
+  },
+  "CropPeachTree": {
+   "name": "Peach Tree",
+   "hint": "",
+   "extra": []
+  },
+  "CropPotatoPlant": {
+   "name": "Potato Plant",
+   "hint": "",
+   "extra": []
+  },
+  "CropSprinkler": {
+   "name": "Outdoor Sprinkler",
+   "hint": "",
+   "extra": []
+  },
+  "CropTomatoPlant": {
+   "name": "Tomato Plant",
+   "hint": "",
+   "extra": []
+  },
+  "CropWheatPlant": {
+   "name": "Wheat Plant",
+   "hint": "",
+   "extra": []
+  },
+  "CrumpledPrisonerUniform": {
+   "name": "Prisoner Uniform (Crumpled)",
+   "hint": "",
+   "extra": []
+  },
+  "CutsceneCamera": {
+   "name": "Cutscene Camera",
+   "hint": "",
+   "extra": []
+  },
+  "CutsceneCaption": {
+   "name": "Cutscene Caption",
+   "hint": "",
+   "extra": []
+  },
+  "CutsceneCue": {
+   "name": "Cutscene Cue",
+   "hint": "",
+   "extra": []
+  },
+  "CutscenePolaroid": {
+   "name": "Cutscene Polaroid",
+   "hint": "",
+   "extra": []
+  },
+  "DamagedElectricalCable": {
+   "name": "Damaged Electrical Cable",
+   "hint": "",
+   "extra": []
+  },
+  "DeckChair": {
+   "name": "Deck Chair",
+   "hint": "",
+   "extra": []
+  },
+  "DecoratedTree": {
+   "name": "Decorated Tree (spooky)",
+   "hint": "",
+   "extra": []
+  },
+  "DinerBooth": {
+   "name": "Diner Booth",
+   "hint": "",
+   "extra": []
+  },
+  "DiningChair": {
+   "name": "Dining Chair",
+   "hint": "",
+   "extra": []
+  },
+  "DiningTableLarge": {
+   "name": "Dining Table (Large)",
+   "hint": "",
+   "extra": []
+  },
+  "DiningTableSmall": {
+   "name": "Dining Table (Small)",
+   "hint": "",
+   "extra": []
+  },
+  "DirtyPrisonerUniform": {
+   "name": "Prisoner Uniform (Dirty)",
+   "hint": "",
+   "extra": []
+  },
+  "DismantleObject": {
+   "name": "Dismantle Object",
+   "hint": "",
+   "extra": []
+  },
+  "DismantleUtility": {
+   "name": "Dismantle Utility",
+   "hint": "Remove a utility object from your prison.",
+   "extra": []
+  },
+  "DisplayCounter": {
+   "name": "Display Counter",
+   "hint": "",
+   "extra": []
+  },
+  "DistractionContraption": {
+   "name": "Distraction Contraption",
+   "hint": "",
+   "extra": []
+  },
+  "Doctor": {
+   "name": "Doctor",
+   "hint": "",
+   "extra": []
+  },
+  "Dog": {
+   "name": "Guard Dog",
+   "hint": "",
+   "extra": []
+  },
+  "DogBowl": {
+   "name": "Dog Bowl",
+   "hint": "",
+   "extra": []
+  },
+  "DogCrate": {
+   "name": "Dog Crate",
+   "hint": "",
+   "extra": []
+  },
+  "DogDoo": {
+   "name": "Dog Doo",
+   "hint": "",
+   "extra": []
+  },
+  "DogHandler": {
+   "name": "Dog Handler",
+   "hint": "",
+   "extra": []
+  },
+  "Door": {
+   "name": "Door",
+   "hint": "",
+   "extra": [
+    "Our guards currently have to spend most of their time opening jail doors for people, their time is too important for this! Install a Door Control system and one guard can open multiple doors remotely.",
+    "We should improve efficiency by installing a Door Control system."
+   ]
+  },
+  "DoorControlSystem": {
+   "name": "Door Control System",
+   "hint": "Designed to be built in a Security Room, and operated by a Guard. Can be used to remotely open doors around your prison.\nUse the Connect tool to connect this system to your Door Servos. The Door Servos should be built over the doors you wish to control remotely.\nNote: You can connect this to as many Servos as you wish, however the Guard operating the system can open a maximum of two doors per second.",
+   "extra": [
+    "Our guards currently have to spend most of their time opening jail doors for people, their time is too important for this! Install a Door Control system and one guard can open multiple doors remotely.",
+    "We should improve efficiency by installing a Door Control system."
+   ]
+  },
+  "DoorMat": {
+   "name": "Door Mat",
+   "hint": "",
+   "extra": []
+  },
+  "DoorTimer": {
+   "name": "Door Timer",
+   "hint": "Can be used to automatically open doors at certain times of day.\nUse the Connect tool to connect this timer to your Door Servos.",
+   "extra": []
+  },
+  "DoubleDoor": {
+   "name": "Double Door",
+   "hint": "",
+   "extra": []
+  },
+  "DoubleGate": {
+   "name": "Double Gate",
+   "hint": "",
+   "extra": []
+  },
+  "DoubleStaffDoor": {
+   "name": "Double Staff Door",
+   "hint": "",
+   "extra": []
+  },
+  "DoubleStaffDoorBlue": {
+   "name": "Double Staff Door (Blue)",
+   "hint": "",
+   "extra": []
+  },
+  "DoubleStaffDoorOrange": {
+   "name": "Double Staff Door (Orange)",
+   "hint": "",
+   "extra": []
+  },
+  "DoubleVisitorDoor": {
+   "name": "Double Visitor Door",
+   "hint": "",
+   "extra": []
+  },
+  "DoughMixer": {
+   "name": "Dough Mixer",
+   "hint": "",
+   "extra": []
+  },
+  "Drain": {
+   "name": "Drain",
+   "hint": "",
+   "extra": []
+  },
+  "DrainageHeli": {
+   "name": "Plumbing Helicopter",
+   "hint": "",
+   "extra": []
+  },
+  "DrainageVan": {
+   "name": "Plumbing Van",
+   "hint": "",
+   "extra": []
+  },
+  "DrinkMachine": {
+   "name": "Drink Machine",
+   "hint": "",
+   "extra": []
+  },
+  "DrinkingFountain": {
+   "name": "Drink Fountain",
+   "hint": "",
+   "extra": []
+  },
+  "DripPipe": {
+   "name": "Drip Pipe",
+   "hint": "",
+   "extra": []
+  },
+  "DumbbellRack": {
+   "name": "Dumbbell Rack",
+   "hint": "",
+   "extra": []
+  },
+  "Dummy": {
+   "name": "Dummy",
+   "hint": "",
+   "extra": []
+  },
+  "DumpObject": {
+   "name": "Dump Object",
+   "hint": "",
+   "extra": []
+  },
+  "EbonyLog": {
+   "name": "Ebony Log",
+   "hint": "",
+   "extra": []
+  },
+  "EbonyWood": {
+   "name": "Ebony Timber",
+   "hint": "",
+   "extra": []
+  },
+  "ElectricChair": {
+   "name": "Electric Chair",
+   "hint": "",
+   "extra": []
+  },
+  "ElectricalCable": {
+   "name": "Electrical Cable",
+   "hint": "Distributes electricity around your prison.",
+   "extra": []
+  },
+  "EliteOps": {
+   "name": "Elite Ops",
+   "hint": "",
+   "extra": []
+  },
+  "EliteOpsHeli": {
+   "name": "Elite Ops Team",
+   "hint": "",
+   "extra": []
+  },
+  "EntityDeliveryMan": {
+   "name": "Delivery Man",
+   "hint": "",
+   "extra": []
+  },
+  "Equipment": {
+   "name": "Equipment",
+   "hint": "",
+   "extra": []
+  },
+  "ExecutionWitness": {
+   "name": "Execution Witness",
+   "hint": "",
+   "extra": []
+  },
+  "FallenTree": {
+   "name": "Fallen Tree",
+   "hint": "",
+   "extra": []
+  },
+  "FallenTreeBig": {
+   "name": "Fallen Trees",
+   "hint": "",
+   "extra": []
+  },
+  "Fan": {
+   "name": "Fan",
+   "hint": "",
+   "extra": []
+  },
+  "FancyDesk": {
+   "name": "Desk (Fancy)",
+   "hint": "",
+   "extra": []
+  },
+  "Farmer": {
+   "name": "Farmer",
+   "hint": "",
+   "extra": [
+    "The Farmer will handle all jobs related to farming, they are also required to teach inmates how to also perform these jobs."
+   ]
+  },
+  "FenceGateGuard": {
+   "name": "Fence Gate (Guard's)",
+   "hint": "",
+   "extra": []
+  },
+  "FenceGateStaff": {
+   "name": "Fence Gate (Staff)",
+   "hint": "",
+   "extra": []
+  },
+  "FenceGateStandard": {
+   "name": "Fence Gate (Standard)",
+   "hint": "",
+   "extra": []
+  },
+  "FenceGateVisitor": {
+   "name": "Fence Gate (Visitor's)",
+   "hint": "",
+   "extra": []
+  },
+  "FernBush": {
+   "name": "Fern Bush",
+   "hint": "",
+   "extra": []
+  },
+  "FerryBoat": {
+   "name": "Transport Ferry",
+   "hint": "",
+   "extra": []
+  },
+  "FerryDock": {
+   "name": "Ferry Dock",
+   "hint": "",
+   "extra": []
+  },
+  "FightRing": {
+   "name": "Fight Ring",
+   "hint": "",
+   "extra": []
+  },
+  "FilingCabinet": {
+   "name": "Filing Cabinet",
+   "hint": "",
+   "extra": []
+  },
+  "FilingCabinetFancy": {
+   "name": "Filing Cabinet (Fancy)",
+   "hint": "",
+   "extra": []
+  },
+  "Fire": {
+   "name": "Fire",
+   "hint": "",
+   "extra": [
+    "A fire with a high wind could prove itself a catastrophe, make sure to prevent it and make preparations.",
+    "At the moment we are seriously unequipped to deal with a fire in the prison. We should install a sprinkler system as soon as possible.",
+    "We are at risk if a fire breaks out."
+   ]
+  },
+  "FireAlarm": {
+   "name": "Fire Alarm",
+   "hint": "",
+   "extra": []
+  },
+  "FireEngine": {
+   "name": "Fire Engine",
+   "hint": "",
+   "extra": []
+  },
+  "FireExtinguisher": {
+   "name": "Fire Extinguisher",
+   "hint": "",
+   "extra": []
+  },
+  "FireHeli": {
+   "name": "Air Firefighters",
+   "hint": "",
+   "extra": []
+  },
+  "FirePit": {
+   "name": "Fire Pit",
+   "hint": "",
+   "extra": []
+  },
+  "FireSafetyTeacher": {
+   "name": "Fire Safety Teacher",
+   "hint": "",
+   "extra": []
+  },
+  "Fireman": {
+   "name": "Fireman",
+   "hint": "",
+   "extra": []
+  },
+  "FirstAidStation": {
+   "name": "First Aid Station",
+   "hint": "",
+   "extra": []
+  },
+  "Flipboard": {
+   "name": "Flip Board",
+   "hint": "",
+   "extra": []
+  },
+  "FloodLight": {
+   "name": "Light (Flood Light)",
+   "hint": "",
+   "extra": []
+  },
+  "Flour": {
+   "name": "Flour",
+   "hint": "",
+   "extra": []
+  },
+  "FlowerHeatherBushes": {
+   "name": "Heather Bushes",
+   "hint": "",
+   "extra": []
+  },
+  "FlowerHydrangeaPlant": {
+   "name": "Hydrangea Plant",
+   "hint": "",
+   "extra": []
+  },
+  "FlowerMixedBegonias": {
+   "name": "Mixed Begonias",
+   "hint": "",
+   "extra": []
+  },
+  "FlowerPlanterWateringCan": {
+   "name": "Flower Planter (Watering Can)",
+   "hint": "",
+   "extra": []
+  },
+  "FlowerPlanterWellies": {
+   "name": "Flower Planter (Wellies)",
+   "hint": "",
+   "extra": []
+  },
+  "FlowerPlanterWheelbarrow": {
+   "name": "Flower Planter (Wheelbarrow)",
+   "hint": "",
+   "extra": []
+  },
+  "FlowerRoseBush": {
+   "name": "Rose Bush",
+   "hint": "",
+   "extra": []
+  },
+  "FlowerSunflower": {
+   "name": "Sunflower",
+   "hint": "",
+   "extra": []
+  },
+  "FoodBowl": {
+   "name": "Food",
+   "hint": "",
+   "extra": [
+    "Rooms related to growing, utilising, or storing food can be linked to each other, providing micro-management over ingredient distribution.",
+    "The Compost Bin will turn food and plant waste along with other substances into Compost Fertilizer for free.",
+    "Fruit Trees provide the most efficient food supply when grown in large quantities."
+   ]
+  },
+  "FoodTray": {
+   "name": "Food Tray",
+   "hint": "",
+   "extra": []
+  },
+  "FoodTrayDirty": {
+   "name": "Food Tray (Dirty)",
+   "hint": "",
+   "extra": []
+  },
+  "FoodTrayPack": {
+   "name": "Food Tray Pack",
+   "hint": "",
+   "extra": []
+  },
+  "FoodWaste": {
+   "name": "Food Waste",
+   "hint": "",
+   "extra": []
+  },
+  "Footbridge": {
+   "name": "Footbridge",
+   "hint": "",
+   "extra": []
+  },
+  "FootbridgeB": {
+   "name": "Footbridge B",
+   "hint": "",
+   "extra": []
+  },
+  "FootbridgeSteel": {
+   "name": "Steel Footbridge",
+   "hint": "",
+   "extra": []
+  },
+  "FootbridgeSteelB": {
+   "name": "Steel Footbridge B",
+   "hint": "",
+   "extra": []
+  },
+  "Foreman": {
+   "name": "Foreman",
+   "hint": "",
+   "extra": []
+  },
+  "Fountain": {
+   "name": "Fountain",
+   "hint": "",
+   "extra": []
+  },
+  "Fridge": {
+   "name": "Fridge",
+   "hint": "",
+   "extra": []
+  },
+  "GangGraffiti": {
+   "name": "Gang Graffiti",
+   "hint": "",
+   "extra": []
+  },
+  "Garbage": {
+   "name": "Garbage",
+   "hint": "",
+   "extra": [
+    "Bins allow us to store lots of rubbish before they need emptying, this means much fewer trips to the garbage area. Add bins to the kitchen and place them near metal detectors to increase efficiency."
+   ]
+  },
+  "GardenGnome": {
+   "name": "Garden Gnome",
+   "hint": "",
+   "extra": []
+  },
+  "Gardener": {
+   "name": "Gardener",
+   "hint": "",
+   "extra": []
+  },
+  "Gate": {
+   "name": "Gate",
+   "hint": "",
+   "extra": []
+  },
+  "GlassWindow": {
+   "name": "Window Glass",
+   "hint": "",
+   "extra": []
+  },
+  "GlassWindowLarge": {
+   "name": "Window Glass (Large)",
+   "hint": "",
+   "extra": []
+  },
+  "GrassBridge": {
+   "name": "Grass Road Bridge",
+   "hint": "",
+   "extra": []
+  },
+  "GrassTurf": {
+   "name": "Grass Turf",
+   "hint": "",
+   "extra": []
+  },
+  "Gravestone": {
+   "name": "Gravestone",
+   "hint": "",
+   "extra": []
+  },
+  "GritBin": {
+   "name": "Grit Bin",
+   "hint": "",
+   "extra": []
+  },
+  "GritterDriver": {
+   "name": "Gritter Driver",
+   "hint": "",
+   "extra": []
+  },
+  "Guard": {
+   "name": "Guard",
+   "hint": "",
+   "extra": [
+    "CCTV Cameras allow us to monitor areas of the prison even when no Guards are in the area. A single CCTV Monitor allows one Guard to view 8 different CCTV Cameras. They're a no brainer!",
+    "Our guards currently have to spend most of their time opening jail doors for people, their time is too important for this! Install a Door Control system and one guard can open multiple doors remotely.",
+    "It's not safe for your guards to be so heavily outnumbered by the prisoners, each guard can safely manage around 5 prisoners."
+   ]
+  },
+  "GuardLocker": {
+   "name": "Guard Locker",
+   "hint": "",
+   "extra": []
+  },
+  "GuardPavilion": {
+   "name": "Guard Pavilion",
+   "hint": "",
+   "extra": []
+  },
+  "GuardPavilionCorner": {
+   "name": "Guard Pavilion (Corner)",
+   "hint": "",
+   "extra": []
+  },
+  "GuardTower": {
+   "name": "Guard Tower",
+   "hint": "",
+   "extra": []
+  },
+  "GymInstructor": {
+   "name": "Gym Instructor",
+   "hint": "",
+   "extra": []
+  },
+  "GymMat": {
+   "name": "Gym Mat",
+   "hint": "",
+   "extra": []
+  },
+  "GymSign": {
+   "name": "Sign (gym)",
+   "hint": "",
+   "extra": []
+  },
+  "HayBale": {
+   "name": "Hay Bale",
+   "hint": "",
+   "extra": []
+  },
+  "HealthMonitor": {
+   "name": "Health Monitor",
+   "hint": "Required for the Tracking Menu.\nKeeps track of your inmates health and status if they are equipped with a Tracking Belt. Install inside an infirmary.",
+   "extra": []
+  },
+  "Hearse": {
+   "name": "Hearse",
+   "hint": "",
+   "extra": []
+  },
+  "HearseBoat": {
+   "name": "Hearse Boat",
+   "hint": "",
+   "extra": []
+  },
+  "HearseHeli": {
+   "name": "Hearse Helicopter",
+   "hint": "",
+   "extra": []
+  },
+  "HeavyDutyElectricalCable": {
+   "name": "Cable Protector",
+   "hint": "Cables that distribute electricity around the prison will be resistant to damage from rats or sudden electrical surges with Cable Protectors installed on top of existing cabling",
+   "extra": []
+  },
+  "Helipad": {
+   "name": "Helipad",
+   "hint": "",
+   "extra": []
+  },
+  "HighQualityFertilizer": {
+   "name": "High Quality Fertilizer",
+   "hint": "",
+   "extra": []
+  },
+  "IndoorTreePlanter": {
+   "name": "Indoor Tree Planter",
+   "hint": "",
+   "extra": []
+  },
+  "InfirmarySign": {
+   "name": "Sign (Infirmary)",
+   "hint": "",
+   "extra": []
+  },
+  "Ingredients": {
+   "name": "Ingredients",
+   "hint": "",
+   "extra": [
+    "Crop Distribution provides control over where prison-grown ingredients are moved after being harvested."
+   ]
+  },
+  "IngredientsCooked": {
+   "name": "Ingredients (Cooked)",
+   "hint": "",
+   "extra": []
+  },
+  "IngredientsCooking": {
+   "name": "Ingredients (Cooking)",
+   "hint": "",
+   "extra": []
+  },
+  "IngredientsSpoiled": {
+   "name": "Ingredients (Spoiled)",
+   "hint": "",
+   "extra": []
+  },
+  "IroningBoard": {
+   "name": "Ironing Board",
+   "hint": "",
+   "extra": []
+  },
+  "IroningBoardShort": {
+   "name": "Ironing Board (Small)",
+   "hint": "",
+   "extra": []
+  },
+  "Ivy": {
+   "name": "Ivy",
+   "hint": "",
+   "extra": []
+  },
+  "JackOLantern": {
+   "name": "Jack-o'-lantern",
+   "hint": "",
+   "extra": []
+  },
+  "JailBars": {
+   "name": "Jail Bars",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoor": {
+   "name": "Jail Door",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoorGrey": {
+   "name": "Jail Door (Grey)",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoorLarge": {
+   "name": "Large Jail Door",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoorLargeGrey": {
+   "name": "Large Jail Door (Grey)",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoorLargeOrange": {
+   "name": "Large Jail Door (Orange)",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoorLargeRed": {
+   "name": "Large Jail Door (Red)",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoorLargeRusty": {
+   "name": "Large Jail Door (Rusty)",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoorLargeWhite": {
+   "name": "Large Jail Door (White)",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoorLargeYellow": {
+   "name": "Large Jail Door (Yellow)",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoorOrange": {
+   "name": "Jail Door (Orange)",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoorRed": {
+   "name": "Jail Door (Red)",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoorRusty": {
+   "name": "Jail Door (Rusty)",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoorWhite": {
+   "name": "Jail Door (White)",
+   "hint": "",
+   "extra": []
+  },
+  "JailDoorYellow": {
+   "name": "Jail Door (Yellow)",
+   "hint": "",
+   "extra": []
+  },
+  "Janitor": {
+   "name": "Janitor",
+   "hint": "",
+   "extra": []
+  },
+  "JungleBench": {
+   "name": "Bamboo Bench",
+   "hint": "",
+   "extra": []
+  },
+  "JungleServingTable": {
+   "name": "Bamboo Serving Table",
+   "hint": "",
+   "extra": []
+  },
+  "JungleTable": {
+   "name": "Bamboo Table",
+   "hint": "",
+   "extra": []
+  },
+  "KayuMalamTree": {
+   "name": "Kayu Malam Tree",
+   "hint": "",
+   "extra": []
+  },
+  "KeycardDoor": {
+   "name": "Keycard Door",
+   "hint": "",
+   "extra": []
+  },
+  "KeycardDoorLarge": {
+   "name": "Keycard Door Large",
+   "hint": "",
+   "extra": []
+  },
+  "KneeRaise": {
+   "name": "Knee Raise",
+   "hint": "",
+   "extra": []
+  },
+  "Lamp": {
+   "name": "Light (Lamp)",
+   "hint": "",
+   "extra": []
+  },
+  "LargeTv": {
+   "name": "Large Tv",
+   "hint": "",
+   "extra": []
+  },
+  "LaundryBasket": {
+   "name": "Laundry Basket",
+   "hint": "",
+   "extra": []
+  },
+  "LaundryMachine": {
+   "name": "Laundry Machine",
+   "hint": "",
+   "extra": []
+  },
+  "Lawyer": {
+   "name": "Lawyer",
+   "hint": "",
+   "extra": []
+  },
+  "LeatherChair": {
+   "name": "Leather Chair",
+   "hint": "",
+   "extra": []
+  },
+  "LeatherSofa": {
+   "name": "Leather Sofa",
+   "hint": "",
+   "extra": []
+  },
+  "LeftArrowSign": {
+   "name": "Sign (Arrow Left)",
+   "hint": "",
+   "extra": []
+  },
+  "LibraryBookSorted": {
+   "name": "Library Book (Sorted)",
+   "hint": "",
+   "extra": []
+  },
+  "LibraryBookUnsorted": {
+   "name": "Library Book (Unsorted)",
+   "hint": "",
+   "extra": []
+  },
+  "LibraryBookshelf": {
+   "name": "Library Shelf",
+   "hint": "",
+   "extra": []
+  },
+  "LicensePlate": {
+   "name": "License Plates",
+   "hint": "",
+   "extra": []
+  },
+  "LicensePlateBlank": {
+   "name": "License Plates (Blank)",
+   "hint": "",
+   "extra": []
+  },
+  "LifeRing": {
+   "name": "Life Ring",
+   "hint": "",
+   "extra": []
+  },
+  "Light": {
+   "name": "Light",
+   "hint": "",
+   "extra": []
+  },
+  "LightGreen": {
+   "name": "Light (Green)",
+   "hint": "",
+   "extra": []
+  },
+  "LightRed": {
+   "name": "Light (Red)",
+   "hint": "",
+   "extra": []
+  },
+  "LightningRod": {
+   "name": "Lightning Rod",
+   "hint": "",
+   "extra": []
+  },
+  "Log": {
+   "name": "Log",
+   "hint": "",
+   "extra": []
+  },
+  "LogicBridge": {
+   "name": "Logic Bridge",
+   "hint": "Advanced architects only.\nTakes its incoming signal, and bridges it onto Electrical Cable installed in the same square. That Electrical cable will carry the signal to any other Logic Circuits installed on the same Electrical Cable.\nCan be used to 'broadcast' a common signal all around your prison, eg Useful to pass around a common Clock signal.",
+   "extra": []
+  },
+  "LogicCircuit": {
+   "name": "Logic Circuit",
+   "hint": "Advanced architects only.\nA simple circuit box that performs a logical operation based on its inputs, and sets its output accordingly.\nAvailable operations: And / Or / Not / Nand / Nor / Xor\nRight click to cycle through logical operations.",
+   "extra": []
+  },
+  "LoveLetter": {
+   "name": "Love Letter",
+   "hint": "",
+   "extra": []
+  },
+  "LoveLetterOpened": {
+   "name": "Love Letter (Opened)",
+   "hint": "",
+   "extra": []
+  },
+  "MailSatchel": {
+   "name": "Mail Satchel",
+   "hint": "",
+   "extra": []
+  },
+  "MailSorted": {
+   "name": "Sorted Mail",
+   "hint": "",
+   "extra": []
+  },
+  "MailUnsorted": {
+   "name": "Unsorted Mail",
+   "hint": "",
+   "extra": []
+  },
+  "Mattress": {
+   "name": "Bed (Foam Mattress)",
+   "hint": "",
+   "extra": []
+  },
+  "Meal": {
+   "name": "Meal",
+   "hint": "",
+   "extra": []
+  },
+  "MedicalBed": {
+   "name": "Medical Bed",
+   "hint": "",
+   "extra": []
+  },
+  "MedicalBox": {
+   "name": "Medical Box",
+   "hint": "",
+   "extra": []
+  },
+  "MedicineCabinetPsych": {
+   "name": "Medicine Cabinet",
+   "hint": "",
+   "extra": []
+  },
+  "MetalBarrel": {
+   "name": "Metal Barrel",
+   "hint": "",
+   "extra": []
+  },
+  "MetalDetector": {
+   "name": "Metal Detector",
+   "hint": "",
+   "extra": []
+  },
+  "MetalStool": {
+   "name": "Metal Stool",
+   "hint": "",
+   "extra": []
+  },
+  "MooringBollard": {
+   "name": "Mooring Bollard",
+   "hint": "",
+   "extra": []
+  },
+  "MooseHead": {
+   "name": "Moose Head",
+   "hint": "",
+   "extra": []
+  },
+  "MorgueSlab": {
+   "name": "Morgue Slab",
+   "hint": "",
+   "extra": []
+  },
+  "NettedBed": {
+   "name": "Camp Bed (Netted)",
+   "hint": "",
+   "extra": []
+  },
+  "Newspaper": {
+   "name": "Newspaper",
+   "hint": "",
+   "extra": []
+  },
+  "NoEntrySign": {
+   "name": "Sign (no entry)",
+   "hint": "",
+   "extra": []
+  },
+  "OakBench": {
+   "name": "Bench (Oak)",
+   "hint": "",
+   "extra": []
+  },
+  "OakTable": {
+   "name": "Table (Oak)",
+   "hint": "",
+   "extra": []
+  },
+  "OfficeChair": {
+   "name": "Chair (Office)",
+   "hint": "",
+   "extra": []
+  },
+  "OfficeDesk": {
+   "name": "Office Desk",
+   "hint": "",
+   "extra": []
+  },
+  "OldBed": {
+   "name": "Old Bed",
+   "hint": "",
+   "extra": []
+  },
+  "Orderly": {
+   "name": "Orderly",
+   "hint": "",
+   "extra": []
+  },
+  "OrganicWaste": {
+   "name": "Organic Waste",
+   "hint": "",
+   "extra": []
+  },
+  "OrnamentalGravestone": {
+   "name": "Ornamental Gravestone",
+   "hint": "",
+   "extra": []
+  },
+  "OrnateLantern": {
+   "name": "Ornate Lantern",
+   "hint": "",
+   "extra": []
+  },
+  "OutdoorTable": {
+   "name": "Outdoor Table",
+   "hint": "",
+   "extra": []
+  },
+  "OvalStaffTable": {
+   "name": "Table (Oval)",
+   "hint": "",
+   "extra": []
+  },
+  "Oven": {
+   "name": "Oven",
+   "hint": "",
+   "extra": []
+  },
+  "OxStatue": {
+   "name": "Ox Statue",
+   "hint": "",
+   "extra": []
+  },
+  "PASystem": {
+   "name": "PA System",
+   "hint": "",
+   "extra": []
+  },
+  "Painting1": {
+   "name": "Painting",
+   "hint": "",
+   "extra": []
+  },
+  "Painting2": {
+   "name": "Painting",
+   "hint": "",
+   "extra": []
+  },
+  "PalmTree": {
+   "name": "Tree (Palm)",
+   "hint": "",
+   "extra": []
+  },
+  "PaperDragonBody": {
+   "name": "Dragon (body)",
+   "hint": "",
+   "extra": []
+  },
+  "PaperDragonHead": {
+   "name": "Dragon (head)",
+   "hint": "",
+   "extra": []
+  },
+  "PaperDragonTail": {
+   "name": "Dragon (tail)",
+   "hint": "",
+   "extra": []
+  },
+  "PaperLantern": {
+   "name": "Paper Lantern",
+   "hint": "",
+   "extra": []
+  },
+  "Paramedic": {
+   "name": "Paramedic",
+   "hint": "",
+   "extra": []
+  },
+  "ParamedicsHeli": {
+   "name": "Air Paramedics",
+   "hint": "",
+   "extra": []
+  },
+  "ParkBench": {
+   "name": "Bench (Park)",
+   "hint": "",
+   "extra": []
+  },
+  "ParoleLawyer": {
+   "name": "Parole Lawyer",
+   "hint": "",
+   "extra": []
+  },
+  "ParoleOfficer": {
+   "name": "Parole Officer",
+   "hint": "",
+   "extra": []
+  },
+  "PestControlTeacher": {
+   "name": "Pest Control Worker",
+   "hint": "",
+   "extra": []
+  },
+  "PestControlTruck": {
+   "name": "Pest Control Truck",
+   "hint": "",
+   "extra": []
+  },
+  "PestControlWorker": {
+   "name": "Pest Control Worker",
+   "hint": "",
+   "extra": []
+  },
+  "PetBird": {
+   "name": "Pet Bird",
+   "hint": "",
+   "extra": []
+  },
+  "Pews": {
+   "name": "Pews",
+   "hint": "",
+   "extra": []
+  },
+  "PhoneBooth": {
+   "name": "Phone Booth",
+   "hint": "",
+   "extra": []
+  },
+  "PhoneMonitor": {
+   "name": "Phone Tap",
+   "hint": "Designed to be built in a Security Room and operated by a Guard. Allows you to monitor all outgoing phone calls made by inmates, giving you vital insights into planned illegal activity.\nUse the Connect tool to connect this system to your Phone Booths.",
+   "extra": []
+  },
+  "PhoneSign": {
+   "name": "Sign (phone)",
+   "hint": "",
+   "extra": []
+  },
+  "PinkFlamingo": {
+   "name": "Pink Flamingo",
+   "hint": "",
+   "extra": []
+  },
+  "PipeHotLagged": {
+   "name": "Pipe (Hot) Insulation",
+   "hint": "A layer of insulation protects hot water pipework from freezing as quickly in sub zero conditions.",
+   "extra": []
+  },
+  "PipeHotWater": {
+   "name": "Hot Water Pipe",
+   "hint": "",
+   "extra": []
+  },
+  "PipeLarge": {
+   "name": "Large Pipe",
+   "hint": "Distributes a large volume of water around your prison, under high pressure. Probably big enough for someone to crawl to freedom through five hundred yards of shit smelling foulness.\nPlease note: not generally used to connect to sinks, shower heads etc. - the pressure is too high. Use a small pipe for that.",
+   "extra": []
+  },
+  "PipeSmall": {
+   "name": "Small Pipe",
+   "hint": "Used to connect items like toilets, showers, sinks etc, to your large pipe network. The pressure is much lower, so there is a limited length that a small pipe can run for before the pressure becomes too low.",
+   "extra": []
+  },
+  "PipeSmallLagged": {
+   "name": "Pipe (Small) Insulation",
+   "hint": "A layer of insulation protects pipework from freezing as quickly in sub zero conditions.",
+   "extra": []
+  },
+  "PipeValve": {
+   "name": "Pipe Valve",
+   "hint": "Toggles the availability of water to any pipe connected to it.",
+   "extra": []
+  },
+  "PipeValveLagged": {
+   "name": "Pipe Valve Insulation",
+   "hint": "Keeps Valve functionality flowing freely during sub zero conditions.",
+   "extra": []
+  },
+  "Plant": {
+   "name": "Plant",
+   "hint": "",
+   "extra": [
+    "The Compost Bin will turn food and plant waste along with other substances into Compost Fertilizer for free."
+   ]
+  },
+  "PlantCactus": {
+   "name": "Plant (Cactus)",
+   "hint": "",
+   "extra": []
+  },
+  "PlayMat": {
+   "name": "Play Mat",
+   "hint": "",
+   "extra": []
+  },
+  "Polaroid": {
+   "name": "Polaroid",
+   "hint": "",
+   "extra": []
+  },
+  "PoolTable": {
+   "name": "Pool Table",
+   "hint": "",
+   "extra": []
+  },
+  "PowerExportMeter": {
+   "name": "Power Export Meter",
+   "hint": "An object that allows you to send off any stored energy back to the grid for financial returns. Must be wired to a Transformer that has Batteries connected to function correctly.",
+   "extra": []
+  },
+  "PowerStation": {
+   "name": "Power Station",
+   "hint": "Generates electricity to be used in your prison, can also be connected to a Transformer to export power.",
+   "extra": [
+    "Certain objects need to be connected to a Power Station to work, use electrical cables to connect all objects with a flashing lightning bolt icon on them to a Power Station.",
+    "Our Power Station is seriously overloaded, add more capacitors to it or build a new one to share the load. Be careful though, Power Stations can't be connected together!",
+    "Your Power Station is overloaded."
+   ]
+  },
+  "PowerSwitch": {
+   "name": "Power Switch",
+   "hint": "Toggles the availability of electricity to any cable connected to it.\nRight click to toggle on/off state.",
+   "extra": []
+  },
+  "PracticeSolarPanel": {
+   "name": "Practice Solar Panel",
+   "hint": "",
+   "extra": []
+  },
+  "PrayerMat": {
+   "name": "Prayer Mat",
+   "hint": "",
+   "extra": []
+  },
+  "PressurePad": {
+   "name": "Pressure Pad",
+   "hint": "Sends a signal to connected objects whenever something is on top of the pad.",
+   "extra": []
+  },
+  "PrisonBoat": {
+   "name": "Inmate Ferry",
+   "hint": "",
+   "extra": []
+  },
+  "PrisonHeli": {
+   "name": "Prison Helicopter",
+   "hint": "",
+   "extra": []
+  },
+  "Prisoner": {
+   "name": "Prisoner",
+   "hint": "",
+   "extra": [
+    "A fresh and clean uniform can make a big difference to a prisoner's quality of life. A Laundry Service is essential to catering to your prisoners 'Clothing' need.",
+    "Farming rooms allow for the planting of vegetables, fruit trees, and Cereals each, these crops can be either sold as exports or used for prisoner meals."
+   ]
+  },
+  "PrisonerBus": {
+   "name": "Prisoner Bus",
+   "hint": "",
+   "extra": []
+  },
+  "PrisonerLetter": {
+   "name": "Prisoner Letter",
+   "hint": "",
+   "extra": []
+  },
+  "PrisonerMail": {
+   "name": "Mail",
+   "hint": "",
+   "extra": [
+    "Prisoners can become angry if they are not allowed to communicate with their families. Build a Visitation Room, a Mail Room or Phone Booths to hold off the prison blues."
+   ]
+  },
+  "PrisonerMailOpened": {
+   "name": "Mail (Opened)",
+   "hint": "",
+   "extra": []
+  },
+  "PrisonerUniform": {
+   "name": "Prisoner Uniform",
+   "hint": "",
+   "extra": []
+  },
+  "Prop": {
+   "name": "Prop",
+   "hint": "",
+   "extra": []
+  },
+  "Psychiatrist": {
+   "name": "Psychiatrist",
+   "hint": "",
+   "extra": []
+  },
+  "Psychologist": {
+   "name": "Psychologist",
+   "hint": "",
+   "extra": []
+  },
+  "PullUpBars": {
+   "name": "Pull-Up Bars",
+   "hint": "",
+   "extra": []
+  },
+  "PunchBag": {
+   "name": "Punch Bag",
+   "hint": "",
+   "extra": []
+  },
+  "PushUpStones": {
+   "name": "Push-Up Stones",
+   "hint": "",
+   "extra": []
+  },
+  "QuickConnect": {
+   "name": "Quick Connect",
+   "hint": "Quickly connects any surveillance or automation systems to their closest recipient item.",
+   "extra": []
+  },
+  "Radiator": {
+   "name": "Radiator",
+   "hint": "Place them around your prison, rooms will be nice and toasty.",
+   "extra": []
+  },
+  "Radio": {
+   "name": "Radio",
+   "hint": "",
+   "extra": []
+  },
+  "Rat": {
+   "name": "Rat",
+   "hint": "",
+   "extra": []
+  },
+  "RatDroppings": {
+   "name": "Rat Droppings",
+   "hint": "",
+   "extra": []
+  },
+  "RatTrap": {
+   "name": "Rat Trap",
+   "hint": "",
+   "extra": []
+  },
+  "RecyclingBag": {
+   "name": "Recycling Bag",
+   "hint": "",
+   "extra": []
+  },
+  "RecyclingBin": {
+   "name": "Recycling Bin",
+   "hint": "",
+   "extra": []
+  },
+  "RehabilitatedPrisoner": {
+   "name": "Reformed Prisoner",
+   "hint": "",
+   "extra": []
+  },
+  "RemoteDoor": {
+   "name": "Remote Door",
+   "hint": "A strong metal door that cannot be opened with a key (Can only be opened remotely). Use this to prevent mass escape events when a prisoner has Jail Keys.",
+   "extra": []
+  },
+  "RemoteDoorOrange": {
+   "name": "Remote Door (Orange)",
+   "hint": "",
+   "extra": []
+  },
+  "RemoteDoorRed": {
+   "name": "Remote Door (Red)",
+   "hint": "",
+   "extra": []
+  },
+  "RemoteDoorWhite": {
+   "name": "Remote Door (White)",
+   "hint": "",
+   "extra": []
+  },
+  "RemoteDoorYellow": {
+   "name": "Remote Door (Yellow)",
+   "hint": "",
+   "extra": []
+  },
+  "Repairman": {
+   "name": "Repairman",
+   "hint": "",
+   "extra": []
+  },
+  "RestaurantCustomer": {
+   "name": "Civilian Customer",
+   "hint": "",
+   "extra": []
+  },
+  "RestaurantIngredientsCooking": {
+   "name": "Restaurant Meal (Cooking)",
+   "hint": "",
+   "extra": []
+  },
+  "RestaurantMeal": {
+   "name": "Restaurant Meal",
+   "hint": "",
+   "extra": []
+  },
+  "RestaurantPlateDirty": {
+   "name": "Plate (Dirty)",
+   "hint": "",
+   "extra": []
+  },
+  "RestaurantSign": {
+   "name": "Sign (restaurant)",
+   "hint": "",
+   "extra": []
+  },
+  "RightArrowSign": {
+   "name": "Sign (Arrow Right)",
+   "hint": "",
+   "extra": []
+  },
+  "RiotGuard": {
+   "name": "Riot Guard",
+   "hint": "",
+   "extra": []
+  },
+  "RiotVan": {
+   "name": "Riot Van",
+   "hint": "",
+   "extra": []
+  },
+  "RoadBarrier": {
+   "name": "Road Barrier",
+   "hint": "",
+   "extra": []
+  },
+  "RoadGate": {
+   "name": "Road Gate",
+   "hint": "",
+   "extra": []
+  },
+  "RoadMaintenanceVehicle": {
+   "name": "Maintenance Truck",
+   "hint": "",
+   "extra": []
+  },
+  "RobotDogDoo": {
+   "name": "Dog Doo",
+   "hint": "",
+   "extra": []
+  },
+  "RorschachTest": {
+   "name": "Rorschach Test",
+   "hint": "",
+   "extra": []
+  },
+  "Router": {
+   "name": "Router",
+   "hint": "Required for the Tracking Menu.\nWhen connected to the Tracking Monitor this item tracks any equipped prisoners within their range. Range can be checked individually or via the Tracking Menu for full coverage.",
+   "extra": []
+  },
+  "Rubble": {
+   "name": "Rubble",
+   "hint": "",
+   "extra": []
+  },
+  "RuinedBook": {
+   "name": "Ruined Book",
+   "hint": "",
+   "extra": []
+  },
+  "SakuraTree": {
+   "name": "Tree (Sakura)",
+   "hint": "",
+   "extra": []
+  },
+  "SaloonDoor": {
+   "name": "Saloon Doors (double)",
+   "hint": "",
+   "extra": []
+  },
+  "ScannerMachine": {
+   "name": "Scanner Machine",
+   "hint": "A machine for Delivery areas and Storage rooms, to scan wooden crates for contraband. Must be wired to a Scanner Monitor, for a guard to spot contraband. A guard's ability to spot contraband will depend on their tiredness.",
+   "extra": []
+  },
+  "ScannerMonitor": {
+   "name": "Scanner Monitor",
+   "hint": "A monitor for a guard to spot contraband, when wired to a Scanner Machine. A guard's ability to spot contraband will depend on their tiredness",
+   "extra": []
+  },
+  "SchoolDesk": {
+   "name": "School Desk",
+   "hint": "",
+   "extra": []
+  },
+  "SearchLight": {
+   "name": "Unmanned Searchlight",
+   "hint": "",
+   "extra": []
+  },
+  "SecretDoor": {
+   "name": "Door (Secret)",
+   "hint": "",
+   "extra": []
+  },
+  "SecureDoor": {
+   "name": "Door (Secure)",
+   "hint": "",
+   "extra": []
+  },
+  "SellObject": {
+   "name": "Sell Object",
+   "hint": "",
+   "extra": []
+  },
+  "SellUtility": {
+   "name": "Sell Utility",
+   "hint": "",
+   "extra": []
+  },
+  "ServingTable": {
+   "name": "Serving Table",
+   "hint": "",
+   "extra": []
+  },
+  "Servo": {
+   "name": "Door Servo",
+   "hint": "Place a servo over a door you wish to control remotely. Ensure the motor gear is directly above the door.\nOnce installed, the door will be opened when the Servo itself is triggered - typically by a Door Control System, or a Door Timer.\nServos can be chained together, so that when the first one opens it will trigger the later ones.",
+   "extra": []
+  },
+  "Shed": {
+   "name": "Shed",
+   "hint": "",
+   "extra": []
+  },
+  "SheetMetal": {
+   "name": "Sheet Metal",
+   "hint": "",
+   "extra": []
+  },
+  "ShopCounter": {
+   "name": "Shop Counter",
+   "hint": "",
+   "extra": []
+  },
+  "ShopFront": {
+   "name": "Shop Front",
+   "hint": "",
+   "extra": []
+  },
+  "ShopGoods": {
+   "name": "Shop Goods",
+   "hint": "",
+   "extra": []
+  },
+  "ShopShelf": {
+   "name": "Shop Shelf",
+   "hint": "",
+   "extra": []
+  },
+  "ShortBookcase": {
+   "name": "Bookcase (Short)",
+   "hint": "",
+   "extra": []
+  },
+  "ShowAllWires": {
+   "name": "Show Wires",
+   "hint": "Show every connected wire in your prison.",
+   "extra": []
+  },
+  "ShowerHead": {
+   "name": "Shower Head",
+   "hint": "",
+   "extra": []
+  },
+  "ShowerPillar": {
+   "name": "Shower Pillar",
+   "hint": "",
+   "extra": []
+  },
+  "ShowerSign": {
+   "name": "Sign (Showers)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterA": {
+   "name": "Sign (Letter A)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterB": {
+   "name": "Sign (Letter B)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterC": {
+   "name": "Sign (Letter C)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterD": {
+   "name": "Sign (Letter D)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterE": {
+   "name": "Sign (Letter E)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterF": {
+   "name": "Sign (Letter F)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterG": {
+   "name": "Sign (Letter G)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterH": {
+   "name": "Sign (Letter H)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterI": {
+   "name": "Sign (Letter I)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterJ": {
+   "name": "Sign (Letter J)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterK": {
+   "name": "Sign (Letter K)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterL": {
+   "name": "Sign (Letter L)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterM": {
+   "name": "Sign (Letter M)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterN": {
+   "name": "Sign (Letter N)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterO": {
+   "name": "Sign (Letter O)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterP": {
+   "name": "Sign (Letter P)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterQ": {
+   "name": "Sign (Letter Q)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterR": {
+   "name": "Sign (Letter R)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterS": {
+   "name": "Sign (Letter S)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterT": {
+   "name": "Sign (Letter T)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterU": {
+   "name": "Sign (Letter U)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterV": {
+   "name": "Sign (Letter V)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterW": {
+   "name": "Sign (Letter W)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterX": {
+   "name": "Sign (Letter X)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterY": {
+   "name": "Sign (Letter Y)",
+   "hint": "",
+   "extra": []
+  },
+  "SignLetterZ": {
+   "name": "Sign (Letter Z)",
+   "hint": "",
+   "extra": []
+  },
+  "SignNumber0": {
+   "name": "Sign (Number 0)",
+   "hint": "",
+   "extra": []
+  },
+  "SignNumber1": {
+   "name": "Sign (Number 1)",
+   "hint": "",
+   "extra": []
+  },
+  "SignNumber2": {
+   "name": "Sign (Number 2)",
+   "hint": "",
+   "extra": []
+  },
+  "SignNumber3": {
+   "name": "Sign (Number 3)",
+   "hint": "",
+   "extra": []
+  },
+  "SignNumber4": {
+   "name": "Sign (Number 4)",
+   "hint": "",
+   "extra": []
+  },
+  "SignNumber5": {
+   "name": "Sign (Number 5)",
+   "hint": "",
+   "extra": []
+  },
+  "SignNumber6": {
+   "name": "Sign (Number 6)",
+   "hint": "",
+   "extra": []
+  },
+  "SignNumber7": {
+   "name": "Sign (Number 7)",
+   "hint": "",
+   "extra": []
+  },
+  "SignNumber8": {
+   "name": "Sign (Number 8)",
+   "hint": "",
+   "extra": []
+  },
+  "SignNumber9": {
+   "name": "Sign (Number 9)",
+   "hint": "",
+   "extra": []
+  },
+  "Sink": {
+   "name": "Sink",
+   "hint": "",
+   "extra": []
+  },
+  "SinkMirror": {
+   "name": "Sink & Mirror",
+   "hint": "",
+   "extra": []
+  },
+  "SmallBench": {
+   "name": "Bench (Small)",
+   "hint": "",
+   "extra": []
+  },
+  "SmallServingTable": {
+   "name": "Serving Table (Small)",
+   "hint": "",
+   "extra": []
+  },
+  "SmallTable": {
+   "name": "Table (Small)",
+   "hint": "",
+   "extra": []
+  },
+  "SnackMachine": {
+   "name": "Snack Machine",
+   "hint": "",
+   "extra": []
+  },
+  "Sniper": {
+   "name": "Sniper",
+   "hint": "",
+   "extra": []
+  },
+  "SnowyConiferTree": {
+   "name": "Tree (Snowy Conifer)",
+   "hint": "",
+   "extra": []
+  },
+  "SofaChairBrown": {
+   "name": "Sofa (Brown)",
+   "hint": "",
+   "extra": []
+  },
+  "SofaChairDouble": {
+   "name": "Wide Sofa",
+   "hint": "",
+   "extra": []
+  },
+  "SofaChairDoubleBrown": {
+   "name": "Wide Sofa (Brown)",
+   "hint": "",
+   "extra": []
+  },
+  "SofaChairSingle": {
+   "name": "Sofa",
+   "hint": "",
+   "extra": []
+  },
+  "SoftPillow": {
+   "name": "Soft Pillow",
+   "hint": "",
+   "extra": []
+  },
+  "SolarLight": {
+   "name": "Light (Solar)",
+   "hint": "",
+   "extra": []
+  },
+  "SolarPanels": {
+   "name": "Solar Panels",
+   "hint": "An electricity generator that harnesses the power of the Sun! They can be connected to multiple green power sources, but their power must first flow through a Transformer before it can be used within your prison.",
+   "extra": []
+  },
+  "SolarWallLight": {
+   "name": "Wall Light (Solar)",
+   "hint": "",
+   "extra": []
+  },
+  "SolarWindHybrid": {
+   "name": "Solar Wind Hybrid",
+   "hint": "An electricity generator that harnesses both the power of wind and the Sun! They can be connected to multiple green power sources, but their power must first flow through a Transformer before it can be used within your prison.",
+   "extra": []
+  },
+  "Soldier": {
+   "name": "Soldier",
+   "hint": "",
+   "extra": []
+  },
+  "SoldiersHeli": {
+   "name": "National Guard",
+   "hint": "",
+   "extra": []
+  },
+  "SolitaryDoor": {
+   "name": "Solitary Door",
+   "hint": "",
+   "extra": []
+  },
+  "SonicDeterrent": {
+   "name": "Sonic Rat Deterrent",
+   "hint": "",
+   "extra": []
+  },
+  "SortingTable": {
+   "name": "Sorting Desk",
+   "hint": "",
+   "extra": []
+  },
+  "SpiderWeb": {
+   "name": "Spider Web",
+   "hint": "",
+   "extra": []
+  },
+  "SpiritualLeader": {
+   "name": "Spiritual Leader",
+   "hint": "",
+   "extra": []
+  },
+  "SpookyTree": {
+   "name": "Tree (Spooky)",
+   "hint": "",
+   "extra": []
+  },
+  "Sprinkler": {
+   "name": "Fire Sprinkler",
+   "hint": "",
+   "extra": []
+  },
+  "Stack": {
+   "name": "Stack",
+   "hint": "",
+   "extra": []
+  },
+  "StaffDoor": {
+   "name": "Staff Door",
+   "hint": "",
+   "extra": []
+  },
+  "StaffDoorBlue": {
+   "name": "Staff Door (Blue)",
+   "hint": "",
+   "extra": []
+  },
+  "StaffDoorOrange": {
+   "name": "Staff Door (Orange)",
+   "hint": "",
+   "extra": []
+  },
+  "StaffFood": {
+   "name": "Staff Meals",
+   "hint": "",
+   "extra": []
+  },
+  "StaffFoodBoxed": {
+   "name": "Staff Meals",
+   "hint": "",
+   "extra": []
+  },
+  "StainGlassWindow": {
+   "name": "Stained Glass Window",
+   "hint": "",
+   "extra": []
+  },
+  "StatusLight": {
+   "name": "Status Light",
+   "hint": "Lights up either red or green, depending on the signal it is receiving.",
+   "extra": []
+  },
+  "Steel": {
+   "name": "Steel",
+   "hint": "",
+   "extra": []
+  },
+  "SteppingStone": {
+   "name": "Stepping Stones",
+   "hint": "",
+   "extra": []
+  },
+  "SteppingStoneIceBlock": {
+   "name": "Stepping Stones (Ice)",
+   "hint": "",
+   "extra": []
+  },
+  "SteppingStoneLillyPad": {
+   "name": "Stepping Stones (Lily Pad)",
+   "hint": "",
+   "extra": []
+  },
+  "SteppingStonePallet": {
+   "name": "Stepping Stones (Pallet)",
+   "hint": "",
+   "extra": []
+  },
+  "StoneWaterSpout": {
+   "name": "Stone Water Spout",
+   "hint": "",
+   "extra": []
+  },
+  "StorageShelf": {
+   "name": "Storage Shelf",
+   "hint": "",
+   "extra": []
+  },
+  "StreetLamp": {
+   "name": "Street Lamp",
+   "hint": "",
+   "extra": []
+  },
+  "StrikeFire": {
+   "name": "Protest Fire",
+   "hint": "",
+   "extra": []
+  },
+  "SuperiorBed": {
+   "name": "Superior Bed",
+   "hint": "",
+   "extra": []
+  },
+  "SupplyBoat": {
+   "name": "Supply Boat",
+   "hint": "",
+   "extra": []
+  },
+  "SupplyHeli": {
+   "name": "Supply Helicopter",
+   "hint": "",
+   "extra": []
+  },
+  "SupplyTruck": {
+   "name": "Supply Truck",
+   "hint": "",
+   "extra": []
+  },
+  "SwivelChair": {
+   "name": "Swivel Chair",
+   "hint": "",
+   "extra": []
+  },
+  "Table": {
+   "name": "Table",
+   "hint": "",
+   "extra": []
+  },
+  "TableFootball": {
+   "name": "Table Football",
+   "hint": "",
+   "extra": []
+  },
+  "TableTennis": {
+   "name": "Table Tennis",
+   "hint": "",
+   "extra": []
+  },
+  "TallFridge": {
+   "name": "Tall Fridge",
+   "hint": "",
+   "extra": []
+  },
+  "TattooRemovalMachine": {
+   "name": "Tattoo Removal Machine",
+   "hint": "",
+   "extra": []
+  },
+  "Teacher": {
+   "name": "Teacher",
+   "hint": "",
+   "extra": []
+  },
+  "TherapyAnimal": {
+   "name": "Therapy Animal",
+   "hint": "",
+   "extra": []
+  },
+  "TherapyAnimalContainer": {
+   "name": "Therapy Animal Container",
+   "hint": "",
+   "extra": []
+  },
+  "TidyWires": {
+   "name": "Tidy Wires",
+   "hint": "",
+   "extra": []
+  },
+  "Toilet": {
+   "name": "Toilet",
+   "hint": "",
+   "extra": []
+  },
+  "ToiletSign": {
+   "name": "Sign (Toilets)",
+   "hint": "",
+   "extra": []
+  },
+  "TopiaryBush": {
+   "name": "Topiary Bush",
+   "hint": "",
+   "extra": []
+  },
+  "TopiaryBushBall": {
+   "name": "Topiary Bush (Ball)",
+   "hint": "",
+   "extra": []
+  },
+  "TopiaryBushCat": {
+   "name": "Topiary Bush (Cat)",
+   "hint": "",
+   "extra": []
+  },
+  "TopiaryBushDeer": {
+   "name": "Topiary Bush (Deer)",
+   "hint": "",
+   "extra": []
+  },
+  "TopiaryBushDog": {
+   "name": "Topiary Bush (Dog)",
+   "hint": "",
+   "extra": []
+  },
+  "TopiaryBushRex": {
+   "name": "Topiary Bush (Rex)",
+   "hint": "",
+   "extra": []
+  },
+  "TopiaryBushSwan": {
+   "name": "Topiary Bush (Swan)",
+   "hint": "",
+   "extra": []
+  },
+  "TopiaryBushWarden": {
+   "name": "Topiary Bush (Warden)",
+   "hint": "",
+   "extra": []
+  },
+  "TrackingMonitor": {
+   "name": "Tracking Monitor",
+   "hint": "Required for the Tracking Menu.\nOperated by a Guard inside a Security room to monitor any prisoners wearing Tracking Belts. Connect to Routers to extend the viewing range.",
+   "extra": []
+  },
+  "TrainingDummy": {
+   "name": "Training Dummy",
+   "hint": "",
+   "extra": []
+  },
+  "TrainingElectricalCable": {
+   "name": "Practice Damaged Electrical Cable",
+   "hint": "",
+   "extra": []
+  },
+  "Transformer": {
+   "name": "Transformer",
+   "hint": "Converts the electrical power generated by green energy sources into appliance-friendly energy, multiple energy sources can be connected but Transformers have an input limit of 5000 units of power. Electrical cables must be connected in the direction shown by the attached arrow images.",
+   "extra": [
+    "Batteries can be charged by any power source connected to a Transformer, even Power Stations.",
+    "All Green Energy sources need to be connected to a Transformer before their energy can be used.",
+    "Transformer objects are needed for both using green energy and for charging batteries."
+   ]
+  },
+  "TrayDispenser": {
+   "name": "Tray Dispenser",
+   "hint": "",
+   "extra": []
+  },
+  "Treadmill": {
+   "name": "Treadmill",
+   "hint": "",
+   "extra": []
+  },
+  "Tree": {
+   "name": "Tree",
+   "hint": "",
+   "extra": []
+  },
+  "TreeStump": {
+   "name": "Tree Stump",
+   "hint": "",
+   "extra": []
+  },
+  "TreeVines": {
+   "name": "Tree (Vines)",
+   "hint": "",
+   "extra": []
+  },
+  "TroopTruck": {
+   "name": "Troop Truck",
+   "hint": "",
+   "extra": []
+  },
+  "TruckDriver": {
+   "name": "Truck Driver",
+   "hint": "",
+   "extra": []
+  },
+  "Tv": {
+   "name": "Tv",
+   "hint": "",
+   "extra": [
+    "Help break up the day to day monotony by giving your prisoners access to recreational items such as Pool Tables, Radios and TV's."
+   ]
+  },
+  "TyreApparatus": {
+   "name": "Tyre Apparatus",
+   "hint": "",
+   "extra": []
+  },
+  "TyreStack": {
+   "name": "Tyre Stack",
+   "hint": "",
+   "extra": []
+  },
+  "VideoCallBooth": {
+   "name": "Video Call Booth",
+   "hint": "Let your prisoners see their loved ones, even when they cannot visit.",
+   "extra": []
+  },
+  "VisitationSign": {
+   "name": "Sign (visitation)",
+   "hint": "",
+   "extra": []
+  },
+  "Visitor": {
+   "name": "Visitor",
+   "hint": "",
+   "extra": []
+  },
+  "VisitorBoat": {
+   "name": "Visitor Boat",
+   "hint": "",
+   "extra": []
+  },
+  "VisitorDoor": {
+   "name": "Visitor Door",
+   "hint": "",
+   "extra": []
+  },
+  "VisitorHeli": {
+   "name": "Visitor Helicopter",
+   "hint": "",
+   "extra": []
+  },
+  "VisitorTable": {
+   "name": "Visitor Table",
+   "hint": "",
+   "extra": []
+  },
+  "VisitorTableSecure": {
+   "name": "Visitor Booth",
+   "hint": "",
+   "extra": []
+  },
+  "WalkwayStairs": {
+   "name": "Walkway Stairs (WIP)",
+   "hint": "",
+   "extra": []
+  },
+  "WallLight": {
+   "name": "Wall Light",
+   "hint": "",
+   "extra": []
+  },
+  "WallPanel": {
+   "name": "Wall Panel (Red)",
+   "hint": "",
+   "extra": []
+  },
+  "WallPanelCorner_A": {
+   "name": "Wall Panel Corner Type A (Red)",
+   "hint": "",
+   "extra": []
+  },
+  "WallPanelCorner_B": {
+   "name": "Wall Panel Corner Type B (Red)",
+   "hint": "",
+   "extra": []
+  },
+  "WallPanelStone": {
+   "name": "Wall Panel (Stone)",
+   "hint": "",
+   "extra": []
+  },
+  "WallPanelStoneCorner_A": {
+   "name": "Wall Panel Corner Type A (Stone)",
+   "hint": "",
+   "extra": []
+  },
+  "WallPanelStoneCorner_B": {
+   "name": "Wall Panel Corner Type B (Stone)",
+   "hint": "",
+   "extra": []
+  },
+  "WallPanelWood": {
+   "name": "Wall Panel (Wood)",
+   "hint": "",
+   "extra": []
+  },
+  "WallPanelWoodCorner_A": {
+   "name": "Wall Panel Corner Type A (Wood)",
+   "hint": "",
+   "extra": []
+  },
+  "WallPanelWoodCorner_B": {
+   "name": "Wall Panel Corner Type B (Wood)",
+   "hint": "",
+   "extra": []
+  },
+  "Warden": {
+   "name": "Warden",
+   "hint": "",
+   "extra": []
+  },
+  "WardenStatue": {
+   "name": "Warden Statue",
+   "hint": "",
+   "extra": []
+  },
+  "WaterBoiler": {
+   "name": "Water Boiler",
+   "hint": "",
+   "extra": []
+  },
+  "WaterBoilerLagged": {
+   "name": "Water Boiler Insulation",
+   "hint": "Thermal insulation to withstand sub zero conditions. Apply to an existing Water Boiler to protect against future freezing.",
+   "extra": []
+  },
+  "WaterCooler": {
+   "name": "Water Cooler",
+   "hint": "",
+   "extra": []
+  },
+  "WaterPumpStation": {
+   "name": "Water Pump Station",
+   "hint": "Provides a source of water to your prison.",
+   "extra": []
+  },
+  "WaterStationLagged": {
+   "name": "Water Pump Insulation",
+   "hint": "Thermal insulation to withstand sub zero conditions. Apply to an existing Water Pump Station to protect against future freezing.",
+   "extra": []
+  },
+  "Waterman": {
+   "name": "Plumber",
+   "hint": "",
+   "extra": []
+  },
+  "WeaponRack": {
+   "name": "Weapon Rack",
+   "hint": "",
+   "extra": []
+  },
+  "WeatherAntenna": {
+   "name": "Weather Antenna",
+   "hint": "",
+   "extra": []
+  },
+  "WeatherMachine": {
+   "name": "Weather Machine",
+   "hint": "The Weather Machine provides an advanced weather forecast. It will predict the duration, temperature, precipitation, wind speed and visibility conditions. Additionally, it will give a countdown for any worrying weather event that might be incoming.",
+   "extra": []
+  },
+  "WeightsBench": {
+   "name": "Weights Bench",
+   "hint": "",
+   "extra": []
+  },
+  "Wheat": {
+   "name": "Wheat",
+   "hint": "",
+   "extra": []
+  },
+  "WhitePicketGate": {
+   "name": "White Picket Gate",
+   "hint": "",
+   "extra": []
+  },
+  "WillowTree": {
+   "name": "Willow Tree",
+   "hint": "",
+   "extra": []
+  },
+  "WindSock": {
+   "name": "Wind Sock",
+   "hint": "",
+   "extra": []
+  },
+  "WindTurbine": {
+   "name": "Wind Turbine",
+   "hint": "An electricity generator that harnesses the power of wind! They can be connected to multiple green power sources, but their power must first flow through a Transformer before it can be used within your prison.",
+   "extra": []
+  },
+  "Window": {
+   "name": "Window",
+   "hint": "",
+   "extra": []
+  },
+  "WindowClassy": {
+   "name": "Window Classy",
+   "hint": "",
+   "extra": []
+  },
+  "WindowClassyLarge": {
+   "name": "Window Classy (Large)",
+   "hint": "",
+   "extra": []
+  },
+  "WindowLarge": {
+   "name": "Large Window",
+   "hint": "",
+   "extra": []
+  },
+  "Wire": {
+   "name": "Connect",
+   "hint": "Connect your remote access systems together.",
+   "extra": [
+    "Certain objects need to be connected to a Power Station to work, use electrical cables to connect all objects with a flashing lightning bolt icon on them to a Power Station.",
+    "Certain objects need to be connected to a water pump to work, use water pipes to connect all objects with a flashing water drop icon on them to a water pump."
+   ]
+  },
+  "Wood": {
+   "name": "Wood",
+   "hint": "",
+   "extra": []
+  },
+  "WoodDrain": {
+   "name": "Wood Drain",
+   "hint": "",
+   "extra": []
+  },
+  "WoodenBarrel": {
+   "name": "Wooden Barrel",
+   "hint": "",
+   "extra": []
+  },
+  "WoodenStool": {
+   "name": "Wooden Stool",
+   "hint": "",
+   "extra": []
+  },
+  "WoodenTable": {
+   "name": "Wooden Table",
+   "hint": "",
+   "extra": []
+  },
+  "WoodenWindowLarge": {
+   "name": "Wooden Window (Large)",
+   "hint": "",
+   "extra": []
+  },
+  "WoodenWindowSmall": {
+   "name": "Wooden Window (Small)",
+   "hint": "",
+   "extra": []
+  },
+  "Workman": {
+   "name": "Workman",
+   "hint": "",
+   "extra": []
+  },
+  "WorkshopPress": {
+   "name": "Workshop Press",
+   "hint": "",
+   "extra": []
+  },
+  "WorkshopSaw": {
+   "name": "Workshop Saw",
+   "hint": "",
+   "extra": []
+  },
+  "Zombie": {
+   "name": "Undead",
+   "hint": "",
+   "extra": []
+  },
+  "ZombieChum": {
+   "name": "Undead Chum",
+   "hint": "",
+   "extra": []
+  }
+ },
+ "rooms": {
+  "Armoury": {
+   "name": "Armoury",
+   "hint": "",
+   "extra": []
+  },
+  "Bakery": {
+   "name": "Bakery",
+   "hint": "",
+   "extra": []
+  },
+  "Canteen": {
+   "name": "Canteen",
+   "hint": "",
+   "extra": [
+    "AVERAGE Meal Quality",
+    "AVERAGE Meal Variety",
+    "HIGH Meal Quality",
+    "HIGH Meal Variety",
+    "Item :",
+    "LOW Meal Quality",
+    "LOW Meal Variety",
+    "NO Meal Quality",
+    "NO Meal Variety",
+    "No Windows",
+    "Room size at least Squares",
+    "Surrounded by glass walls"
+   ]
+  },
+  "Cell": {
+   "name": "Cell",
+   "hint": "",
+   "extra": [
+    "Cleanliness above %",
+    "Item :",
+    "Large Window",
+    "No Windows",
+    "Outdoor Window",
+    "Room size at least Squares",
+    "Surrounded by depressing walls",
+    "Surrounded by glass walls"
+   ]
+  },
+  "Chapel": {
+   "name": "Chapel",
+   "hint": "",
+   "extra": []
+  },
+  "Cinema": {
+   "name": "Cinema",
+   "hint": "",
+   "extra": []
+  },
+  "Classroom": {
+   "name": "Classroom",
+   "hint": "",
+   "extra": [
+    "Item :",
+    "Outdoor Window",
+    "Room size at least Squares",
+    "Surrounded by glass walls"
+   ]
+  },
+  "CleaningCupboard": {
+   "name": "Cleaning Cupboard",
+   "hint": "",
+   "extra": []
+  },
+  "ClearRooms": {
+   "name": "Clear Rooms",
+   "hint": "",
+   "extra": []
+  },
+  "CommonRoom": {
+   "name": "Common Room",
+   "hint": "",
+   "extra": [
+    "Item :",
+    "Room size at least Squares",
+    "Surrounded by glass walls"
+   ]
+  },
+  "Deliveries": {
+   "name": "Deliveries",
+   "hint": "",
+   "extra": []
+  },
+  "Dock": {
+   "name": "Dock",
+   "hint": "",
+   "extra": []
+  },
+  "Dormitory": {
+   "name": "Dormitory",
+   "hint": "",
+   "extra": [
+    "A majority of low quality beds",
+    "Cleanliness above %",
+    "Item : per 4 Prisoners",
+    "No Windows",
+    "Outdoor Window per 8 Prisoners",
+    "Room size at least Squares per Prisoner",
+    "Surrounded by depressing walls",
+    "Surrounded by glass walls"
+   ]
+  },
+  "Empty": {
+   "name": "Empty Room",
+   "hint": "",
+   "extra": []
+  },
+  "Execution": {
+   "name": "Execution",
+   "hint": "",
+   "extra": [
+    "Adding a Death Row to the Prison is risky as the execution needs to be handled very carefully so we meet all of the legal requirements... But, we could make lot of money, so it may be worth the risk!"
+   ]
+  },
+  "Exports": {
+   "name": "Exports",
+   "hint": "",
+   "extra": [
+    "Farming rooms allow for the planting of vegetables, fruit trees, and Cereals each, these crops can be either sold as exports or used for prisoner meals."
+   ]
+  },
+  "FamilyCell": {
+   "name": "Family Cell",
+   "hint": "",
+   "extra": []
+  },
+  "FarmingField": {
+   "name": "Farming Field",
+   "hint": "",
+   "extra": []
+  },
+  "FightClubRoom": {
+   "name": "Fight Club Room",
+   "hint": "",
+   "extra": []
+  },
+  "FlowerGarden": {
+   "name": "Flower Garden",
+   "hint": "",
+   "extra": []
+  },
+  "Forestry": {
+   "name": "Forestry",
+   "hint": "",
+   "extra": [
+    "This behaviour matches that of the Forestry."
+   ]
+  },
+  "FruitOrchard": {
+   "name": "Fruit Orchard",
+   "hint": "",
+   "extra": []
+  },
+  "Garbage": {
+   "name": "Garbage",
+   "hint": "",
+   "extra": [
+    "Bins allow us to store lots of rubbish before they need emptying, this means much fewer trips to the garbage area. Add bins to the kitchen and place them near metal detectors to increase efficiency."
+   ]
+  },
+  "Graveyard": {
+   "name": "Graveyard",
+   "hint": "",
+   "extra": []
+  },
+  "Gymnasium": {
+   "name": "Gymnasium",
+   "hint": "",
+   "extra": [
+    "Item :",
+    "No Windows",
+    "Outdoor Window",
+    "Room size at least Squares",
+    "Surrounded by glass walls"
+   ]
+  },
+  "Helipad": {
+   "name": "Helipad",
+   "hint": "",
+   "extra": []
+  },
+  "HoldingCell": {
+   "name": "Holding Cell",
+   "hint": "",
+   "extra": []
+  },
+  "Intake": {
+   "name": "Reception",
+   "hint": "",
+   "extra": []
+  },
+  "Kennel": {
+   "name": "Kennel",
+   "hint": "",
+   "extra": []
+  },
+  "Kitchen": {
+   "name": "Kitchen",
+   "hint": "",
+   "extra": [
+    "Bins allow us to store lots of rubbish before they need emptying, this means much fewer trips to the garbage area. Add bins to the kitchen and place them near metal detectors to increase efficiency."
+   ]
+  },
+  "Laundry": {
+   "name": "Laundry",
+   "hint": "",
+   "extra": [
+    "A fresh and clean uniform can make a big difference to a prisoner's quality of life. A Laundry Service is essential to catering to your prisoners 'Clothing' need."
+   ]
+  },
+  "Library": {
+   "name": "Library",
+   "hint": "",
+   "extra": [
+    "A reader lives a thousand lives before he dies, the man who never reads lives only one. Let your prisoners 'escape' into a good book by giving them access to a library."
+   ]
+  },
+  "MailRoom": {
+   "name": "Mail Room",
+   "hint": "",
+   "extra": [
+    "Prisoners can become angry if they are not allowed to communicate with their families. Build a Visitation Room, a Mail Room or Phone Booths to hold off the prison blues."
+   ]
+  },
+  "MedicalWard": {
+   "name": "Infirmary",
+   "hint": "",
+   "extra": [
+    "We can't treat anyone in the Infirmary unless you hire some Doctors. Doctors can use the infirmary to treat any injuries that occur to staff or prisoners.",
+    "We should hire doctors to work in our Infirmary."
+   ]
+  },
+  "Morgue": {
+   "name": "Morgue",
+   "hint": "",
+   "extra": []
+  },
+  "Nursery": {
+   "name": "Nursery",
+   "hint": "",
+   "extra": []
+  },
+  "Office": {
+   "name": "Office",
+   "hint": "",
+   "extra": []
+  },
+  "PaddedCell": {
+   "name": "Padded Cell",
+   "hint": "",
+   "extra": []
+  },
+  "PaddedHoldingCell": {
+   "name": "Padded Holding Cell",
+   "hint": "",
+   "extra": []
+  },
+  "PaddedSolitary": {
+   "name": "Padded Solitary Cell",
+   "hint": "",
+   "extra": []
+  },
+  "Pantry": {
+   "name": "Pantry",
+   "hint": "",
+   "extra": []
+  },
+  "ParoleRoom": {
+   "name": "Parole",
+   "hint": "",
+   "extra": []
+  },
+  "PsychiatristOffice": {
+   "name": "Psychiatrist's Office",
+   "hint": "Unlock and place additional objects in the Psychiatrist Office to improve treatment to criminally insane inmates.",
+   "extra": [
+    "Item :",
+    "Psychiatrist Ability:",
+    "Upgrade the Psychiatrist's Office to improve their ability."
+   ]
+  },
+  "Restaurant": {
+   "name": "Restaurant",
+   "hint": "",
+   "extra": []
+  },
+  "Security": {
+   "name": "Security",
+   "hint": "",
+   "extra": [
+    "Our Informant will not last long in here without our protection, I suggest changing their security level to 'Protective Custody' and moving them out of general population."
+   ]
+  },
+  "Shop": {
+   "name": "Shop",
+   "hint": "",
+   "extra": []
+  },
+  "Shower": {
+   "name": "Shower",
+   "hint": "",
+   "extra": [
+    "Hygiene is important in every day life, in prison it's essential. Make sure your prisoners have plenty of time to catch a shower."
+   ]
+  },
+  "Solitary": {
+   "name": "Solitary",
+   "hint": "",
+   "extra": []
+  },
+  "Staffroom": {
+   "name": "Staffroom",
+   "hint": "",
+   "extra": [
+    "Your staff can't work effectively if they are exhausted, build them a staffroom so that they can relax or hire more staff as cover to ease the burden on them."
+   ]
+  },
+  "Storage": {
+   "name": "Storage",
+   "hint": "",
+   "extra": []
+  },
+  "SuperiorCell": {
+   "name": "Superior Cell",
+   "hint": "",
+   "extra": []
+  },
+  "TattooRemovalRoom": {
+   "name": "Tattoo Removal Room",
+   "hint": "",
+   "extra": []
+  },
+  "TheCage": {
+   "name": "The Cage",
+   "hint": "",
+   "extra": []
+  },
+  "TherapyRoom": {
+   "name": "Meeting Room",
+   "hint": "",
+   "extra": []
+  },
+  "TrainingRoom": {
+   "name": "Training Room",
+   "hint": "",
+   "extra": []
+  },
+  "VegetableAllotment": {
+   "name": "Vegetable Allotment",
+   "hint": "",
+   "extra": []
+  },
+  "Visitation": {
+   "name": "Visitation",
+   "hint": "",
+   "extra": [
+    "Prisoners can become angry if they are not allowed to communicate with their families. Build a Visitation Room, a Mail Room or Phone Booths to hold off the prison blues."
+   ]
+  },
+  "VisitorReception": {
+   "name": "Visitor Reception",
+   "hint": "",
+   "extra": []
+  },
+  "WeatherCentre": {
+   "name": "Weather Centre",
+   "hint": "",
+   "extra": []
+  },
+  "Workshop": {
+   "name": "Workshop",
+   "hint": "",
+   "extra": []
+  },
+  "Yard": {
+   "name": "Yard",
+   "hint": "",
+   "extra": [
+    "Contains of the above objects",
+    "Flooring (over %)",
+    "Item :",
+    "Room size Squares or below",
+    "Room size at least Squares",
+    "Squares"
+   ]
+  }
+ },
+ "generated_from": [
+  "base-language.txt",
+  "d11.txt",
+  "fullgame.txt"
+ ]
+}

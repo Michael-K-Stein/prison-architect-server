@@ -1,0 +1,5 @@
+# Development and CI tools, on top of the runtime dependencies
+-r requirements.txt
+pytest==9.1.1
+ruff==0.17.0  # keep in sync with .github/workflows (lint job)
+pre-commit==4.6.2
