@@ -1281,3 +1281,50 @@ trees in `bot-goal.sqlite`); `src/bot/build.py` makes the jobs.
   object). No bed or toilet job and no `CreateRoom`. Not yet known whether
   they were refused because the floor wasn't finished, or whether zoning
   (`Designation`) uses another path.
+
+### The bot's cell, intake and alerts (live, Claude Opus 5.5)
+
+- Retried once the foundation was finished: `room(11,11,3,3,'Cell')`,
+  `place('Bed',11,11)`, `place('Toilet',13,11)` -> `InstallObject` Bed and
+  Toilet jobs, then `CreateRoom(uId 8459050, index 4, 1)` (a Cell); Bed (#62)
+  and Toilet (#63) objects installed. The first try failed only because the
+  floor wasn't built yet.
+- Intake: the save had `Intake {IntakeType=0}` (off). `IntakeTypeChange(1)`
+  -> the host's `Intake {t=1}` (FillCapacity; IDA button order confirmed for 1).
+  At the next 08:00 (game time; `TimeIndex` is minutes, 1440 per day) two
+  Prisoners (type 109) arrived (#93565). A fresh save showed the bot's cell
+  `Rooms [i 4] {RoomType='Cell', Entity.i=65, Entity.u=8460687, RoomError=4}`:
+  **prisoner #65 assigned to the bot-built cell.** `Entity` on a room is its
+  assigned person (the office's is the warden).
+- `ObjectData` `ci` stays -1 for new prisoners (not the cell link).
+- Hiring is a `Staff` job (`{Type='Staff', Material=132}` for a Warden, host
+  `PlayerData`). Cables and pipes are `Objects` jobs drawn as a line with
+  `SizeX`/`SizeY` (`Material=243` ElectricalCable; `PipeLarge` 248, `PipeSmall`
+  249, `WaterPumpStation` 245, all accepted from the bot as `InstallObject`).
+- **Alerts**: the warden's "The general quality of our cells is too low." came
+  as a `StaffAlert` snapshot `sa [i 0] {tts='d11_staffalert_summary_PRISONERS03',
+  aa=132}` (`aa` = the staff object type); advisor speech as
+  `NewSpeechAdded(1, 'help_warning_prisonerreleased')`. The text is in the
+  game's `data/language/*.txt` (key, whitespace, text) inside `main.dat`;
+  `src/protocol/game_text.py` is generated from it.
+- **Room errors** (IDA `sub_1401EB850`, switch on the room's int at +196 =
+  save `RoomError` / `RoomData.Updates.<room>.re`): 1 nokitchen, 2
+  noprisoners, 3 nocanteen_kitchen, 4 nocanteen_cells, 5 deathrow_sharedcell,
+  6 nonursery, 7 laundryoverloaded (`roomerror_<name>`). Both cells show 4.
+- **No power**: the flashing icon is not sent. Electrical objects
+  (`Properties Electrical` in `materials.txt`, incl. `WaterPumpStation`) have
+  `Powered=True` in the save when powered; the new pump had none. Computed
+  by the bot as `problems` from a fresh save (a repeated
+  `AuthoriseConnection` makes the host send a new save at any time).
+- **Research ids** (IDA, static array `0x140DF4A20`, `sub_140096B10`):
+  0 None, 1 Warden, 2 Maintainance, 3 Security, 4 Legal, 5 MentalHealth,
+  6 Finance, 7 Cctv, 8 RemoteAccess, 9 Health, 10 Cleaning, 11
+  GroundsKeeping, 12 Deployment, 13 Patrols, 14 Dogs, 15 PrisonLabour, 16
+  Education, ... 34 LegalDefense. "Bureaucracy" is the office, not a research
+  id; the user's research started 16/9/4 = Education, Health, Legal.
+
+### Mistakes log (continued)
+
+- Assumed language lines are `key<TAB>text`; many use spaces, so the first
+  text table missed every `roomerror_*` key.
+- First guessed `STAFF` names by hand; replaced by the binary's tables.
