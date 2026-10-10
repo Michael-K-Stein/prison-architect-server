@@ -72,6 +72,23 @@ KEYS: dict[str, dict[str, str]] = {
         "si": "? (search, member +108)",
         "tun": "? (search, member +248)",
     },
+    "SectorSystem": {
+        # Sectors/<sector id>/<list>: each a list of ids (Size + [i N]); the same
+        # lists, in the same order, as the save's Sectors/<n> children. Values
+        # checked equal for sectors 46 and 66 (journal2 "SectorSystem keys").
+        "s": "Stations",
+        "ds": "DogStations",
+        "as": "ArmedGuardStations",
+        "os": "OrderlyStations",
+        "cs": "CookStations",
+        "docs": "DoctorStations",
+        "js": "JanitorStations",
+        "gs": "GardenerStations",
+        "fs": "FarmerStations",
+        "j": "Jobs",
+        "cr": "ContainedRooms: room indices inside the sector",
+        "l": "Targets: object indices to look at (guard targets)",
+    },
     "StaffAlert": {
         "tts": "summary text key (language file)",
         "ts": "? detail text key (guess)",

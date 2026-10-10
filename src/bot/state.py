@@ -110,7 +110,7 @@ class StateNode:
             out["/children"] = len(self.children)
             return out
         for name, child in self.children.items():
-            out["/" + name] = child.to_dict(depth - 1, system)
+            out["/" + _labelled(system, name)] = child.to_dict(depth - 1, system)
         return out
 
 

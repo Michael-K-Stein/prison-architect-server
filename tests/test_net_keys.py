@@ -34,3 +34,11 @@ def test_demolish_is_a_flooring_job_with_the_demolition_material():
         }
     )
     assert (job.type, job.material) == ("flooring", 3)
+
+
+def test_child_names_are_labelled_too():
+    node = StateNode()
+    node.merge(Node("46", [], [Node("cr", [("Size", 1)]), Node("l", [("Size", 1)])]))
+    out = node.to_dict(system="SectorSystem")
+    assert out["/ContainedRooms (cr)"] == {"Size": 1}
+    assert "/Targets (l)" in out
