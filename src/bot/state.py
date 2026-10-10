@@ -80,6 +80,22 @@ TIRED = 25.0
 """``EnergyLevel`` below this counts as tired (0 is exhausted; a rested person has 50-100)."""
 
 
+def _top_left(cells: set[tuple[int, int]]) -> list[int] | None:
+    """The room's top-left cell ``[x, y]`` (its name in the game's map), or None."""
+    if not cells:
+        return None
+    return [min(x for x, _ in cells), min(y for _, y in cells)]
+
+
+def _box_size(cells: set[tuple[int, int]]) -> list[int] | None:
+    """The room's bounding box ``[width, height]`` in cells, or None."""
+    if not cells:
+        return None
+    xs = [x for x, _ in cells]
+    ys = [y for _, y in cells]
+    return [max(xs) - min(xs) + 1, max(ys) - min(ys) + 1]
+
+
 def _quality_context(
     inside: set[tuple[int, int]],
     mats: dict[tuple[int, int], str],
@@ -616,6 +632,8 @@ class GameState:
                     "name": f.get("Name"),
                     "quality": f.get("Quality"),
                     "cells": counts.get(index, 0),
+                    "at": _top_left(inside_of.get(index, set())),
+                    "size": _box_size(inside_of.get(index, set())),
                 }
                 context = _quality_context(inside_of.get(index, set()), mats, placed)
                 entry.update(

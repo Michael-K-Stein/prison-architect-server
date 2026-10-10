@@ -2742,3 +2742,12 @@ Open question: not yet resolved. The next check is the wall material of room 94'
 ### Mistakes log (Claude Haiku 5.5, room quality)
 - Launched `serve --room A` from the playing guide without checking the open game name; the
   server exited with "open games: 'MKS2'". The game is named by the user, not the doc example.
+
+### Room Quality follow-up (MKS2, Claude Haiku 5.5 work)
+
+- Concrete walls are NOT depressing: `BadWalls` stays unknown (`met: null`) until the material is found.
+- The no-window penalty is -1 (confirmed by the owner); the bot now applies it.
+- Live (MKS2): room 94 game 7 = bot 7. Room 104 game 6, bot 8: still 2 points unexplained.
+- Rooms are named by zone and painted with a unique floor: Cell_Red (room 12, RedCarpet),
+  Cell_Blue (28, BlueCarpet), Cell_White (48, WhiteTiles), Cell_Wood (49, WoodenFloor),
+  Cell_Bamboo (94, BambooFloor), Cell_DarkWood (104, DarkWoodFloor).

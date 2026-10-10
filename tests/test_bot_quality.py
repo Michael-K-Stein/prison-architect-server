@@ -73,10 +73,16 @@ def test_wall_and_pa_criteria_use_the_edge() -> None:
         [],
         {
             "windows": [],
-            "walls": {"total": 10, "ConcreteWall": 6, "GlassWall": 0},
+            "walls": {"total": 10, "GlassWall": 6},
             "pa": True,
         },
     )
-    assert [c["met"] for c in _by_type(result, "BadWalls")] == [True]  # 60% >= 50%
-    assert [c["met"] for c in _by_type(result, "HasGlassWalls")] == [False]
+    assert [c["met"] for c in _by_type(result, "HasGlassWalls")] == [True]  # 60% >= 50%
     assert [c["met"] for c in _by_type(result, "HasPASystem")] == [True]
+
+
+def test_concrete_walls_are_not_depressing() -> None:
+    result = quality.evaluate(
+        "Cell", 12, [], {"windows": [], "walls": {"total": 10, "ConcreteWall": 10}}
+    )
+    assert [c["met"] for c in _by_type(result, "BadWalls")] == [None]

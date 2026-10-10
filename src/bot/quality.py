@@ -31,7 +31,6 @@ VISIBLE = (
     "Item",
     "OutsideWindow",
     "HasWindow",
-    "BadWalls",
     "HasGlassWalls",
     "HasPASystem",
 )
@@ -84,8 +83,8 @@ def describe(room: str, crit: dict[str, Any]) -> str:
 
 def _context_met(crit: dict[str, Any], context: dict[str, Any]) -> bool:
     """Whether a window / wall / PA criterion holds, from the room's context (see
-    :func:`evaluate`). Walls: ``BadWalls`` counts concrete walls (the game's "depressing"
-    walls, assumed), ``HasGlassWalls`` glass walls; each holds at ``Percent`` of the edge."""
+    :func:`evaluate`). ``HasGlassWalls`` holds when glass walls are ``Percent`` of the edge.
+    ``BadWalls`` ("depressing walls") is not visible yet: concrete is NOT depressing."""
     kind = crit["Type"]
     windows = context.get("windows", [])
     if kind == "OutsideWindow":
@@ -93,13 +92,12 @@ def _context_met(crit: dict[str, Any], context: dict[str, Any]) -> bool:
         return any(w["outdoor"] and (w["large"] or not large) for w in windows)
     if kind == "HasWindow":
         return len(windows) == int(crit.get("Quantity", 0))
-    if kind in ("BadWalls", "HasGlassWalls"):
+    if kind == "HasGlassWalls":
         walls = context.get("walls", {})
         total = walls.get("total", 0)
-        material = "ConcreteWall" if kind == "BadWalls" else "GlassWall"
         if not total:
             return False
-        return walls.get(material, 0) * 100 >= int(crit.get("Percent", 50)) * total
+        return walls.get("GlassWall", 0) * 100 >= int(crit.get("Percent", 50)) * total
     if kind == "HasPASystem":
         return bool(context.get("pa"))
     return False
@@ -115,7 +113,7 @@ def evaluate(
 
     ``context`` (from :func:`src.bot.state.room_quality`) makes the wall and window criteria
     visible: ``windows`` (a list of ``{"large": bool, "outdoor": bool}``, one per window on the
-    room's edge), ``walls`` (``{"total": n, "ConcreteWall": n, "GlassWall": n}`` over the edge
+    room's edge), ``walls`` (``{"total": n, "GlassWall": n}`` over the edge
     cells) and ``pa`` (a PASystem is in the room). Without it those criteria stay unknown.
     """
     present = Counter(object_types)
