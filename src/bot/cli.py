@@ -318,7 +318,10 @@ def ctl_send(
 def ctl_build(
     ctx: typer.Context,
     tool: Annotated[
-        str, typer.Argument(help="foundation, wall, floor, room or place.")
+        str,
+        typer.Argument(
+            help="foundation, wall, floor, room, place or line (pipes/cables)."
+        ),
     ],
     x: Annotated[int, typer.Argument(help="Left cell.")],
     y: Annotated[int, typer.Argument(help="Top cell.")],
@@ -339,7 +342,7 @@ def ctl_build(
 ) -> None:
     """Build: e.g. `build foundation 10 10 5 5`, `build place 11 11 -n Bed`."""
     spec: dict = {"tool": tool, "x": x, "y": y, "width": width, "height": height}
-    key = {"room": "kind", "place": "object"}.get(tool, "material")
+    key = {"room": "kind", "place": "object", "line": "object"}.get(tool, "material")
     if name:
         spec[key] = name
     if facing:

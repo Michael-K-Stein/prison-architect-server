@@ -125,8 +125,8 @@ def job_from(spec: dict[str, Any]) -> Job:
     except (KeyError, TypeError, ValueError) as exc:
         raise BuildError(f"{tool} needs whole numbers {', '.join(coords)}") from exc
     if spec.get(name_key):
-        kwargs[name_key if tool != "place" else "obj"] = str(spec[name_key])
-    elif tool == "place":
+        kwargs["obj" if name_key == "object" else name_key] = str(spec[name_key])
+    elif name_key == "object":
         raise BuildError("place needs an object name (e.g. Bed)")
     if tool == "place" and spec.get("facing"):
         if spec["facing"] not in ORIENTATIONS:
@@ -136,6 +136,15 @@ def job_from(spec: dict[str, Any]) -> Job:
         return make(**kwargs)
     except KeyError as exc:
         raise BuildError(f"unknown {name_key} {exc.args[0]!r}") from None
+
+
+def line(obj: str, x: int, y: int, width: int = 1, height: int = 1) -> Job:
+    """Lay pipes or cables over an area (``Objects`` with a size, as captured
+    for ``ElectricalCable``): e.g. ``line('PipeLarge', 13, 11, 6, 1)``."""
+    return Job("Objects", id_of(OBJECTS, obj), x, y, width, height)
+
+
+TOOLS["line"] = (line, ("x", "y", "width", "height"), "object")
 
 
 def construction_tree(jobs: list[Job], actor: int) -> Node:

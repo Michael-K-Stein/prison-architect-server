@@ -26,6 +26,7 @@ from typing import Any
 
 from src.protocol import rpc
 from src.protocol.enums import OBJECT_TYPES, ROOM_TYPES, name_of
+from src.protocol.game_text import TEXT
 from src.protocol.snapshot import Node, decode_args, decompress
 
 log = logging.getLogger(__name__)
@@ -38,9 +39,11 @@ TRANSACTION_ADDED = 118
 TRANSACTION_APPENDED = 119
 CREATE_ROOM = 15
 REMOVE_ROOM = 16
+NEW_SPEECH = 117  # NewSpeechAdded(int, text key), e.g. help_warning_prisonerreleased
+STAFF_ALERT = "StaffAlert"
 TRACKED = frozenset(
     {OBJECT_ADDED, OBJECT_REMOVED, OBJECTIVE_REMOVED, TRANSACTION_ADDED}
-    | {TRANSACTION_APPENDED, CREATE_ROOM, REMOVE_ROOM}
+    | {TRANSACTION_APPENDED, CREATE_ROOM, REMOVE_ROOM, NEW_SPEECH}
 )
 """Event codes (besides DirectoryData) that change the state."""
 OBJECTIVE_SYSTEM = "Objective"
@@ -165,6 +168,10 @@ class GameState:
     """Object type id -> name: the known table, plus pairs learned live."""
     rooms: dict[int, dict[str, Any]] = field(default_factory=dict)
     """Rooms by index: ``uId``, ``type`` id, ``name`` (save ``Rooms`` / CreateRoom)."""
+    alerts: deque[str] = field(default_factory=lambda: deque(maxlen=50))
+    """Messages for the player (staff alerts, advisor speech), newest last."""
+    staff_alerts: list[str] = field(default_factory=list)
+    """The staff alerts currently shown (``StaffAlert``)."""
     save: StateNode | None = None
     """The host's full save game, once the join handshake delivered it."""
     lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
@@ -198,6 +205,8 @@ class GameState:
                     if not known:
                         self.note(f"objective added: {fields['Name']}")
                 return
+            if name == STAFF_ALERT:
+                self._staff_alerts(tree)
             self.systems.setdefault(name, StateNode()).merge(tree)
             if name == "ObjectData":
                 self._learn_type_names(tree)
@@ -213,6 +222,10 @@ class GameState:
             self._objects().children[str(index)] = node
             label = self.type_names.get(type_id, f"type {type_id}")
             self.note(f"object added: #{index} {label} (uId {uid})")
+        elif code == NEW_SPEECH:
+            text = TEXT.get(_text(args[1]), _text(args[1]))
+            self.alerts.append(text)
+            self.note(f"alert: {text}")
         elif code == CREATE_ROOM:
             (uid, index), type_id = args
             self.rooms[index] = {"uId": uid, "type": type_id}
@@ -233,6 +246,21 @@ class GameState:
             amount, key = int(args[0]), _text(args[1])
             self.transactions.append(Transaction(amount, key, time.time()))
             self.note(f"money {amount:+d} {key}")
+
+    def _staff_alerts(self, tree: Node) -> None:
+        """Note each new staff alert (``sa [i N] {tts=<text key>, aa=<staff type>}``)."""
+        current = []
+        for group in tree.children:
+            for item in group.children:
+                f = dict(item.fields)
+                if f.get("tts"):
+                    who = self.type_names.get(f.get("aa", -1), "staff")
+                    current.append(f"{who}: {TEXT.get(f['tts'], f['tts'])}")
+        for line in current:
+            if line not in self.staff_alerts:
+                self.alerts.append(line)
+                self.note(f"alert: {line}")
+        self.staff_alerts = current
 
     def _learn_type_names(self, tree: Node) -> None:
         """A full object entry (with ``t``) for an object named by the save."""
@@ -427,6 +455,7 @@ class GameState:
                 "object_names": dict(sorted(self.object_names().items())),
                 "grants": self.grants(),
                 "save_loaded": self.save is not None,
+                "alerts": list(self.alerts)[-10:],
                 "systems": dict(sorted(self.updates.items())),
                 "recent": list(self.feed)[-10:],
                 "errors": self.errors,
