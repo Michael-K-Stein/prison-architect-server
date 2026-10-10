@@ -1538,3 +1538,12 @@ no Chief/Lawyer/Accountant/Foreman existed. `src/protocol/research_rules.py`
   6) over a finished 7x6 room did nothing visible either. So: **never let the
   balance go below 0**; it blocks every grant that needs building (the power
   targets, `FeedAllPrisoners`).
+
+### Game speed past 10x (MKS, bot sends `GameSpeedChange(n)`)
+
+Measured game minutes per real second (`TimeIndex`): n=3 -> 3.2, n=4 -> 4.3,
+n=10 -> 10.5; n=11, 20, 50, 100, 127, -1 -> 9.6-9.7, 1,000,000 -> 7.8. The host
+accepts any int as the multiplier but clamps it at 10x (the extra scatter is
+the host's frame rate), so 10 is the ceiling; there is no way to go faster
+from a client. `World.ClientData` shows `gt=2.0` (a unit unknown here) while the
+speed is 10.
