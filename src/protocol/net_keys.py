@@ -68,6 +68,11 @@ KEYS: dict[str, dict[str, str]] = {
         "mt": "MailType",
         "con": "Contents",
         "dri": "? ObjectId (member +588, crate-like objects)",
+        # Transformer (object 389): the save calls these Demand / Capacity / InputPower / ExcessPower
+        "inppwr": "InputPower: green power arriving at a Transformer (sum of the sources' Capacity)",
+        "excspwr": "ExcessPower: InputPower minus Demand, available for Batteries and export",
+        "lnkpem": "? bool, linked PowerExportMeter (Transformer)",
+        "ctran": "? ObjectId-like int, -1 = none (seen on generators and Transformers)",
         # container, door, search, vehicle
         "ct": "Contents (container) | Target (needs)",
         "op": "Opened (container) | Open (door)",

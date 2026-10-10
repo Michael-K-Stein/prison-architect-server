@@ -1980,3 +1980,19 @@ node needs no polling, only waiting. Current MKS2 grants: Completed GreenMachine
 EcoFriendly, target_SolarPanels, target_WindTurbine, target_PowerStation; open
 Grant_Administration, target_ExportPower1-3, target_PassReform, target_ChargeBattery
 (`target_GreenEnergySource` has not appeared in this game's list yet).
+
+### Transformer working; missing entrances (MKS2)
+
+- A Transformer (object 389, centre 26,41, inside the battery hall) shows `Powered`, `On`,
+  `Demand 5`, `Capacity` 1750-4000, `InputPower` 1750-4000 and `ExcessPower` = Input -
+  Demand (net keys `dem`, `cap`, `inppwr`, `excspwr`). `InputPower` equals the farm's
+  summed generator `Capacity` (10 x 75 + 10 x 75 + 10 x 250 = 4000; 1750 at another
+  reading, i.e. what the sources deliver changes over the day), so the farm cables do reach
+  the Transformer, and 5 of the hall's 20 lights then read `Powered`. `lnkpem` (linked
+  PowerExportMeter) is false until an export meter is wired.
+- **Stuck builders**: the Administration agent's five office foundations (2,44 6x6; 10,44;
+  46,4; 54,4; 2,56 7x7) had no door, so all of them sat at 3-45 cells left. A `StaffDoor`
+  in the middle of each bottom edge (`ctl build place 5 49 -n StaffDoor` ...) was placed,
+  and within about 40 s four foundations had left the queue and the fifth fell from 45 to
+  13 cells left. Rule confirmed: check every foundation job for a door on its edge (compare
+  `ConstructionSystem Jobs` rectangles with the door objects in `Save Objects`).
