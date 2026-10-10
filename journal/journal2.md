@@ -2048,3 +2048,28 @@ Warden, an Accountant):
   snapshots; the bot ignores them. To settle it: decompile the function that registers `"p"`,
   `"v"`, `"o"` (find them with the byte search used in `ida_keys*.py`: ` p `, ` v `,
   ` o ` in `.rdata`, then xrefs) and read which members they bind.
+
+### MKS2 host crash (15:00:29, user: RealClient got "Host has disconnected")
+
+Evidence from `bot-goal-3.sqlite` (user's proxy) and `mks2-bot4.sqlite` (bot):
+- The host connection (proxy session 18) sent its last simulation tick (`ObjectData`,
+  `ConstructionSystem`, `Intake`, `World`) at **15:00:29.38** (bot capture: last `World` update
+  15:00:28.65, last `TransactionAdded` 15:00:24). Afterwards it only emitted 5-byte packets at about
+  60 Hz until **15:00:37.5**, when the connection ended: the game process hung for ~8 s and then died
+  or was closed. `time_index` stayed at 32145.6 in the bot afterwards.
+- No game command from any client reached the host in the 15 s before the last tick (the clients'
+  traffic is only state broadcasts and acks). The bot's last `AuthoriseConnection` (a `ctl refresh`) was
+  sent at 15:00:30.79, after the host had stopped, so it was not the trigger; the bot's later builds
+  (PowerExportMeter at (28,43) at 15:00:53) went to a dead host. The last build the host processed was
+  a Battery at (27,41) at 14:58:31.
+- Nothing abnormal (NaN, infinity, huge values) in the Transformer data: `InputPower` 1750 -> 4000 at
+  15:00:18. Six Batteries beside the Transformer had charged. Cause unknown; candidate areas: the Going
+  Green Transformer / Battery / export logic, and general game instability under repeated save
+  transfers. The host's own `debug.txt` was overwritten by the next launch (the rejoining client), so
+  check the host window / crash dialog and relaunch with the log kept.
+- State lost: `saves/autosave.prison` is from 14:01 and `ClaudeDummy.prison` from 13:59; everything since
+  (grants GreenMachine ... Administration, offices, Transformer farm) exists only in the captures: the
+  last full save the bot received (`save game loaded`, 14:59:32, 689 KB raw) is in `mks2-bot4.sqlite`.
+  Rebuilding a loadable `.prison` from it is possible but not done (TODO).
+- The room kept running with only bots (actors 6 and 7 both named Claude), so a rejoining client
+  succeeds at `JoinRoomCallback` and then waits for a save that no host sends. The bot left the room.

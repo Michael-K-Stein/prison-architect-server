@@ -104,3 +104,9 @@ them without a long name. Facts so far (MKS2, `mks2-bot4.sqlite`, 26 workmen + s
 hypotheses already **rejected** are in the journal ("Unknown ObjectData keys p, v, o"). Next step:
 find the registering function in IDA (xrefs to the 1-char strings `"p"`, `"v"`, `"o"` at
 `0x140ADA774`-ish in `.rdata` next to `"ss"`, `"rs"`, `"s1"`) and read which members they bind.
+
+- **Recover a loadable save from a capture.** After the MKS2 host crash the newest `.prison` was an hour old;
+  the last full save is in the bot's capture (handshake `SaveDataChunk`s). Write a `.prison` (the game's
+  text save format) from the decoded `Save` tree so a crashed session can be restored.
+- **Detect a dead host.** The bot stayed "connected" for minutes with `time_index` frozen; add a
+  watchdog (no `World` update for N seconds) that reports `host_stalled` in `ctl state` and in replies.
