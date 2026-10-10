@@ -156,7 +156,7 @@ TYPE_HINTS = {
     "bool": "true/false",
     "string": "text",
     "MemoryBlock": "hex bytes",
-    "ObjectId": "uId,index (or #index: uId from state)",
+    "ObjectId": "uId,index, #index (uId from state) or a name from `ctl name`",
     "SoundObjectId": "uId,index",
     "WorldPosition": "x,y (whole numbers)",
     "Vector2": "x,y",
@@ -298,9 +298,31 @@ def parse_args(action: Action, values: list[Any], state: Any = None) -> list[Any
         )
     resolve = state.uid_of if state is not None else None
     return [
-        parse_arg(a, _by_label(a, v, state), resolve)
+        _by_name(a, v, state)
+        if _is_named(a, v, state)
+        else parse_arg(a, _by_label(a, v, state), resolve)
         for a, v in zip(action.args, values)
     ]
+
+
+OBJECT_INDEX_ARGS = frozenset({"object_index"})
+"""Int arguments that are an object index (``ElectricalSwitch``): a name works."""
+
+
+def _is_named(arg: Arg, value: Any, state: Any) -> bool:
+    """Whether ``value`` is a name the bot gave (``ctl name``) for an object arg."""
+    if state is None or not isinstance(value, str):
+        return False
+    if arg.type != "ObjectId" and not (
+        arg.type == "int" and arg.name in OBJECT_INDEX_ARGS
+    ):
+        return False
+    return state.names.get(value.strip()) is not None
+
+
+def _by_name(arg: Arg, value: str, state: Any) -> Any:
+    uid, index = state.names.get(value.strip())
+    return (uid, index) if arg.type == "ObjectId" else index
 
 
 @dataclass(frozen=True)

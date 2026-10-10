@@ -29,6 +29,14 @@ The map is a grid of cells, `x` to the right and `y` down; the map size is in
 `ctl state Save --depth 0` (`NumCellsX`, `NumCellsY`). Build on empty ground
 away from existing buildings.
 
+## Names
+
+Give things names instead of juggling indexes and uIds: `ctl name set Main_Power_Station 52`
+(`--room` for a room index, or `uId,index`), `ctl name list`, `ctl name rm NAME`. A name works
+anywhere an object is expected (`ctl send ElectricalSwitch Main_Power_Station off`,
+`RemoveRoom Holding_Cell`) and appears in `problems`, the event feed and object dumps
+(`Name`). Names are saved per game in `bot-names.json`.
+
 ## Act
 
 ```sh

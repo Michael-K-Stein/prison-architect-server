@@ -99,8 +99,9 @@ class ControlServer:
     def state(self) -> dict[str, Any]:
         """``/state``: summary plus room, players and connection."""
         session = self.session
-        out = session.state.summary()
         room = getattr(session.client, "current_room", None)
+        session.state.names.bind(getattr(room, "name", ""))
+        out = session.state.summary()
         players = []
         with session.lock:
             for nr, player in sorted((getattr(room, "players", None) or {}).items()):
@@ -113,6 +114,64 @@ class ControlServer:
         )
         return out
 
+    def _add_names(self, system: str, rest: str, tree: dict[str, Any]) -> None:
+        """Put the bot's own ``Name`` on ObjectData objects it has named."""
+        if system != "ObjectData":
+            return
+        names = self.session.state.names
+        if rest:  # one object: ObjectData/52
+            name = names.name_of(int(rest)) if rest.isdigit() else None
+            if name:
+                tree["Name"] = name
+            return
+        for key, child in tree.items():
+            if key.startswith("/") and key[1:].isdigit() and isinstance(child, dict):
+                if name := names.name_of(int(key[1:])):
+                    child["Name"] = name
+
+    def _named_details(self) -> dict[str, Any]:
+        state = self.session.state
+        out = {}
+        for name, (uid, index) in state.names.all().items():
+            node = state.systems.get("ObjectData")
+            obj = node.children.get(str(index)) if node else None
+            out[name] = {
+                "uId": uid,
+                "index": index,
+                "type": obj.fields.get("name") if obj else None,
+                "current": bool(obj and obj.fields.get("uId") == uid),
+            }
+        return out
+
+    def alias(self, body: dict[str, Any] | None) -> tuple[int, dict[str, Any]]:
+        """``/alias``: list names, or ``{"set": name, "ref": "52"|"uId,index",
+        "room": bool}`` / ``{"remove": name}``."""
+        state = self.session.state
+        room = getattr(getattr(self.session.client, "current_room", None), "name", "")
+        state.names.bind(room)
+        if body:
+            if name := body.get("remove"):
+                return 200, {"removed": state.names.remove(str(name))}
+            name, ref = body.get("set"), str(body.get("ref", "")).strip()
+            if not name or not ref:
+                return 400, {"error": 'need {"set": name, "ref": index or uId,index}'}
+            try:
+                if "," in ref:
+                    uid, index = (int(x) for x in ref.split(",", 1))
+                else:
+                    index = int(ref.lstrip("#"))
+                    uid = (
+                        state.room_uid(index)
+                        if body.get("room")
+                        else state.uid_of(index)
+                    )
+                if uid is None:
+                    return 404, {"error": f"#{index} is not in the game state"}
+                state.names.set(str(name), uid, index)
+            except ValueError as exc:
+                return 400, {"error": str(exc)}
+        return 200, {"names": self._named_details()}
+
     def node(
         self, path: str, depth: int, raw: bool = False
     ) -> tuple[int, dict[str, Any]]:
@@ -124,7 +183,9 @@ class ControlServer:
             node = root.find(rest) if root else None
             if node is None:
                 return 404, {"error": f"no state node {path.strip('/')!r}"}
-            return 200, node.to_dict(depth, None if raw else system)
+            tree = node.to_dict(depth, None if raw else system)
+            self._add_names(system, rest, tree)
+            return 200, tree
 
     def actions(self, kind: str | None, show_all: bool) -> list[dict[str, Any]]:
         """``/actions``: the catalog, buildable ones only unless ``show_all``."""
@@ -171,6 +232,8 @@ class ControlServer:
         """``/send``: parse, build and raise one RPC."""
         key = body.get("action")
         args = body.get("args") or []
+        room = getattr(self.session.client, "current_room", None)
+        self.session.state.names.bind(getattr(room, "name", ""))
         if not isinstance(args, list):
             return 400, {"error": "args must be a list"}
         try:
@@ -284,6 +347,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._reply(200, c.session.state.area(x, y, min(w, 60), min(h, 60)))
             elif url.path.startswith("/names/"):
                 self._reply(*c.names(url.path[7:], query.get("q", "")))
+            elif url.path == "/alias":
+                self._reply(*c.alias(None))
             elif url.path == "/events":
                 since = int(query.get("since", 0))
                 self._reply(200, c.recent(since, int(query.get("limit", 100))))
@@ -297,7 +362,9 @@ class _Handler(BaseHTTPRequestHandler):
         c = self.control
         try:
             body = self._body()
-            if path == "/send":
+            if path == "/alias":
+                self._reply(*c.alias(body))
+            elif path == "/send":
                 self._reply(*c.send(body))
             elif path == "/build":
                 self._reply(*c.build(body))

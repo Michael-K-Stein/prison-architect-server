@@ -7,3 +7,4 @@ captures/
 *.sqlite-wal
 *.sqlite-shm
 .env
+bot-names.json

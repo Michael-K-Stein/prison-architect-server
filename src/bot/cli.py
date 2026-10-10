@@ -391,6 +391,37 @@ def ctl_build(
     _show(ctx, "POST", "/build", {"jobs": [spec]})
 
 
+name_app = typer.Typer(
+    help="Name objects/rooms so commands and output use the name, not an index."
+)
+ctl.add_typer(name_app, name="name")
+
+
+@name_app.command("set")
+def ctl_name_set(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Argument(help="e.g. Main_Power_Station.")],
+    ref: Annotated[str, typer.Argument(help="Object index (52, #52) or uId,index.")],
+    room: Annotated[bool, typer.Option("--room", help="REF is a room index.")] = False,
+) -> None:
+    """Name an object: `ctl name set Main_Power_Station 52`."""
+    _show(ctx, "POST", "/alias", {"set": name, "ref": ref, "room": room})
+
+
+@name_app.command("rm")
+def ctl_name_rm(
+    ctx: typer.Context, name: Annotated[str, typer.Argument(help="The name.")]
+) -> None:
+    """Forget a name."""
+    _show(ctx, "POST", "/alias", {"remove": name})
+
+
+@name_app.command("list")
+def ctl_name_list(ctx: typer.Context) -> None:
+    """All names of this game and what they point at."""
+    _show(ctx, "GET", "/alias")
+
+
 @ctl.command("hire")
 def ctl_hire(
     ctx: typer.Context,

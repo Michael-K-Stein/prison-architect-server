@@ -25,6 +25,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.protocol import rpc
+from src.bot.names import ObjectNames
 from src.protocol.net_keys import label
 from src.protocol.room_rules import ROOM_RULES
 from src.protocol.enums import (
@@ -193,6 +194,9 @@ class GameState:
     """The staff alerts currently shown (``StaffAlert``)."""
     save: StateNode | None = None
     """The host's full save game, once the join handshake delivered it."""
+    names: ObjectNames = field(default_factory=lambda: ObjectNames(None))
+    """Names the bot gave to objects/rooms (``ctl name``); not saved unless the
+    session passes a file."""
     lock: threading.RLock = field(default_factory=threading.RLock, repr=False)
 
     # feeding
@@ -246,7 +250,9 @@ class GameState:
                 node.fields["name"] = self.type_names[type_id]
             self._objects().children[str(index)] = node
             label = self.type_names.get(type_id, f"type {type_id}")
-            self.note(f"object added: #{index} {label} (uId {uid})")
+            self.note(
+                f"object added: {self.named(index, uid)}#{index} {label} (uId {uid})"
+            )
         elif code == NEW_SPEECH:
             text = TEXT.get(_text(args[1]), _text(args[1]))
             self.alerts.append(text)
@@ -258,11 +264,11 @@ class GameState:
         elif code == REMOVE_ROOM:
             uid, index = args[0]
             self.rooms.pop(index, None)
-            self.note(f"room removed: #{index}")
+            self.note(f"room removed: {self.named(index, uid)}#{index}")
         elif code == OBJECT_REMOVED:
             uid, index = args[0]
             self._objects().children.pop(str(index), None)
-            self.note(f"object removed: #{index} (uId {uid})")
+            self.note(f"object removed: {self.named(index, uid)}#{index} (uId {uid})")
         elif code == OBJECTIVE_REMOVED:
             name = _text(args[0])
             self.objectives.pop(name, None)
@@ -423,6 +429,20 @@ class GameState:
                 if c.fields.get("t") == type_id and "uId" in c.fields
             ]
 
+    def room_uid(self, index: int) -> int | None:
+        """The uId of room ``index`` (from the save, else ``CreateRoom``), if known."""
+        with self.lock:
+            rooms = self.save.children.get("Rooms") if self.save else None
+            for item in rooms.children.values() if rooms else ():
+                if item.fields.get("Id.i") == index:
+                    return item.fields.get("Id.u")
+            return (self.rooms.get(index) or {}).get("uId")
+
+    def named(self, index: int, uid: int | None = None) -> str:
+        """``"Name "`` for a named object (note the space), else ``""``."""
+        name = self.names.name_of(index, uid)
+        return f"{name} " if name else ""
+
     def uid_of(self, index: int) -> int | None:
         """The uId of object ``index`` (for an ``ObjectId``), if known."""
         with self.lock:
@@ -530,7 +550,10 @@ class GameState:
             rooms = self.save.children.get("Rooms")
             for item in rooms.children.values() if rooms else ():
                 f = item.fields
-                where = f"{f.get('RoomType', 'room')} #{f.get('Id.i')}"
+                where = (
+                    f"{self.named(f.get('Id.i'), f.get('Id.u'))}"
+                    f"{f.get('RoomType', 'room')} #{f.get('Id.i')}"
+                )
                 if f.get("RoomError"):
                     key = ROOM_ERRORS.get(f["RoomError"], "")
                     text = TEXT.get(key, key) or f"error {f['RoomError']}"
@@ -543,6 +566,7 @@ class GameState:
                 f = item.fields
                 if f.get("Type") == "PowerStation" and f.get("Overloaded"):
                     out.append(
+                        f"{self.named(f.get('Id.i'), f.get('Id.u'))}"
                         f"PowerStation #{f.get('Id.i')}: overloaded (Capacity "
                         f"{f.get('Capacity')}), all power is cut: remove electrical "
                         "items, add Capacitors, or add a second PowerStation on "
@@ -555,7 +579,10 @@ class GameState:
                         if f["Type"] == "Light"
                         else " (a cable must touch it; only lights reach over a gap)"
                     )
-                    out.append(f"{f['Type']} #{f.get('Id.i')} at {pos}: no power{hint}")
+                    who = self.named(f.get("Id.i"), f.get("Id.u"))
+                    out.append(
+                        f"{who}{f['Type']} #{f.get('Id.i')} at {pos}: no power{hint}"
+                    )
             return out
 
     def _rule_problems(self) -> list[str]:
@@ -602,7 +629,8 @@ class GameState:
                     missing.append(name)
             if missing:
                 out.append(
-                    f"{f['RoomType']} #{f.get('Id.i')}: lacks " + ", ".join(missing)
+                    f"{self.named(f.get('Id.i'), f.get('Id.u'))}{f['RoomType']} "
+                    f"#{f.get('Id.i')}: lacks " + ", ".join(missing)
                 )
         return out
 
@@ -618,6 +646,9 @@ class GameState:
                 "object_types": dict(sorted(self.object_types().items())),
                 "object_names": dict(sorted(self.object_names().items())),
                 "grants": self.grants(),
+                "named": {
+                    n: {"uId": u, "index": i} for n, (u, i) in self.names.all().items()
+                },
                 "save_loaded": self.save is not None,
                 "alerts": list(self.alerts)[-10:],
                 "problems": self.problems(),
