@@ -268,7 +268,16 @@ def room_build(
                 _fail(f"stage {kind} refused", detail=data, done=done)
             done.append(kind)
             if kind == "foundation":
-                ok = _wait_for(
+                # only wait for the job to start: its middle stalls until a door exists
+                _wait_for(
+                    port,
+                    lambda: any(
+                        set(r) & set("BF") for r in _area(port, x, y, outer_w, outer_h)
+                    ),
+                    min(timeout, 60),
+                )
+            elif kind == "place" and plan.building and index == 1:
+                floored = _wait_for(
                     port,
                     lambda: all(
                         set(r) <= {"F"}
@@ -276,7 +285,7 @@ def room_build(
                     ),
                     timeout,
                 )
-                if not ok:
+                if not floored:
                     warnings.append("the floor was not finished in time")
                 for sx, sy, sw, sh in shared:  # a foundation floors a wall it overlaps
                     call(
@@ -297,7 +306,6 @@ def room_build(
                     )
                 if shared:
                     done.append(f"re-walled {len(shared)} shared wall run(s)")
-            elif kind == "place" and plan.building and index == 1:
                 ok = _wait_for(
                     port,
                     lambda: "W" in "".join(_area(port, x, y, outer_w, 1)),
