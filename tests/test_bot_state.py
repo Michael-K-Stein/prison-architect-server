@@ -162,3 +162,22 @@ def test_todo_lists_exhausted_staff_with_the_staffroom_advice() -> None:
     item = next(i for i in state.todo() if i["id"] == "StaffExhausted")
     assert item["text"] == "3 staff members are exhausted."
     assert item["advice"] == "Build a Staff Room so they can rest."
+
+
+def test_going_green_tab_lists_the_six_info_items_in_order() -> None:
+    state = GameState()
+    items = state.going_green()
+    assert [i["title"] for i in items] == [
+        "Going Green!",
+        "Basic Farming",
+        "Advanced Farming",
+        "Green Energy",
+        "Narcotic Production",
+        "Environmentally Friendly",
+    ]
+    energy = next(i for i in items if i["id"] == "HelpGreenEnergy")
+    assert [s["title"] for s in energy["sections"]][:2] == [
+        "Green energy types",
+        "Weather effects",
+    ]
+    assert all(s["text"] for s in energy["sections"])

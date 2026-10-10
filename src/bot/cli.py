@@ -767,10 +767,19 @@ def ctl_connect(
 
 
 @ctl.command("todo")
-def ctl_todo(ctx: typer.Context) -> None:
+def ctl_todo(
+    ctx: typer.Context,
+    going_green: Annotated[
+        bool,
+        typer.Option(
+            "--going-green", help="The Going Green tab (feature info + progress)."
+        ),
+    ] = False,
+) -> None:
     """The in-game Todo list: objectives, staff alerts now showing (with the game's advice)
-    and the intake state: what the game wants done next."""
-    _show(ctx, "GET", "/todo")
+    and the intake state: what the game wants done next. `--going-green`: the Going Green
+    tab (Basic / Advanced Farming, Green Energy, Narcotic Production, Environmentally Friendly)."""
+    _show(ctx, "GET", "/todo" + ("?going_green=1" if going_green else ""))
 
 
 @ctl.command("alerts")

@@ -497,7 +497,11 @@ class _Handler(BaseHTTPRequestHandler):
             elif url.path == "/connect":
                 self._reply(200, c.session.state.connect_plan(query.get("kind", "")))
             elif url.path == "/todo":
-                self._reply(200, {"todo": c.session.state.todo()})
+                state = c.session.state
+                if query.get("going_green"):
+                    self._reply(200, {"going_green": state.going_green()})
+                else:
+                    self._reply(200, {"todo": state.todo()})
             elif url.path == "/alerts":
                 state = c.session.state
                 since = int(query.get("since", 0))

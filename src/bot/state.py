@@ -224,6 +224,21 @@ def alert_texts(key: str) -> dict[str, Any]:
     }
 
 
+GOING_GREEN = (
+    ("GoingGreenInfo", ()),
+    ("HelpBasicFarming", ("basicfarming", "selfsustaining")),
+    ("HelpAdvancedFarming", ("advancedfarming", "overproduction")),
+    ("HelpGreenEnergy", ("target_",)),
+    ("HelpNarcoticProduction", ()),
+    (
+        "HelpEnvironmentallyFriendly",
+        ("ecofriendly", "greenmachine", "givingsomethingback"),
+    ),
+)
+"""The Going Green tab of the objectives window (`objectiveWindow_FilterButton_1_title`): an
+info objective per feature, in the game's order, with the grants / goals that go with it."""
+
+
 def _condition(fields: dict[str, Any]) -> str:
     """An objective's ``Requirement`` as text: ``CriticalNeedsPercent Hygiene 30 (inverted)``."""
     category = fields.get("Requirement.category")
@@ -522,6 +537,49 @@ class GameState:
                     }
                 )
             return items
+
+    def going_green(self) -> list[dict[str, Any]]:
+        """The Going Green tab: "Going Green!", Basic / Advanced Farming, Green Energy, Narcotic
+        Production, Environmentally Friendly, each with its sub-headings and descriptions
+        (the game's own texts, ``d11.txt``) and the status of the grants / goals that belong to it."""
+        grants = {k: v for k, v in self.grants().items()}
+        out: list[dict[str, Any]] = []
+        for key, related in GOING_GREEN:
+            base = f"objective_{key}"
+            lowered = {
+                k.lower(): v
+                for k, v in TEXT.items()
+                if k.lower().startswith(base.lower())
+            }
+            children = []
+            number = 1
+            while f"{base}_child_{number}".lower() in lowered:
+                head = lowered[f"{base}_child_{number}".lower()].strip()
+                body = lowered.get(f"{base}_child_{number}_description".lower(), "")
+                children.append(
+                    {"title": head, "text": body.strip()} if body else {"text": head}
+                )
+                number += 1
+            item: dict[str, Any] = {
+                "id": key,
+                "title": lowered.get(base.lower(), key).strip(),
+                "active": key in self.objectives,
+                "sections": children,
+            }
+            if lowered.get(f"{base}_description".lower()):
+                item["text"] = lowered[f"{base}_description".lower()].strip()
+            progress = [
+                {"name": name, "status": status}
+                for name, status in grants.items()
+                if any(
+                    name.lower().startswith(p) if p.endswith("_") else p in name.lower()
+                    for p in related
+                )
+            ]
+            if progress:
+                item["progress"] = progress
+            out.append(item)
+        return out
 
     def _exhausted_staff(self) -> int:
         """How many staff members are exhausted (rest required or energy 0)."""

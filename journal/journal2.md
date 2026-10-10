@@ -2676,3 +2676,14 @@ zone-only room (Forestry, Exports, Storage...) no longer draws walls (the player
   Reports: N require medical attention", "Prisoners due for release / N prisoners up for parole", visitors, exhausted
   staff, punishments, Feed all Prisoners with its Prisoners / Meals counters) are computed by the client; a sub-agent
   is reading the IDA database for their sources.
+- **The Going Green tab** of the objectives window (`objectiveWindow_FilterButton_1_title` "Going Green", tooltip "A
+  collection of information describing and explaining the key features of Going Green"; the other tab is "Tasks",
+  `FilterButton_0`): six info objectives from `d11.txt`, in this order: `GoingGreenInfo` ("Going Green!"),
+  `HelpBasicFarming`, `HelpAdvancedFarming`, `HelpGreenEnergy` (types, weather effects, Transformers and Batteries,
+  Power Export, green energy goals), `HelpNarcoticProduction`, `HelpEnvironmentallyFriendly` (Recycling, Recreational
+  Gardening). Each has `child_N` sub-headings with `child_N_description` texts (hover text in the game). The same
+  file has more `objective_Help*` items (Calamities, Calamity Prevention, Coverage Plans, Crooked Guards, Emergency
+  Services, Gang Activities / Behaviours / Intelligence, Programs, Security Options, Staff Training) that belong to other
+  info tabs. `ctl todo --going-green` prints the six with their texts plus the status of the related grants / goals
+  (`Grant_GreenMachine`, `Grant_EcoFriendly`, `target_*`) from `Save Grants`; `active` says whether an `Objective` with that
+  name is currently streamed.
