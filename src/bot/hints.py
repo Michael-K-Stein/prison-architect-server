@@ -38,6 +38,23 @@ POWER = (
     "Overloaded=3 (short circuit); keep them on separate cables.",
     "Battery and Transformer are indoor only; generators are outdoor.",
 )
+GREEN = (
+    "GREEN POWER NEEDS A TRANSFORMER (id 389, 2x2, indoor). SolarPanels, WindTurbines and "
+    "SolarWindHybrids cannot feed the prison directly: their power must first flow through "
+    "a Transformer, and only then can it be used by appliances. Several green sources can "
+    "feed one Transformer (input limit 5000 units).",
+    "Transformer cables have a direction: connect the green sources to the INPUT side and "
+    "the prison's cables to the OUTPUT side, as shown by the arrow images on both sides of "
+    "the Transformer (turn it with the object's facing). Do not join the farm's cables to "
+    "the prison's cables except through the Transformer.",
+    "Two Transformers must not be on the same circuit (the game reports 'Overloaded, "
+    "Transformers must not be on the same circuit'). Max 128 of each power-source type.",
+    "Batteries store the excess energy converted by a Transformer and only work when placed "
+    "ADJACENT to that Transformer (like Capacitors beside a PowerStation); a PowerExportMeter "
+    "must be wired to a Transformer that has Batteries connected: it sells stored energy "
+    "back to the grid for money (Power Export goals). The Transformer shows Production / "
+    "Expenditure / Excess power.",
+)
 PEOPLE = (
     "`ctl staff` shows every staff member's EnergyLevel and RestState; workmen at 0 are "
     "exhausted and work badly until they can rest in a Staffroom.",
@@ -65,6 +82,7 @@ TOPICS: dict[str, tuple[str, ...]] = {
     "doors": DOORS,
     "entrance": ENTRANCE,
     "power": POWER,
+    "green": GREEN,
     "people": PEOPLE,
     "grants": GRANTS,
     "build": BUILD,
@@ -92,11 +110,12 @@ OBJECT_HINTS: dict[str, tuple[str, ...]] = {
     "JailDoor": DOORS[:1] + ENTRANCE[1:2],
     "Door": DOORS[1:2] + ENTRANCE[1:2],
     "StaffDoor": DOORS[1:2] + ENTRANCE[1:2],
-    "Battery": POWER[2:],
-    "Transformer": POWER[2:],
-    "SolarPanels": POWER[1:2],
-    "WindTurbine": POWER[1:2],
-    "SolarWindHybrid": POWER[1:2],
+    "Battery": GREEN[3:] + POWER[2:],
+    "Transformer": GREEN + POWER[2:],
+    "PowerExportMeter": GREEN[3:],
+    "SolarPanels": GREEN[:3] + POWER[1:2],
+    "WindTurbine": GREEN[:3] + POWER[1:2],
+    "SolarWindHybrid": GREEN[:3] + POWER[1:2],
     "PowerStation": (
         "Avoid it for target_PowerStation (the 10-day no-station clock) and never put it on "
         "the same network as green sources.",

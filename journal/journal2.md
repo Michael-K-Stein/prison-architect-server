@@ -1948,3 +1948,22 @@ and to match the door to who it serves: workmen need a Door or StaffDoor to buil
 only a JailDoor); staff rooms a StaffDoor or Door; prisoner rooms (cells, dormitories,
 canteen, shower, yard) a Door or JailDoor, since prisoners cannot open StaffDoors; guards
 open any door. Source of the rules: the game owner's notes above and the MKS2 stall.
+
+### Green power needs a Transformer (game text, user pointer; MKS2)
+
+Why the farm never powered the buildings even once joined by cable: the game's own text
+(`d11.txt`) says "their power must first flow through a **Transformer** before it can be
+used within your prison" (`buildtoolbar_popup_uts_SolarPanels/WindTurbine/SolarWindHybrid`).
+`buildtoolbar_popup_uts_Transformer`: converts green power into appliance-friendly energy,
+several sources per Transformer, **input limit 5000 units**, "Electrical cables must be
+connected in the direction shown by the attached arrow images". `..._Battery`: stores the
+excess converted by Transformers, "must be placed **adjacent to a Transformer** to function"
+(staff alert `GreenEnergy02`: same as Capacitors and Power Stations). `..._PowerExportMeter`:
+sells stored energy back to the grid for money, "must be wired to a Transformer that has
+Batteries connected". `d11_powerstation_overloaded_two_transformers`: "Overloaded,
+Transformers must not be on the same circuit". Utility limit: 128 of each source type
+(`d11_utilitylimits_body`). Staff alerts `GreenEnergy01/02` say the same. The Transformer's
+panel shows `d11_transformer_input_power` (Production), `output_power` (Expenditure) and
+`spare_power` (Excess). Consequence for the 30 generators: they must go into a Transformer
+(indoors, e.g. in the battery hall) whose output cable feeds the prison network, and
+the farm's cables must not touch the prison's directly. Hint added to the green objects.

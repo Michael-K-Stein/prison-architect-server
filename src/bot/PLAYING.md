@@ -110,6 +110,15 @@ A cell is only fully usable with water for the toilet (a `WaterPumpStation`
 with power, pipes to the toilet) and a canteen with a kitchen to eat in;
 `problems` and `alerts` say what is missing.
 
+## Green power needs a Transformer
+
+SolarPanels, WindTurbines and SolarWindHybrids must feed a **Transformer** (id 389, 2x2, indoor,
+input limit 5000 units); only the Transformer's OUTPUT can power the prison, and its two
+sides have arrows (cable direction matters). Batteries must be adjacent to the Transformer;
+a PowerExportMeter is wired to a Transformer that has Batteries. Two Transformers must not
+share a circuit. `ctl hints green` has the details; the hints are attached to every green
+object you place.
+
 ## Green Energy Goals (the `target_*` grants)
 
 From the game text: 3 solar panels, then 3 wind turbines (each unlocks the next

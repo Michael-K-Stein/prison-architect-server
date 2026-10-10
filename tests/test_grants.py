@@ -81,3 +81,18 @@ def test_foundation_and_room_replies_carry_the_entrance_hint():
     assert any(
         "prisoners cannot open a StaffDoor" in h for h in hints.TOPICS["entrance"]
     )
+
+
+def test_green_sources_hint_the_transformer():
+    from src.bot import hints
+
+    for obj in (
+        "SolarPanels",
+        "WindTurbine",
+        "SolarWindHybrid",
+        "Battery",
+        "Transformer",
+    ):
+        found = hints.for_jobs([{"tool": "place", "object": obj}])
+        assert any("Transformer" in h for h in found), obj
+    assert any("INPUT side" in h for h in hints.TOPICS["green"])
