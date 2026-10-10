@@ -105,6 +105,28 @@ def _area(port: int, x: int, y: int, w: int, h: int) -> list[str]:
     return data["rows"]
 
 
+def wall_runs(rows: list[str], x: int, y: int) -> list[tuple[int, int, int, int]]:
+    """Straight runs ``(x, y, w, h)`` of existing wall cells in ``rows`` (top left at
+    ``x, y``): the walls a new foundation would turn into floor if it overlapped them."""
+    cells = {
+        (x + i, y + j) for j, r in enumerate(rows) for i, c in enumerate(r) if c == "W"
+    }
+    runs: list[tuple[int, int, int, int]] = []
+    used: set[tuple[int, int]] = set()
+    for cx, cy in sorted(cells, key=lambda c: (c[1], c[0])):
+        if (cx, cy) in used:
+            continue
+        w = 1
+        while (cx + w, cy) in cells and (cx + w, cy) not in used:
+            w += 1
+        h = 1
+        while w == 1 and (cx, cy + h) in cells and (cx, cy + h) not in used:
+            h += 1
+        runs.append((cx, cy, w, h))
+        used |= {(cx + i, cy + j) for i in range(w) for j in range(h)}
+    return runs
+
+
 def _wait_for(port: int, check: Callable[[], bool], timeout: float) -> bool:
     """Poll ``check()`` between 3 s waits, for at most ``timeout`` real seconds."""
     end = time.monotonic() + timeout
@@ -113,6 +135,57 @@ def _wait_for(port: int, check: Callable[[], bool], timeout: float) -> bool:
             return True
         call("POST", "/wait", {"seconds": 3}, port=port)
     return check()
+
+
+@room_app.command("clear")
+def room_clear(
+    ctx: typer.Context,
+    x: Annotated[int, typer.Argument(help="Left cell.")],
+    y: Annotated[int, typer.Argument(help="Top cell.")],
+    width: Annotated[int, typer.Argument(help="Cells wide.")],
+    height: Annotated[int, typer.Argument(help="Cells high.")],
+    timeout: Annotated[
+        int, typer.Option(help=f"Seconds per wait (at most {STAGE_TIMEOUT_MAX}).")
+    ] = 120,
+) -> None:
+    """Clear a leftover building: bulldoze, DemolishWalls, ClearIndoorArea, each waited for.
+
+    Use it on a half-built or unwanted foundation before building there again.
+    """
+    port = ctx.obj
+    timeout = min(timeout, STAGE_TIMEOUT_MAX)
+    steps = ("Demolish", "DemolishWalls", "ClearIndoorArea")
+    try:
+        call("POST", "/send", {"action": "GameSpeedChange", "args": ["10"]}, port=port)
+        for step in steps:
+            spec = {
+                "tool": "demolish",
+                "x": x,
+                "y": y,
+                "width": width,
+                "height": height,
+            }
+            status, data = call(
+                "POST", "/build", {"jobs": [{**spec, "material": step}]}, port=port
+            )
+            if status >= 400:
+                _fail(f"{step} refused", detail=data)
+            _wait_for(
+                port,
+                lambda: (
+                    not any(
+                        set(r) & set("WFB") for r in _area(port, x, y, width, height)
+                    )
+                ),
+                timeout if step != "Demolish" else min(timeout, 60),
+            )
+        rows = _area(port, x, y, width, height)
+    except OSError as exc:
+        _fail(f"no control server: {exc}")
+    left = sum(len(set(r) & set("WFB")) > 0 for r in rows)
+    typer.echo(
+        json.dumps({"cleared": left == 0, "rows_with_leftovers": left, "area": rows})
+    )
 
 
 @room_app.command("build")
@@ -144,8 +217,9 @@ def room_build(
 ) -> None:
     """Build a room from your design (--size, --door, --obj) or the bot's (--auto).
 
-    The design is checked against the game's rules first and refused with the
-    problems listed. Then: foundation, wait for the floor, door, wait for the walls,
+    Rooms may share a wall: put the next building's edge on a neighbour's wall
+    column. The design is checked against the game's rules first and refused with
+    the problems listed. Then: foundation, wait for the floor, door, wait for the walls,
     zone, objects. Blocks for minutes; the area must be empty ground (objects, cables
     and pipes underneath are not checked: look at `ctl state Save Objects` first).
     """
@@ -163,9 +237,19 @@ def room_build(
     done: list[str] = []
     warnings: list[str] = []
     try:
-        taken = [r for r in _area(port, x, y, outer_w, outer_h) if set(r) & set("WFB")]
-        if taken:
-            _fail("the area has walls/floor/frames already; pick empty ground")
+        ring = 1 if plan.building else 0
+        rows = _area(port, x, y, outer_w, outer_h)
+        # the new walls may be an existing neighbour's wall (rooms share walls); the
+        # inside of the room must be empty ground
+        shared = wall_runs(rows, x, y)
+        inside = [r[ring : outer_w - ring] for r in rows[ring : outer_h - ring]]
+        if any(set(r) & set("WFB") for r in inside) or any(
+            set(c) & set("FB") for r in rows for c in r
+        ):
+            _fail(
+                "the area has floor/frames, or walls inside the room; pick empty "
+                "ground (a neighbour's wall on the edge is fine) or `ctl room clear`"
+            )
         call("POST", "/send", {"action": "GameSpeedChange", "args": ["10"]}, port=port)
         for index, jobs in enumerate(rooms.stages(plan, x, y)):
             kind = jobs[0]["tool"]
@@ -184,6 +268,25 @@ def room_build(
                 )
                 if not ok:
                     warnings.append("the floor was not finished in time")
+                for sx, sy, sw, sh in shared:  # a foundation floors a wall it overlaps
+                    call(
+                        "POST",
+                        "/build",
+                        {
+                            "jobs": [
+                                {
+                                    "tool": "wall",
+                                    "x": sx,
+                                    "y": sy,
+                                    "width": sw,
+                                    "height": sh,
+                                }
+                            ]
+                        },
+                        port=port,
+                    )
+                if shared:
+                    done.append(f"re-walled {len(shared)} shared wall run(s)")
             elif kind == "place" and plan.building and index == 1:
                 ok = _wait_for(
                     port,

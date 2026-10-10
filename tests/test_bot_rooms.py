@@ -91,3 +91,12 @@ def test_room_cli_parsers() -> None:
         room_cli.parse_size("6")
     with pytest.raises(ValueError):
         room_cli.parse_objects(["Bed:0"])
+
+
+def test_wall_runs_find_a_neighbours_wall() -> None:
+    from src.bot import room_cli
+
+    rows = ["WWWWW", "WFFFW", "WWWWW"]
+    assert room_cli.wall_runs(["W..", "W..", "W.."], 10, 5) == [(10, 5, 1, 3)]
+    assert room_cli.wall_runs(rows, 0, 0)[0] == (0, 0, 5, 1)
+    assert room_cli.wall_runs(["..."], 0, 0) == []

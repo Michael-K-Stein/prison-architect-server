@@ -187,14 +187,16 @@ def _letter(name: str, taken: dict[str, str]) -> str:
 
 
 def render(plan: RoomPlan) -> list[str]:
-    """ASCII picture: ``#`` wall, ``D`` door, letters for objects (first letter of the
-    name, a second object of the same letter in lower case), ``.`` free floor."""
-    outer_w, outer_h = plan.outer
+    """ASCII picture: ``#`` wall, ``D`` door, a letter per object type, ``.`` free
+    floor. A zone-only room (``building`` false) has no walls and no door."""
+    ring = 1 if plan.building else 0
+    outer_w, outer_h = plan.w + 2 * ring, plan.h + 2 * ring
     grid = [["#"] * outer_w for _ in range(outer_h)]
     for y in range(plan.h):
         for x in range(plan.w):
-            grid[y + 1][x + 1] = "."
-    grid[plan.h + 1][plan.door + 1] = "D"
+            grid[y + ring][x + ring] = "."
+    if plan.building:
+        grid[plan.h + 1][plan.door + 1] = "D"
     letters: dict[str, str] = {}
     for obj in plan.objects:
         w, h = size_of(obj.name)
@@ -202,7 +204,7 @@ def render(plan: RoomPlan) -> list[str]:
         letters[obj.name] = letter
         for j in range(h):
             for i in range(w):
-                grid[obj.dy + j + 1][obj.dx + i + 1] = letter
+                grid[obj.dy + j + ring][obj.dx + i + ring] = letter
     return ["".join(row) for row in grid] + [
         f"{letter} = {name}" for name, letter in letters.items()
     ]

@@ -2597,3 +2597,13 @@ still reached the bots. A fresh join (`ctl quit`, new `serve`) received snapshot
 when disconnected; the new session replaces the old one inside the control server, so the port and names
 survive. `bot ... serve --no-reconnect` turns it off. The cause of the freeze is the host window (it needs a
 click), not the bots; a purchase should be followed by a click on DHost.
+
+### Rooms can share a wall (user), and how a foundation treats an existing wall
+
+A foundation whose edge lies on a neighbour's wall turns that wall into **floor** (a test Cell at 48,52 beside
+the Cell at 44,52 merged the two interiors: the shared column x=48 became `F`). Re-placing the wall with the `wall`
+tool afterwards (`ctl build wall 48 53 1 4`) gives two rooms with one common wall and both doors working
+(rooms 12 and 28 `Cell`). `ctl room build` now allows existing walls on the new building's edge and re-walls
+those runs after the floor is built; `ctl room clear X Y W H` removes a leftover building (Demolish,
+DemolishWalls, ClearIndoorArea, each waited for). Buildings need no one-cell gaps. The dry-run picture of a
+zone-only room (Forestry, Exports, Storage...) no longer draws walls (the player had read them as built).
