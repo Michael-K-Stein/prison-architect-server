@@ -1175,3 +1175,50 @@ joined as actor 8 next to the host `Noob` (actor 1) and loaded the save.
   So a joined client's commands are obeyed, and the argument is the
   **multiplier** (as the IDA handler suggested), not the stop index. Set back
   with `GameSpeedChange(1)`. Wire bytes `02 02`.
+
+## Host actions in `captures/bot-goal.sqlite` (Claude Opus 5.5 work)
+
+The user, as the host, called vehicles (from the bot), built a power station
+and cables, hired a warden, built an office and a cell, and began research.
+All 27,000+ events parse (no `RpcShapeError`, no snapshot errors). The host
+sends **no command RPCs for its own actions**, only their effects, so how a
+*client* asks for them still comes from the binary.
+
+### Vehicles (bot sessions 11 and 15 in the capture)
+
+- `NewVehicleCallout(3)` x6 -> `Squads.sqd [i n] {Id.i, Id.u, Type='RiotPolice',
+  ArrivalTime}` entries appear one by one, plus `TransactionAppended -100
+  'object_RiotVan'`. `NewVehicleCallout(1)` x5 -> `Type='FireEngine'`. So 1 =
+  FireEngine, 3 = RiotPolice. The squads left on their own by ~1259 s.
+  `SquadDismissal(ObjectId)` most likely takes the `Squads` `Id` (not yet sent).
+- The bot also sent 6 `IncreaseLoan` and ~44 `DecreaseLoan` (1561-1573 s).
+
+### Object, room and material ids
+
+| Id | Name | Evidence |
+| -- | ---- | -------- |
+| object 5 / 9 / 26 | Bed / Toilet / JailDoor | Job `{Type='Objects', Material=N}` then a `WorkQueue` `InstallObject ObjType=<name>` at the same cell (#70059-#70306) |
+| object 14, 132, 231, 233, 241 | Chair, Warden, OfficeDesk, FilingCabinet, PowerStation | same uId in a save's `Objects.Type` and an `ObjectData`/`ObjectAdded` `t` |
+| room 1 / 17 | Cell / Office | `CreateRoom(ObjectId, N)`; for the cell right after Job `{Type='Designation', Material=1}` (#68930-#69245) |
+| wall material 46 | ConcreteWall | Job `{Type='flooring', Material=46, QRWallType=46}` -> `Construct` jobs `MatType='ConcreteWall'` |
+
+Build tools seen in `PlayerData.<actor>.Job.Type`: `Foundations`, `Designation`
+(room zoning; `Material` = room type), `flooring` (walls; `Material` = wall
+material), `Objects` (`Material` = object type id), `-1` (no tool). `Status`
+goes `1` (valid preview) -> `-2` after the click, and the `WorkQueue` jobs appear.
+`Cost` is the preview price (-200 for a bed/toilet/door).
+
+Other effects: cables -> `PowerCellModified(x, y, 1)` per cell and
+`TransactionAppended -20 'object_ElectricalCable'`; the office zoning ->
+`CreateRoom(..., 17)` (#39987).
+Research -> `Research {N-r: progress, N-d: desired}` (ids 16, 9, 4 being
+researched; names not yet known). New systems seen: `Thermometer`,
+`Research`, `EventLog` (`pr.r`/`pr.re` entries: prisoner released *guess*),
+`RoomData`, `SectorSystem`, `NeedProviders`, `Squads`.
+
+### The dead prisoners
+
+`VictorySystem.l` records 7 `Type='Died'` at ~1596 s (game time 7116) and one
+`ServedTerm` (released at ~1383 s). The records have no cause. No bot RPC was
+sent near the deaths except the loan spam; `FeedAllPrisoners` was re-raised all
+session, so starvation is the likeliest cause (*guess*).

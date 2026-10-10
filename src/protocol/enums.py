@@ -17,7 +17,10 @@ VEHICLES: dict[int, str] = {
 OBJECT_TYPES: dict[int, str] = {
     # ObjectData ``t`` / ObjectAdded type. Partial: ids are assigned at load,
     # these pairs come from the captures (save ``Objects.Type`` by uId).
+    5: "Bed",  # cell build (bot-goal ~#70291): Job Material=5 -> InstallObject Bed
+    9: "Toilet",  # ... Material=9 -> InstallObject Toilet
     14: "Chair",
+    26: "JailDoor",  # ... Material=26 -> InstallObject JailDoor
     41: "StaffDoor",
     132: "Warden",
     231: "OfficeDesk",
@@ -28,8 +31,24 @@ OBJECT_TYPES: dict[int, str] = {
 RESEARCH: dict[int, str] = {}
 """BeginResearch / ToggleResearchDesired id -> research name."""
 
-ROOM_TYPES: dict[int, str] = {}
-"""CreateRoom type -> room name."""
+ROOM_TYPES: dict[int, str] = {
+    # CreateRoom type = the Designation job's Material (bot-goal: an office
+    # at #39987, a cell at #69245 after Job {Type='Designation', Material=1}).
+    1: "Cell",
+    17: "Office",
+}
+"""CreateRoom type -> room name. Partial."""
+
+WALL_MATERIALS: dict[int, str] = {
+    # Job {Type='flooring', Material=46} -> Construct jobs MatType='ConcreteWall'
+    46: "ConcreteWall",
+}
+"""``flooring`` (wall) tool materials. Partial."""
+
+FOUNDATION_MATERIALS: dict[int, str] = {
+    59: "Concrete",  # run4: Job {Type='Foundations', Material=59}; *guess* name
+}
+"""``Foundations`` tool materials. Partial."""
 
 STAFF = frozenset({"Workman", "Warden", "Guard", "Cook"})
 """Object type names that are staff (save ``Objects.Type``). Partial: from the
