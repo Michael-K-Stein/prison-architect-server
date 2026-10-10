@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from pyphotonrealtime.realtime.lobby import TypedLobby
 from typer.testing import CliRunner
 
 from src.bot import flow
@@ -220,6 +221,7 @@ def test_join_room_headless(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = SimpleNamespace(stop=lambda: stopped.append(True))
     joined: list[str] = []
     monkeypatch.setattr(flow, "connect", lambda opts, region, recorder: fake)
+    monkeypatch.setattr(flow, "lobbies_of", lambda s: [TypedLobby()])
     monkeypatch.setattr(flow, "list_rooms", lambda s, lobby: [_room("Alpha")])
     monkeypatch.setattr(flow, "enter_room", lambda s, o, name: joined.append(name))
     opts = Options(app_id="x")

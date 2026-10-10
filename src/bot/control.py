@@ -33,7 +33,7 @@ from typing import Any
 from urllib import error, request
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from src.bot import build, catalog, hints, objecthints, wiredata
+from src.bot import build, catalog, hints, inmate_actions, objecthints, wiredata
 from src.bot.names import NameError_
 from src.bot.zones import Zones, bounds, mask_rows
 from src.protocol.grants import GRANTS
@@ -281,6 +281,66 @@ class ControlServer:
             "hints": hints.for_action(action.name),
             **self._with_staff(action.name in hints.STAFF_ACTIONS),
         }
+
+    def inmate(self, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        """``/inmate``: an inmate panel command (security, search ...) on one inmate."""
+        state = self.session.state
+        try:
+            index, name = inmate_actions.find_inmate(state, str(body.get("who", "")))
+            command = str(body.get("command", ""))
+            if command == "escort":
+                return self._escort(state, index, name, body.get("argument"))
+            if command in ("cell", "swap-cells"):
+                return self._cells(state, index, name, command, body.get("argument"))
+            action, arg = inmate_actions.request(
+                str(body.get("command", "")), body.get("argument")
+            )
+        except ValueError as exc:
+            return 400, {"error": str(exc)}
+        args = [f"#{index}", *arg]
+        status, reply = self.send({"action": action, "args": args})
+        return status, {"inmate": name, "index": index, **reply}
+
+    def _escort(
+        self, state: Any, index: int, name: str, argument: Any
+    ) -> tuple[int, dict[str, Any]]:
+        """Escort an inmate to cell ``argument`` = ``[x, y]`` (PlayerSetsTarget)."""
+        try:
+            x, y = (float(v) for v in argument)
+        except (TypeError, ValueError):
+            return 400, {"error": "escort needs a target cell X Y"}
+        args = [index, f"{int(x) + 0.5},{int(y) + 0.5}", "false", f"#{index}"]
+        status, reply = self.send({"action": "PlayerSetsTarget", "args": args})
+        return status, {"inmate": name, "index": index, "to": [x, y], **reply}
+
+    def _cells(
+        self, state: Any, index: int, name: str, command: str, argument: Any
+    ) -> tuple[int, dict[str, Any]]:
+        """Move an inmate to cell room ``argument``, or swap cells with another inmate."""
+        try:
+            if command == "cell":
+                moves = [(index, name, inmate_actions.room_id(state, int(argument)))]
+            else:
+                other, other_name = inmate_actions.find_inmate(state, str(argument))
+                mine = inmate_actions.cell_of(state, index)
+                theirs = inmate_actions.cell_of(state, other)
+                if mine is None or theirs is None or other == index:
+                    raise ValueError(
+                        "swap needs two different inmates that both have a cell "
+                        f"({name}: {mine}, {other_name}: {theirs})"
+                    )
+                moves = [(index, name, theirs), (other, other_name, mine)]
+        except (TypeError, ValueError) as exc:
+            return 400, {"error": str(exc)}
+        sent = []
+        for who, who_name, (uid, room) in moves:
+            status, reply = self.send(
+                {"action": "QuickCellChange", "args": [f"#{who}", f"{uid},{room}"]}
+            )
+            if status != 200:
+                return status, reply
+            sent.append({"inmate": who_name, "index": who, "cell": room, **reply})
+        return 200, {"moves": sent}
 
     def _zones(self) -> Zones:
         """The session's zones, bound to the joined game."""
@@ -554,6 +614,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._reply(*c.zone(body))
             elif path == "/send":
                 self._reply(*c.send(body))
+            elif path == "/inmate":
+                self._reply(*c.inmate(body))
             elif path == "/build":
                 self._reply(*c.build(body))
             elif path == "/refresh":

@@ -22,8 +22,10 @@ from pathlib import Path
 from typing import Annotated
 from urllib.parse import quote
 
+import click
 import typer
 from rich.console import Console
+from typer.core import TyperGroup
 
 from src.bot.broadcast import SPEAKERS, speaker_index
 from src.bot.control import DEFAULT_PORT, ControlServer, call
@@ -48,7 +50,51 @@ LogLevel = Enum("LogLevel", {n: n for n in LOG_LEVELS}, type=str)
 console = Console()
 log = logging.getLogger(__name__)
 
-app = typer.Typer(help=__doc__, invoke_without_command=True, no_args_is_help=False)
+TARGET_KEY = "bot.target"
+
+
+class BotGroup(TyperGroup):
+    """A group that also takes a ``REGION:GAME`` word, e.g. ``bot au:MKS2``.
+
+    The word is lifted out of the arguments before click parses them (it can sit
+    anywhere, even after the options) and is left in ``ctx.meta[TARGET_KEY]``.
+    """
+
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        takes_value = {
+            flag
+            for p in self.params
+            if p.param_type_name == "option" and not getattr(p, "is_flag", False)
+            for flag in p.opts
+        }
+        rest: list[str] = []
+        skip = False
+        for i, arg in enumerate(args):
+            if skip:
+                skip = False
+            elif arg in self.commands:
+                rest += args[i:]  # a subcommand: its words are not ours
+                break
+            elif arg.startswith("-"):
+                skip = arg in takes_value
+            elif ":" in arg and TARGET_KEY not in ctx.meta:
+                ctx.meta[TARGET_KEY] = arg
+                continue
+            rest.append(arg)
+        return super().parse_args(ctx, rest)
+
+
+def split_target(target: str) -> tuple[str, str | None]:
+    """``au:MKS2`` -> ``("au", "MKS2")``; ``au:`` -> ``("au", None)``."""
+    region, _, game = target.partition(":")
+    if not region:
+        raise typer.BadParameter(f"{target!r}: expected REGION:GAME, e.g. au:MKS2")
+    return region, game or None
+
+
+app = typer.Typer(
+    help=__doc__, invoke_without_command=True, no_args_is_help=False, cls=BotGroup
+)
 
 
 @app.callback()
@@ -136,10 +182,15 @@ def main(
         record=record,
         password=password or environ.get("PA_PASSWORD", ""),
     )
+    game = None
+    target = ctx.meta.get(TARGET_KEY)
+    if target:
+        target_region, game = split_target(target)
+        opts.region = region or target_region
     ctx.obj = opts
     if ctx.invoked_subcommand is None:
         require_app_id(opts)
-        run(opts)
+        run(opts, game)
 
 
 def require_app_id(opts: Options) -> None:
@@ -172,8 +223,8 @@ def regions(ctx: typer.Context) -> None:
             console.print(format_region(code, address), markup=False)
 
 
-def run(opts: Options) -> None:
-    """The interactive flow: region, lobby, game, menu."""
+def run(opts: Options, game: str | None = None) -> None:
+    """The interactive flow: region, lobby, game, menu (``game`` skips the picker)."""
     session: Session | None = None
     with recording(opts) as recorder:
         try:
@@ -184,7 +235,10 @@ def run(opts: Options) -> None:
                     "Region", [(format_region(c, a), c) for c, a in found.items()]
                 )
             log.info("region: %s", region)
-            session = join_flow(opts, region, recorder)
+            if game is not None:
+                session = join_room(opts, region, game, recorder)
+            else:
+                session = join_flow(opts, region, recorder)
             session.request_save(opts.password)
             run_hud(session, opts)
         except KeyboardInterrupt:
@@ -601,6 +655,143 @@ def ctl_hints(
 def ctl_staff(ctx: typer.Context) -> None:
     """Energy and rest status of every staff member (exhausted / tired / ok)."""
     _show(ctx, "GET", "/staff")
+
+
+inmate_app = typer.Typer(
+    help="Inmate panel actions on one inmate (name part or #index)."
+)
+ctl.add_typer(inmate_app, name="inmate")
+
+
+def _inmate(ctx: typer.Context, who: str, command: str, argument: str | None) -> None:
+    _show(
+        ctx,
+        "POST",
+        "/inmate",
+        {"who": who, "command": command, "argument": argument},
+    )
+
+
+@inmate_app.command("security")
+def ctl_inmate_security(
+    ctx: typer.Context,
+    who: Annotated[str, typer.Argument(help="Name part or #index (`ctl state`).")],
+    group: Annotated[
+        str, typer.Argument(help="MinSec, Normal, MaxSec, Protected or SuperMax.")
+    ],
+) -> None:
+    """Change an inmate's security group: `ctl inmate security Ficklin SuperMax`."""
+    _inmate(ctx, who, "security", group)
+
+
+@inmate_app.command("search")
+def ctl_inmate_search(
+    ctx: typer.Context,
+    who: Annotated[str, typer.Argument(help="Name part or #index.")],
+) -> None:
+    """Search an inmate (guards frisk them)."""
+    _inmate(ctx, who, "search", None)
+
+
+@inmate_app.command("search-cell")
+def ctl_inmate_search_cell(
+    ctx: typer.Context,
+    who: Annotated[str, typer.Argument(help="Name part or #index.")],
+) -> None:
+    """Search the cell of an inmate."""
+    _inmate(ctx, who, "search-cell", None)
+
+
+@inmate_app.command("search-block")
+def ctl_inmate_search_block(
+    ctx: typer.Context,
+    who: Annotated[str, typer.Argument(help="Name part or #index.")],
+) -> None:
+    """Search the whole cell block of an inmate."""
+    _inmate(ctx, who, "search-block", None)
+
+
+@inmate_app.command("lockdown")
+def ctl_inmate_lockdown(
+    ctx: typer.Context,
+    who: Annotated[str, typer.Argument(help="Name part or #index.")],
+    hours: Annotated[float, typer.Argument(help="How long, in game hours.")] = 6,
+) -> None:
+    """Put an inmate on lockdown: `ctl inmate lockdown Disney 6`."""
+    _inmate(ctx, who, "lockdown", str(hours))
+
+
+@inmate_app.command("solitary")
+def ctl_inmate_solitary(
+    ctx: typer.Context,
+    who: Annotated[str, typer.Argument(help="Name part or #index.")],
+    hours: Annotated[str, typer.Argument(help="Game hours, or `permanent`.")] = "12",
+) -> None:
+    """Send an inmate to solitary: `ctl inmate solitary Disney 12` (or `permanent`)."""
+    _inmate(ctx, who, "solitary", hours)
+
+
+@inmate_app.command("clear-punishments")
+def ctl_inmate_clear_punishments(
+    ctx: typer.Context,
+    who: Annotated[str, typer.Argument(help="Name part or #index.")],
+) -> None:
+    """End an inmate's lockdown / solitary."""
+    _inmate(ctx, who, "clear-punishments", None)
+
+
+@inmate_app.command("escort")
+def ctl_inmate_escort(
+    ctx: typer.Context,
+    who: Annotated[str, typer.Argument(help="Name part or #index.")],
+    x: Annotated[int, typer.Argument(help="Target cell X (e.g. in the Infirmary).")],
+    y: Annotated[int, typer.Argument(help="Target cell Y.")],
+) -> None:
+    """Have a guard escort an inmate to a cell: `ctl inmate escort Disney 43 173`."""
+    _show(
+        ctx,
+        "POST",
+        "/inmate",
+        {"who": who, "command": "escort", "argument": [x, y]},
+    )
+
+
+@inmate_app.command("cell")
+def ctl_inmate_cell(
+    ctx: typer.Context,
+    who: Annotated[str, typer.Argument(help="Name part or #index.")],
+    room: Annotated[int, typer.Argument(help="Index of the cell room (`ctl room`).")],
+) -> None:
+    """Move an inmate to a cell."""
+    _inmate(ctx, who, "cell", str(room))
+
+
+@inmate_app.command("swap-cells")
+def ctl_inmate_swap_cells(
+    ctx: typer.Context,
+    who: Annotated[str, typer.Argument(help="Name part or #index.")],
+    other: Annotated[str, typer.Argument(help="The other inmate.")],
+) -> None:
+    """Swap the cells of two inmates."""
+    _inmate(ctx, who, "swap-cells", other)
+
+
+@inmate_app.command("assign-guard")
+def ctl_inmate_assign_guard(
+    ctx: typer.Context,
+    who: Annotated[str, typer.Argument(help="Name part or #index.")],
+) -> None:
+    """Assign a guard to an inmate (the game picks one)."""
+    _inmate(ctx, who, "assign-guard", None)
+
+
+@inmate_app.command("unassign-guard")
+def ctl_inmate_unassign_guard(
+    ctx: typer.Context,
+    who: Annotated[str, typer.Argument(help="Name part or #index.")],
+) -> None:
+    """Take the assigned guard off an inmate."""
+    _inmate(ctx, who, "unassign-guard", None)
 
 
 @ctl.command("wires")

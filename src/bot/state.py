@@ -169,7 +169,11 @@ class GameObject:
     @property
     def label(self) -> str:
         """``Name #index``, plus the position when known."""
-        where = f" at {self.pos[0]:g},{self.pos[1]:g}" if self.pos else ""
+        where = (
+            f" at {round(self.pos[0], 2):g},{round(self.pos[1], 2):g}"
+            if self.pos
+            else ""
+        )
         return f"{self.name or '?'} #{self.index}{where}"
 
 

@@ -111,11 +111,25 @@ def join_room(
     recorder: Recorder | None = None,
     lobby: TypedLobby | None = None,
 ) -> Session:
-    """Headless join: ``room`` (or the first open one) in ``lobby`` (default)."""
+    """Headless join: ``room`` (or the first open one) in ``lobby``.
+
+    Without ``lobby``, the default lobby is searched first, then every other lobby
+    the Master lists (the game picker shows them all too).
+    """
     session = connect(opts, region, recorder)
     try:
-        rooms = list_rooms(session, lobby or TypedLobby())
-        enter_room(session, opts, choose_room(rooms, room))
+        lobbies = [lobby] if lobby else lobbies_of(session)
+        error: ConnectError | None = None
+        for candidate in lobbies:
+            try:
+                name = choose_room(list_rooms(session, candidate), room)
+            except ConnectError as exc:
+                error = error or exc  # report the default lobby's complaint
+                continue
+            enter_room(session, opts, name)
+            break
+        else:
+            raise error or ConnectError("no lobbies")
     except BaseException:
         session.stop()
         raise

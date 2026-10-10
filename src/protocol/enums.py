@@ -52,11 +52,27 @@ ADVISERS: dict[int, str] = {
     4: "The Chief",
     5: "The Doctor",
     6: "The KingPin",
+    7: "Edward (shooter)",
+    8: "Edward (sinner)",
+    9: "Edward (inmate)",
+    10: "Edward's Wife Susan",
+    11: "The Priest",
+    12: "Don Palermo",
+    13: "Don Palermo (angry)",
+    14: "Nico Tamoretti",
+    15: "Nico Tamoretti (shower)",
+    16: "Nico Tamoretti (suited)",
+    17: "Nico Tamoretti (infirmary)",
+    18: "Sonny Palermo",
+    19: "Sonny Palermo (suited)",
+    20: "Sonny Palermo (strangled)",
 }
-"""``NewSpeechAdded`` first argument: the adviser who speaks, in the order of the
-game's ``adviser_name_*`` language keys (``base-language.txt``). Only 1 = The CEO
-is confirmed (``help_warning_prisonerreleased`` came with 1 and the user saw it as
-a call from "The CEO", MKS2 packet 7372); the rest follow the same key order."""
+"""``NewSpeechAdded`` first argument: the adviser who speaks. The order is the game's
+adviser registry (static initializer ``sub_14004EA80``: name + portrait pairs, 0 =
+Unknown ... 20 = SonnyStrangled; journal2 "Adviser indices"). 7-11 are the Death Row
+campaign (Edward, Susan, the Priest), 12-20 the Food campaign (the Palermos). Only
+1 = The CEO was confirmed live (``help_warning_prisonerreleased`` came with 1 and the
+user saw it as a call from "The CEO", MKS2 packet 7372)."""
 
 STAFF_TYPES = frozenset(
     {

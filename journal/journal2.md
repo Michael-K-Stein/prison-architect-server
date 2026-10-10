@@ -2705,3 +2705,49 @@ is skipped), with the Staff Room advice when no room of type 26 exists (`sub_140
 "due for release soon" counter (`Prison+6716`, in the Intake system; its timer text is not referenced by the exe) and the
 punishment counters (solitary, queued, lockdown). `GameState.todo()` now includes Incident Reports, Prisoner Parole and Staff
 Exhausted from these helpers.
+
+
+## Adviser indices (IDA, Claude Sonnet 5.5 work)
+
+`NewSpeechAdded`'s first argument indexes the game's adviser registry, built by a static
+initializer (`sub_14004EA80`, 21 name + portrait pairs, in this order): 0 Unknown,
+1 Ceo, 2 Warden, 3 Governer, 4 Chief, 5 Doctor, 6 KingPin; Death Row campaign: 7
+EdwardShooter, 8 EdwardSinner, 9 EdwardInmate, 10 EdwardsWife, 11 Priest; Food
+campaign: 12 TheDon, 13 TheDonAngry, 14 Nico, 15 NicoShower, 16 NicoSuited, 17
+NicoInfirmary, 18 Sonny, 19 SonnySuited, 20 SonnyStrangled. 0-6 match the old
+`adviser_name_*` guess; 7-20 are new (`ADVISERS` in `src/protocol/enums.py`). Not yet
+heard live; only 1 = CEO has been confirmed on the wire.
+
+## Inmate actions (captures/inmate-actions.sqlite, Claude Sonnet 5.5)
+
+The user did one action per inmate in the inmate panel; each is one client RPC (event
+`254: 27`, the host) on the inmate's ObjectId (`04 <index varint> 22 03 <uId varint>`):
+
+| Panel action | RPC | Extra arg |
+|---|---|---|
+| Security Medium -> SuperMax | `ApplyPrisonerCategory` (38) | `02 05` (SuperMax) |
+| Search | `PerformAction` (35) | `02 07` |
+| Search Cell | `PerformAction` (35) | `02 08` |
+| Search Cell Block | `PerformAction` (35) | `02 09` |
+| Lockdown 6 hours | `ApplyPunishment` (39) | `01 03 68 01` = type 1, 360 |
+| Solitary 6 hours (Felix) | `ApplyPunishment` (39) | type 2, 360 (both punishments: 60 per hour; an earlier "12 hours" sent 1440 = 24 h, a mis-click) |
+| Solitary permanently | `ApplyPunishment` (39) | type 2, 500000 |
+| (later) clear | `ClearAllPunishments` (40) | none |
+| Swap two inmates' cells | `QuickCellChange` (132) x2 | inmate, the other's cell room `uId,index` |
+| Escort to Infirmary | `PlayerSetsTarget` (33) | inmate index, Vector2 (43.5, 173.5), false, inmate |
+| Assign Guard | `AssignGuardToPrisoner` (127) | none |
+| Unassign Guard | `UnassignGuardFromPrisoner` (128) | none |
+
+Notes: the game also sent `ApplyPrisonerCategory(inmate, 2)` twice whenever it opened an
+inmate's panel (2 = Normal, the inmate's current group), so 2 and 5 are confirmed and
+MinSec 1 / MaxSec 3 / Protected 4 are inferred from the order (None = 0). The bot:
+`bot ctl inmate security|search|search-cell|search-block|assign-guard|unassign-guard
+WHO` and the same rows in each inmate's folder of the interactive panel
+(`src/bot/inmate_actions.py`).
+
+Punishment types (IDA strings, same section): the game's UI has exactly `punish_lockdown_{6,12,24,perm}`
+and `punish_solitary_{6,12,24,perm}` (+ `EndPunishment`), so `ApplyPunishment` types are 1 =
+lockdown, 2 = solitary, durations 6/12/24 hours (60 per hour) or permanent (500000). The
+earlier "12 hours" = 1440 was therefore the 24 h button. The save keeps `punish_active`,
+`punish_timer_minutes`, `punish_permanent` on the inmate. No hidden types turned up; the
+only "shadow" strings are rendering (`ToggleShadows`, `SunShadows`).
