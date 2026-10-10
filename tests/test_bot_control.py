@@ -30,7 +30,7 @@ class FakeSession:
         room = SimpleNamespace(name="Jail", players={1: host})
         self.client = SimpleNamespace(current_room=room)
 
-    def raise_event(self, code: int, data: bytes) -> bool:
+    def raise_event(self, code: int, data: bytes, *, broadcast: bool = False) -> bool:
         self.sent.append((code, data))
         return True
 

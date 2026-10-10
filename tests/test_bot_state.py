@@ -81,7 +81,7 @@ def test_alerts_from_staff_and_speech() -> None:
     state.apply(117, build(117, 1, "help_warning_prisonerreleased"))
     lines = [line for _, _, line in state.since(0)]
     assert lines[0] == "alert: Warden: The general quality of our cells is too low."
-    assert lines[1].startswith("alert: Reform Programs are key")
+    assert lines[1].startswith("alert: The CEO: Reform Programs are key")
     assert len(lines) == 2 and len(state.summary()["alerts"]) == 2
 
 

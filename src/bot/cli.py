@@ -350,9 +350,14 @@ def ctl_send(
     ctx: typer.Context,
     action: Annotated[str, typer.Argument(help="Action name or RPC code.")],
     args: Annotated[list[str] | None, typer.Argument(help="Arguments as text.")] = None,
+    broadcast: Annotated[
+        bool,
+        typer.Option(help="Send to every other player, not only the host."),
+    ] = False,
 ) -> None:
-    """Send one RPC."""
-    _show(ctx, "POST", "/send", {"action": action, "args": args or []})
+    """Send one RPC (to the host; --broadcast: to everyone else)."""
+    body = {"action": action, "args": args or [], "broadcast": broadcast}
+    _show(ctx, "POST", "/send", body)
 
 
 @ctl.command("build")

@@ -233,15 +233,18 @@ class Session(
             time.sleep(0.05)
         return done()
 
-    def raise_event(self, code: int, data: bytes) -> bool:
+    def raise_event(self, code: int, data: bytes, *, broadcast: bool = False) -> bool:
         """Send a game RPC to the host, as a client does (actor 1 only).
 
         ``bytes`` go out as an Int8Slice under key Data (245).
         """
         with self.lock:
-            sent = self.client.op_raise_event(
-                code, data, RaiseEventArgs(target_actors=[HOST_ACTOR])
+            args = (
+                RaiseEventArgs()  # every other player
+                if broadcast
+                else RaiseEventArgs(target_actors=[HOST_ACTOR])
             )
+            sent = self.client.op_raise_event(code, data, args)
             actor = self.client.local_player.actor_number
         log.info(
             "sent RPC %d %s (%d B): %s",

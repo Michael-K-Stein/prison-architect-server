@@ -245,7 +245,9 @@ class ControlServer:
             data = rpc.build(action.code, *values)
         except (catalog.ArgError, rpc.RpcShapeError) as exc:
             return 400, {"error": str(exc)}
-        sent = self.session.raise_event(action.code, data)
+        sent = self.session.raise_event(
+            action.code, data, broadcast=bool(body.get("broadcast"))
+        )
         log.info("control /send %s %r -> sent=%s", action.name, args, sent)
         return 200, {
             "sent": bool(sent),
