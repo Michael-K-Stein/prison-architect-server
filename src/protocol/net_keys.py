@@ -137,6 +137,11 @@ KEYS: dict[str, dict[str, str]] = {
         "en1": "Entity1: first object involved (en1.i index, en1.u uId)",
         "en2": "Entity2: second object involved, -1 if none",
     },
+    "Contraband": {
+        "ts": "TunnelSearch: set for one update when a tunnel search is ordered",
+        "d1": "? contraband detection float (d1, d2 drift slowly)",
+        "d2": "? contraband detection float",
+    },
     "StaffAlert": {
         "tts": "summary text key (language file)",
         "ts": "? detail text key (guess)",

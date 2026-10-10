@@ -1842,3 +1842,27 @@ whose handler only displays (speech, and the amount in the transaction list for
 balance via 118 or `Finance`/`World` directory data) were not applied.
 Untried candidates for the same effect: other display-only events (`TransactionAppended`
 119 as a text in the list, `ObjectiveRemoved` 21 on clients, `MarkerCreatedPos` 23).
+
+### Tunnel Search on All Sectors (user action, MKS2, `mks2-bot2.sqlite`)
+
+The only change in that window is the `Contraband` directory: packet **9953**
+`Contraband {ts=True, d1=0.535497, d2=0.767994}`, then packet **9961**
+`Contraband {ts=False, d1=0.535601, d2=0.768225}` (the bot sees it as host ->
+client). `ts` is the net key of `TunnelSearch` (the search settings class, with
+`s` Shakedown and `db` DrugBust), and it is a one-update trigger: raised for
+about eight packets and cleared by the host. "All Sectors" is not in the
+packet; the order is sector-wide, so there is no per-sector id. The player's
+request itself (client -> host) is only visible in the proxy capture of that
+client, not in the bot's. `d1` / `d2` are slowly drifting floats (0.5353 ->
+0.5358, 0.7679 -> 0.7688 over 60 packets), possibly search/detection levels.
+
+### Cables silently dropped in MKS2
+
+The farm agent's cable and battery jobs and the bot's own `ctl build line 5 70 6 1
+-n ElectricalCable`, a 1x1 cable, a Light and a Capacitor at (5..12, 70..72) never
+reached the host's `ConstructionSystem` (`Jobs` stayed at the 3 foundations)
+although foundations and generators from the same session were accepted. The
+earlier game accepted the same cable jobs. Causes not found yet: the location
+(near the south-west corner) or land ownership in this game, a rule after the
+bot re-joined as actor 4, or the host's reloads (every `ctl refresh` makes the
+host "prepare the save" again, which the agent suspected of wiping queued jobs).
