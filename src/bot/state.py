@@ -229,6 +229,13 @@ class GameState:
                 if c.fields.get("t") == type_id and "uId" in c.fields
             ]
 
+    def uid_of(self, index: int) -> int | None:
+        """The uId of object ``index`` (for an ``ObjectId``), if known."""
+        with self.lock:
+            objects = self.systems.get("ObjectData")
+            node = objects.children.get(str(index)) if objects else None
+            return node.fields.get("uId") if node else None
+
     def summary(self) -> dict[str, Any]:
         """A JSON-able overview: money, time, speed, objectives, counts."""
         with self.lock:
