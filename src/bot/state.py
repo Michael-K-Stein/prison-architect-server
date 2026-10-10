@@ -30,6 +30,7 @@ from src.bot import network
 from src.bot.names import ObjectNames
 from src.bot.zones import Zones
 from src.protocol.net_keys import label
+from src.bot import todo_items
 from src.protocol.room_rules import ROOM_RULES
 from src.protocol.enums import (
     STAFF_TYPES,
@@ -501,27 +502,17 @@ class GameState:
                 if alert.urgent:
                     item["urgent"] = True
                 items.append(item)
-            exhausted = self._exhausted_staff()
-            if exhausted:
-                item = {
-                    "kind": "report",
-                    "id": "StaffExhausted",
-                    "title": TEXT.get("objective_staffexhausted", "Staff Exhausted"),
-                    "text": TEXT.get(
-                        "objective_reststaff_exhausted",
-                        "*X staff members are exhausted.",
-                    ).replace("*X", str(exhausted)),
-                    "count": exhausted,
+            if self.save is not None:
+                # Incident Reports, Prisoner Parole, Staff Exhausted: recounted from the save's
+                # objects by todo_items (rules read from the game's code, see its docstrings)
+                parts = {
+                    f"/{name}": self.save.children[name].to_dict()
+                    for name in ("Objects", "Rooms")
+                    if name in self.save.children
                 }
-                if not any(
-                    name_of(ROOM_TYPES, r.get("type", -1)) == "Staffroom"
-                    for r in self.rooms.values()
-                ):
-                    item["advice"] = TEXT.get(
-                        "objective_reststaff_needstaffroom",
-                        "Build a Staff Room so they can rest.",
-                    )
-                items.append(item)
+                items.extend(
+                    {"kind": "report", **item} for item in todo_items.build_items(parts)
+                )
             intake = self.save.children.get("Intake") if self.save else None
             if intake is not None:
                 mode = intake.fields.get("IntakeType")
@@ -580,10 +571,6 @@ class GameState:
                 item["progress"] = progress
             out.append(item)
         return out
-
-    def _exhausted_staff(self) -> int:
-        """How many staff members are exhausted (rest required or energy 0)."""
-        return int(self.staff_needs().get("exhausted", 0))
 
     def alerts_since(self, seq: int = 0) -> list[Alert]:
         """Alerts with a sequence number above ``seq`` (oldest first)."""

@@ -156,12 +156,23 @@ def test_staff_alerts_are_interrupts_with_the_games_advice() -> None:
     assert first.as_dict()["urgent"] is True
 
 
-def test_todo_lists_exhausted_staff_with_the_staffroom_advice() -> None:
+def test_todo_includes_the_recounted_report_items() -> None:
+    from src.bot import todo_items
+
     state = GameState()
-    state._exhausted_staff = lambda: 3  # type: ignore[method-assign]
-    item = next(i for i in state.todo() if i["id"] == "StaffExhausted")
-    assert item["text"] == "3 staff members are exhausted."
-    assert item["advice"] == "Build a Staff Room so they can rest."
+    from src.bot.state import StateNode
+
+    root = StateNode({})
+    root.children["Objects"] = StateNode({})
+    root.children["Rooms"] = StateNode({})
+    state.save = root
+    original = todo_items.build_items
+    todo_items.build_items = lambda save: [{"id": "StaffExhausted", "visible": True}]  # type: ignore[assignment]
+    try:
+        item = next(i for i in state.todo() if i.get("id") == "StaffExhausted")
+    finally:
+        todo_items.build_items = original
+    assert item["kind"] == "report"
 
 
 def test_going_green_tab_lists_the_six_info_items_in_order() -> None:
