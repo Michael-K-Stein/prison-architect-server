@@ -2719,3 +2719,26 @@ graded room with the game's `quality`, a `computed` sum of the criteria the bot 
 objects standing in the room) and `met: null` for those it cannot (windows, walls, PA system, meals): MKS2's first Cell:
 quality 1, computed 2 (sizes 6 and 9 met, 16 not; the missing point is probably the "no windows" -1).
 `src/bot/qualitygen.py` regenerates `data/room_gradings.json`; `textgen` now also keeps `roomgrading_*` and `object_*` texts.
+
+## Room Quality: window, wall and PA criteria in the bot (MKS2 live check, Claude Haiku 5.5 work)
+
+Built a grade 10 target cell with `ctl room prefab LuxuryCell 80 160` (room 104). Findings:
+
+- The prefab's visible items (desk, bookshelf, radio, chair, shower head, TV, Pet Bird) score
+  2 (sizes 6, 9) + 7 = 9 for the bot. The game reads 6.
+- Hint (from the owner): a SoftPillow MUST sit on the top part of a ComfyBed. A pillow placed on
+  bare floor was queued and never appeared (`ctl state` has no SoftPillow object).
+- The bot previously marked OutsideWindow, HasWindow, BadWalls, HasGlassWalls and HasPASystem
+  `met: null`. `quality.evaluate` now takes a `context` from `state.room_quality`: windows on the
+  room's edge (outdoor when the cell outside is empty), the edge's wall materials, and a PASystem
+  inside or on the edge.
+- Live numbers after the change: room 94 game 7 / bot 6; room 104 game 6 / bot 7. Both are now
+  off by one in opposite directions. Room 94 fits the "No Windows" -1 alone, which suggests the
+  BadWalls mapping (ConcreteWall = depressing, assumed) is wrong for it. Open: which wall
+  material counts as depressing, and what takes room 104 down one more point.
+
+Open question: not yet resolved. The next check is the wall material of room 94's edge.
+
+### Mistakes log (Claude Haiku 5.5, room quality)
+- Launched `serve --room A` from the playing guide without checking the open game name; the
+  server exited with "open games: 'MKS2'". The game is named by the user, not the doc example.

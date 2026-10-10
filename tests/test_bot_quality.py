@@ -37,3 +37,46 @@ def test_parse_reads_inline_grading_lines() -> None:
     assert qualitygen.parse(text) == {
         "Cell": [{"Type": "Item", "Id": "Tv", "Alt": ["LargeTv"], "Multi": True}]
     }
+
+
+def _by_type(result: dict, kind: str) -> list[dict]:
+    return [c for c in result["criteria"] if c["type"] == kind]
+
+
+def test_outdoor_windows_and_no_window_penalty() -> None:
+    no_window = quality.evaluate("Cell", 12, [], {"windows": [], "walls": {"total": 0}})
+    assert [c["met"] for c in _by_type(no_window, "HasWindow")] == [True]  # -1 applies
+    large = quality.evaluate(
+        "Cell",
+        12,
+        [],
+        {"windows": [{"large": True, "outdoor": True}], "walls": {"total": 0}},
+    )
+    assert [c["met"] for c in _by_type(large, "OutsideWindow")] == [True, True]
+    assert [c["met"] for c in _by_type(large, "HasWindow")] == [False]
+
+
+def test_indoor_window_does_not_count_as_outside() -> None:
+    result = quality.evaluate(
+        "Cell",
+        12,
+        [],
+        {"windows": [{"large": True, "outdoor": False}], "walls": {"total": 0}},
+    )
+    assert [c["met"] for c in _by_type(result, "OutsideWindow")] == [False, False]
+
+
+def test_wall_and_pa_criteria_use_the_edge() -> None:
+    result = quality.evaluate(
+        "Cell",
+        12,
+        [],
+        {
+            "windows": [],
+            "walls": {"total": 10, "ConcreteWall": 6, "GlassWall": 0},
+            "pa": True,
+        },
+    )
+    assert [c["met"] for c in _by_type(result, "BadWalls")] == [True]  # 60% >= 50%
+    assert [c["met"] for c in _by_type(result, "HasGlassWalls")] == [False]
+    assert [c["met"] for c in _by_type(result, "HasPASystem")] == [True]

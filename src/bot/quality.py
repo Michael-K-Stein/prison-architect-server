@@ -26,9 +26,32 @@ from src.protocol.game_text import TEXT
 GRADINGS: dict[str, list[dict[str, Any]]] = json.loads(
     (Path(__file__).parent / "data" / "room_gradings.json").read_text(encoding="utf-8")
 )
-VISIBLE = ("RoomSize", "Item")
-"""Criterion types the bot can evaluate from cells and objects."""
+VISIBLE = (
+    "RoomSize",
+    "Item",
+    "OutsideWindow",
+    "HasWindow",
+    "BadWalls",
+    "HasGlassWalls",
+    "HasPASystem",
+)
+"""Criterion types the bot can evaluate from cells and objects (with a context, see
+:func:`evaluate`)."""
 MAX_GRADE = 15
+WINDOW_TYPES = frozenset(
+    {
+        "Window",
+        "WindowLarge",
+        "WindowClassy",
+        "WindowClassyLarge",
+        "GlassWindow",
+        "GlassWindowLarge",
+        "WoodenWindowSmall",
+        "WoodenWindowLarge",
+        "StainGlassWindow",
+    }
+)
+"""Object types that count as a window (``HasWindow`` / ``OutsideWindow``)."""
 
 
 def _text(room: str, key: str, fallback: str) -> str:
@@ -59,8 +82,42 @@ def describe(room: str, crit: dict[str, Any]) -> str:
     return f"{kind}" + (f" {crit['Percent']}%" if "Percent" in crit else "")
 
 
-def evaluate(room: str, cells: int, object_types: Iterable[str]) -> dict[str, Any]:
-    """Evaluate a room's visible criteria: ``{"criteria": [...], "computed", "max"}``."""
+def _context_met(crit: dict[str, Any], context: dict[str, Any]) -> bool:
+    """Whether a window / wall / PA criterion holds, from the room's context (see
+    :func:`evaluate`). Walls: ``BadWalls`` counts concrete walls (the game's "depressing"
+    walls, assumed), ``HasGlassWalls`` glass walls; each holds at ``Percent`` of the edge."""
+    kind = crit["Type"]
+    windows = context.get("windows", [])
+    if kind == "OutsideWindow":
+        large = bool(crit.get("Large"))
+        return any(w["outdoor"] and (w["large"] or not large) for w in windows)
+    if kind == "HasWindow":
+        return len(windows) == int(crit.get("Quantity", 0))
+    if kind in ("BadWalls", "HasGlassWalls"):
+        walls = context.get("walls", {})
+        total = walls.get("total", 0)
+        material = "ConcreteWall" if kind == "BadWalls" else "GlassWall"
+        if not total:
+            return False
+        return walls.get(material, 0) * 100 >= int(crit.get("Percent", 50)) * total
+    if kind == "HasPASystem":
+        return bool(context.get("pa"))
+    return False
+
+
+def evaluate(
+    room: str,
+    cells: int,
+    object_types: Iterable[str],
+    context: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Evaluate a room's criteria: ``{"criteria": [...], "computed", "max"}``.
+
+    ``context`` (from :func:`src.bot.state.room_quality`) makes the wall and window criteria
+    visible: ``windows`` (a list of ``{"large": bool, "outdoor": bool}``, one per window on the
+    room's edge), ``walls`` (``{"total": n, "ConcreteWall": n, "GlassWall": n}`` over the edge
+    cells) and ``pa`` (a PASystem is in the room). Without it those criteria stay unknown.
+    """
     present = Counter(object_types)
     items = []
     computed = 0
@@ -81,6 +138,8 @@ def evaluate(room: str, cells: int, object_types: Iterable[str]) -> dict[str, An
             met = bool(found)
             if found:
                 entry["found"] = found
+        elif context is not None and crit["Type"] in VISIBLE:
+            met = _context_met(crit, context)
         else:
             entry["met"] = None  # not visible from cells and objects
             items.append(entry)

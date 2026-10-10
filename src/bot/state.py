@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.protocol import rpc
-from src.bot import network
+from src.bot import network, quality
 from src.bot.names import ObjectNames
 from src.bot.zones import Zones
 from src.protocol.net_keys import label
@@ -78,6 +78,46 @@ OVERLOADED = 1
 (seen with Capacity 50 and 65 demand); 3 is also seen, see journal2."""
 TIRED = 25.0
 """``EnergyLevel`` below this counts as tired (0 is exhausted; a rested person has 50-100)."""
+
+
+def _quality_context(
+    inside: set[tuple[int, int]],
+    mats: dict[tuple[int, int], str],
+    placed: list[tuple[tuple[int, int], str]],
+) -> dict[str, Any]:
+    """What Room Quality's wall and window criteria need, from one room's cells and objects.
+
+    ``edge`` is the cells next to the room that are not in it (its walls). A window is an
+    object on the edge; it is ``outdoor`` when a cell beside it outside the room is empty
+    (no material: the outside, not another room). ``walls`` counts the edge's materials.
+    """
+    edge = {
+        n
+        for x, y in inside
+        for n in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
+        if n not in inside
+    }
+    walls: Counter[str] = Counter(mats[c] for c in edge if mats.get(c))
+    windows = []
+    pa = False
+    for cell, kind in placed:
+        if kind == "PASystem" and (cell in inside or cell in edge):
+            pa = True
+        if kind in quality.WINDOW_TYPES and cell in edge:
+            x, y = cell
+            outdoor = any(
+                not mats.get(n)
+                for n in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
+                if n not in inside
+            )
+            windows.append({"large": kind.endswith("Large"), "outdoor": outdoor})
+    return {
+        "windows": windows,
+        "walls": {"total": sum(walls.values()), **walls},
+        "pa": pa,
+    }
+
+
 SAVE_SYSTEM = "Save"
 """Where the join handshake's full save tree is kept in ``systems``."""
 
@@ -532,8 +572,6 @@ class GameState:
     def room_quality(self, which: str = "") -> list[dict[str, Any]]:
         """Room Quality: the grade of each graded room (``Save Rooms`` ``Quality``) and what
         raises or lowers it (:mod:`src.bot.quality`). ``which``: a room type or an index."""
-        from src.bot import quality
-
         with self.lock:
             if self.save is None:
                 return []
@@ -550,13 +588,20 @@ class GameState:
                 for cell, f in self.cells.items()
                 if f.get("Room.i") not in (-1, None)
             }
+            placed: list[tuple[tuple[int, int], str]] = []
             for obj in objects.children.values() if objects else ():
                 f = obj.fields
-                if "Pos.x" not in f:
+                if "Pos.x" not in f or not f.get("Type"):
                     continue
-                index = room_of.get((int(f["Pos.x"]), int(f["Pos.y"])))
-                if index is not None and f.get("Type"):
+                cell = (int(f["Pos.x"]), int(f["Pos.y"]))
+                placed.append((cell, f["Type"]))
+                index = room_of.get(cell)
+                if index is not None:
                     by_room.setdefault(index, []).append(f["Type"])
+            mats = {cell: str(f.get("Mat") or "") for cell, f in self.cells.items()}
+            inside_of: dict[int, set[tuple[int, int]]] = {}
+            for cell, index in room_of.items():
+                inside_of.setdefault(index, set()).add(cell)
             out = []
             for item in rooms.children.values() if rooms else ():
                 f = item.fields
@@ -572,9 +617,13 @@ class GameState:
                     "quality": f.get("Quality"),
                     "cells": counts.get(index, 0),
                 }
+                context = _quality_context(inside_of.get(index, set()), mats, placed)
                 entry.update(
                     quality.evaluate(
-                        str(kind), counts.get(index, 0), by_room.get(index, [])
+                        str(kind),
+                        counts.get(index, 0),
+                        by_room.get(index, []),
+                        context,
                     )
                 )
                 out.append(entry)
