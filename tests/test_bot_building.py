@@ -97,3 +97,11 @@ def test_stages_come_in_the_right_order() -> None:
 def test_malformed_specs_are_reported() -> None:
     with pytest.raises(ValueError):
         building.parse({"x": 1})
+
+
+def test_object_facing_in_a_spec_reaches_the_place_job() -> None:
+    spec = {**SPEC, "rooms": [dict(SPEC["rooms"][0])]}
+    spec["rooms"][0]["objects"] = [["Bed", 0, 0], ["Toilet", 1, 0, "left"]]
+    b = building.parse(spec)
+    jobs = dict(building.stages(b))["objects"]
+    assert [j["facing"] for j in jobs] == ["down", "left"]

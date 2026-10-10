@@ -26,7 +26,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from src.protocol import rpc
-from src.bot import network
+from src.bot import network, quality
 from src.bot.names import ObjectNames
 from src.bot.zones import Zones
 from src.protocol.net_keys import label
@@ -78,6 +78,62 @@ OVERLOADED = 1
 (seen with Capacity 50 and 65 demand); 3 is also seen, see journal2."""
 TIRED = 25.0
 """``EnergyLevel`` below this counts as tired (0 is exhausted; a rested person has 50-100)."""
+
+
+def _top_left(cells: set[tuple[int, int]]) -> list[int] | None:
+    """The room's top-left cell ``[x, y]`` (its name in the game's map), or None."""
+    if not cells:
+        return None
+    return [min(x for x, _ in cells), min(y for _, y in cells)]
+
+
+def _box_size(cells: set[tuple[int, int]]) -> list[int] | None:
+    """The room's bounding box ``[width, height]`` in cells, or None."""
+    if not cells:
+        return None
+    xs = [x for x, _ in cells]
+    ys = [y for _, y in cells]
+    return [max(xs) - min(xs) + 1, max(ys) - min(ys) + 1]
+
+
+def _quality_context(
+    inside: set[tuple[int, int]],
+    mats: dict[tuple[int, int], str],
+    placed: list[tuple[tuple[int, int], str]],
+) -> dict[str, Any]:
+    """What Room Quality's wall and window criteria need, from one room's cells and objects.
+
+    ``edge`` is the cells next to the room that are not in it (its walls). A window is an
+    object on the edge; it is ``outdoor`` when a cell beside it outside the room is empty
+    (no material: the outside, not another room). ``walls`` counts the edge's materials.
+    """
+    edge = {
+        n
+        for x, y in inside
+        for n in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
+        if n not in inside
+    }
+    walls: Counter[str] = Counter(mats[c] for c in edge if mats.get(c))
+    windows = []
+    pa = False
+    for cell, kind in placed:
+        if kind == "PASystem" and (cell in inside or cell in edge):
+            pa = True
+        if kind in quality.WINDOW_TYPES and cell in edge:
+            x, y = cell
+            outdoor = any(
+                not mats.get(n)
+                for n in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))
+                if n not in inside
+            )
+            windows.append({"large": kind.endswith("Large"), "outdoor": outdoor})
+    return {
+        "windows": windows,
+        "walls": {"total": sum(walls.values()), **walls},
+        "pa": pa,
+    }
+
+
 SAVE_SYSTEM = "Save"
 """Where the join handshake's full save tree is kept in ``systems``."""
 
@@ -533,6 +589,69 @@ class GameState:
                 )
             return items
 
+    def room_quality(self, which: str = "") -> list[dict[str, Any]]:
+        """Room Quality: the grade of each graded room (``Save Rooms`` ``Quality``) and what
+        raises or lowers it (:mod:`src.bot.quality`). ``which``: a room type or an index."""
+        with self.lock:
+            if self.save is None:
+                return []
+            rooms = self.save.children.get("Rooms")
+            objects = self.save.children.get("Objects")
+            by_room: dict[int, list[str]] = {}
+            counts: dict[int, int] = {}
+            for (cx, cy), f in self.cells.items():
+                index = f.get("Room.i", -1)
+                if index not in (-1, None):
+                    counts[index] = counts.get(index, 0) + 1
+            room_of = {
+                cell: f["Room.i"]
+                for cell, f in self.cells.items()
+                if f.get("Room.i") not in (-1, None)
+            }
+            placed: list[tuple[tuple[int, int], str]] = []
+            idle = self._idle_object_ids()
+            for obj in objects.children.values() if objects else ():
+                f = obj.fields
+                if "Pos.x" not in f or not f.get("Type"):
+                    continue
+                cell = (int(f["Pos.x"]), int(f["Pos.y"]))
+                placed.append((cell, f["Type"]))
+                index = room_of.get(cell)
+                if index is not None and f.get("Id.i") not in idle:
+                    by_room.setdefault(index, []).append(f["Type"])
+            mats = {cell: str(f.get("Mat") or "") for cell, f in self.cells.items()}
+            inside_of: dict[int, set[tuple[int, int]]] = {}
+            for cell, index in room_of.items():
+                inside_of.setdefault(index, set()).add(cell)
+            out = []
+            for item in rooms.children.values() if rooms else ():
+                f = item.fields
+                kind, index = f.get("RoomType"), f.get("Id.i")
+                if kind not in quality.GRADINGS and f.get("Quality") is None:
+                    continue
+                if which and which.lower() != str(kind).lower() and which != str(index):
+                    continue
+                entry = {
+                    "index": index,
+                    "type": kind,
+                    "name": f.get("Name"),
+                    "quality": f.get("Quality"),
+                    "cells": counts.get(index, 0),
+                    "at": _top_left(inside_of.get(index, set())),
+                    "size": _box_size(inside_of.get(index, set())),
+                }
+                context = _quality_context(inside_of.get(index, set()), mats, placed)
+                entry.update(
+                    quality.evaluate(
+                        str(kind),
+                        counts.get(index, 0),
+                        by_room.get(index, []),
+                        context,
+                    )
+                )
+                out.append(entry)
+            return out
+
     def going_green(self) -> list[dict[str, Any]]:
         """The Going Green tab: "Going Green!", Basic / Advanced Farming, Green Energy, Narcotic
         Production, Environmentally Friendly, each with its sub-headings and descriptions
@@ -926,6 +1045,27 @@ class GameState:
             width = int(self.save.fields.get("NumCellsX", 100))
             height = int(self.save.fields.get("NumCellsY", 80))
             return connect.plan(name, cells, fields, width, height, kinds)
+
+    def _idle_object_ids(self) -> set[int]:
+        """Ids of objects that are not working: a water appliance off a pumped pipe network,
+        or an electrical one with no power. Room Quality counts only working items (the
+        game leaves an unwatered Shower Head out of a grade). Call with the lock held."""
+        assert self.save is not None
+        node = self.save.children.get(network.WATER.node)
+        cells = set()
+        for key in node.children if node else ():
+            parts = key.split()
+            if len(parts) in (2, 3) and all(p.isdigit() for p in parts[:2]):
+                cells.add((int(parts[0]), int(parts[1])))
+        objects = self.save.children.get("Objects")
+        fields = [i.fields for i in objects.children.values()] if objects else []
+        idle = {o.get("Id.i") for o in network.unserved(cells, fields, network.WATER)}
+        idle |= {
+            f.get("Id.i")
+            for f in fields
+            if f.get("Type") in ELECTRICAL and not f.get("Powered")
+        }
+        return idle
 
     def _no_water(self) -> list[str]:
         """Water appliances (sink, toilet, shower head...) off a pumped pipe network.

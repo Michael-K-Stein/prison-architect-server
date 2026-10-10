@@ -11,7 +11,15 @@ from pyphotonrealtime.realtime import EnterRoomParams
 from pyphotonrealtime.realtime.lobby import LobbyType, TypedLobby
 
 from src.bot.formatting import colour_property, format_lobby, format_room
-from src.bot.session import ConnectError, Options, Session, make_settings
+from src.bot.session import (
+    ConnectError,
+    MaxCcuError,
+    Options,
+    Session,
+    is_max_ccu,
+    make_settings,
+    retry_ccu,
+)
 from src.capture import Recorder
 
 log = logging.getLogger(__name__)
@@ -26,14 +34,19 @@ def pick(message: str, choices: list[tuple[str, Any]]) -> Any:
     ).execute()
 
 
-def connect(opts: Options, region: str, recorder: Recorder | None = None) -> Session:
-    """A started :class:`Session` connected to ``region``'s Master Server."""
+def _connect_once(
+    opts: Options, region: str, recorder: Recorder | None = None
+) -> Session:
     session = Session(recorder=recorder)
     # Sent as the actor name (Photon player property 255), which the game shows.
     session.client.local_player.nick_name = opts.name
     try:
         session.start(make_settings(opts, region))
         if not session.wait_for(lambda: session.master):
+            if is_max_ccu(session.disconnected):
+                raise MaxCcuError(
+                    f"could not reach region {region!r}: maximum CCU reached ({session.disconnected})"
+                )
             raise ConnectError(
                 f"could not reach region {region!r}"
                 f" (disconnected: {session.disconnected})"
@@ -42,6 +55,19 @@ def connect(opts: Options, region: str, recorder: Recorder | None = None) -> Ses
         session.stop()
         raise
     return session
+
+
+def connect(
+    opts: Options,
+    region: str,
+    recorder: Recorder | None = None,
+    *,
+    retry: bool = True,
+) -> Session:
+    """A started :class:`Session` connected to ``region``'s Master Server."""
+    if not retry:
+        return _connect_once(opts, region, recorder)
+    return retry_ccu(lambda: _connect_once(opts, region, recorder))
 
 
 def lobbies_of(session: Session) -> list[TypedLobby]:
@@ -60,10 +86,18 @@ def list_rooms(session: Session, lobby: TypedLobby) -> list[Any]:
     with session.lock:
         session.client.op_join_lobby(lobby)
     session.wait_for(lambda: session.lobby_joined)
+    if is_max_ccu(session.disconnected):
+        raise MaxCcuError(
+            f"disconnected while joining lobby: maximum CCU reached ({session.disconnected})"
+        )
     if lobby.type == LobbyType.SqlLobby:
         with session.lock:
             session.client.op_get_game_list(lobby, "")
     time.sleep(1.5)  # the full room list arrives as an event right after
+    if is_max_ccu(session.disconnected):
+        raise MaxCcuError(
+            f"disconnected while listing rooms: maximum CCU reached ({session.disconnected})"
+        )
     with session.lock:
         rooms = list(session.client.room_list.values())
     if not rooms:
@@ -99,12 +133,22 @@ def enter_room(session: Session, opts: Options, name: str) -> None:
             )
         )
     if not session.wait_for(lambda: session.joined or bool(session.join_error)):
+        if is_max_ccu(session.disconnected):
+            raise MaxCcuError(
+                f"could not join game {name!r}: maximum CCU reached ({session.disconnected})"
+            )
         raise ConnectError("joining timed out")
     if session.join_error:
+        if (
+            is_max_ccu(session.join_error)
+            or is_max_ccu(session.join_error_code)
+            or is_max_ccu(session.disconnected)
+        ):
+            raise MaxCcuError(f"join failed: {session.join_error}")
         raise ConnectError(f"join failed: {session.join_error}")
 
 
-def join_room(
+def _join_room_once(
     opts: Options,
     region: str,
     room: str | None,
@@ -136,6 +180,21 @@ def join_room(
     return session
 
 
+def join_room(
+    opts: Options,
+    region: str,
+    room: str | None,
+    recorder: Recorder | None = None,
+    lobby: TypedLobby | None = None,
+    *,
+    retry: bool = True,
+) -> Session:
+    """Headless join: ``room`` (or the first open one) in ``lobby`` (default)."""
+    if not retry:
+        return _join_room_once(opts, region, room, recorder, lobby)
+    return retry_ccu(lambda: _join_room_once(opts, region, room, recorder, lobby))
+
+
 def join_flow(opts: Options, region: str, recorder: Recorder | None = None) -> Session:
     """Connect to ``region``'s Master, pick a lobby and a game, join it."""
     session = connect(opts, region, recorder)
@@ -145,8 +204,25 @@ def join_flow(opts: Options, region: str, recorder: Recorder | None = None) -> S
         if len(lobbies) > 1:
             lobby = pick("Lobby", [(format_lobby(x), x) for x in lobbies])
         rooms = list_rooms(session, lobby)
-        name = pick("Game", [(format_room(r), r.name) for r in rooms if r.is_open])
-        enter_room(session, opts, name)
+        open_rooms = [r for r in rooms if r.is_open]
+        if not open_rooms:
+            raise ConnectError("no open games in this lobby")
+        name = pick("Game", [(format_room(r), r.name) for r in open_rooms])
+        try:
+            enter_room(session, opts, name)
+        except MaxCcuError:
+            session.stop()
+
+            def _reenter() -> Session:
+                s = connect(opts, region, recorder)
+                try:
+                    enter_room(s, opts, name)
+                except BaseException:
+                    s.stop()
+                    raise
+                return s
+
+            session = retry_ccu(_reenter)
     except BaseException:
         session.stop()
         raise

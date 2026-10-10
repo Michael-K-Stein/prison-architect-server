@@ -2751,3 +2751,59 @@ lockdown, 2 = solitary, durations 6/12/24 hours (60 per hour) or permanent (5000
 earlier "12 hours" = 1440 was therefore the 24 h button. The save keeps `punish_active`,
 `punish_timer_minutes`, `punish_permanent` on the inmate. No hidden types turned up; the
 only "shadow" strings are rendering (`ToggleShadows`, `SunShadows`).
+
+### Room Quality (the grade of a room, 0-15; user: 0-7 original, 8-15 the DLCs)
+
+`Save Rooms` carries it as `Quality` (a Cell reads 1, the SuperiorCell 7, Canteens / Gymnasium 0). The criteria are in
+`materials*.txt`: `BEGIN Grading Type ... END` lines inside `BEGIN Room` blocks (13 graded rooms: Cell 24 criteria, SuperiorCell
+24, Dormitory 17, CommonRoom 14, Gymnasium 12, Canteen 11, Yard 11, Classroom 9, PaddedCell 8, PsychiatristOffice 5, FamilyCell 2,
+HoldingCell 1, PaddedHoldingCell 1). Types: `RoomSize` (`Size` 6 / 9 / 16: one point per threshold reached), `Item` (`Id` + `Alt`,
+`Multi`, `GradeEffect` default +1; a Mattress or OldBed is -1), `OutsideWindow` (+2, +1 for a large window), `HasWindow
+Quantity 0` (-1: no window), `HasGlassWalls` / `BadWalls` (`Percent` 50, -1), `HasPASystem` (-1), `Floor`, `MealQuality`,
+`MealVariety`, `MultiItems`, `RoomSizeLess`. The in-game texts are `roomgrading_<room>_<kind>`. `ctl quality [ROOM|index]` lists each
+graded room with the game's `quality`, a `computed` sum of the criteria the bot can see (room size from the cells, items from the
+objects standing in the room) and `met: null` for those it cannot (windows, walls, PA system, meals): MKS2's first Cell:
+quality 1, computed 2 (sizes 6 and 9 met, 16 not; the missing point is probably the "no windows" -1).
+`src/bot/qualitygen.py` regenerates `data/room_gradings.json`; `textgen` now also keeps `roomgrading_*` and `object_*` texts.
+
+## Room Quality: window, wall and PA criteria in the bot (MKS2 live check, Claude Haiku 5.5 work)
+
+Built a grade 10 target cell with `ctl room prefab LuxuryCell 80 160` (room 104). Findings:
+
+- The prefab's visible items (desk, bookshelf, radio, chair, shower head, TV, Pet Bird) score
+  2 (sizes 6, 9) + 7 = 9 for the bot. The game reads 6.
+- Hint (from the owner): a SoftPillow MUST sit on the top part of a ComfyBed. A pillow placed on
+  bare floor was queued and never appeared (`ctl state` has no SoftPillow object).
+- The bot previously marked OutsideWindow, HasWindow, BadWalls, HasGlassWalls and HasPASystem
+  `met: null`. `quality.evaluate` now takes a `context` from `state.room_quality`: windows on the
+  room's edge (outdoor when the cell outside is empty), the edge's wall materials, and a PASystem
+  inside or on the edge.
+- Live numbers after the change: room 94 game 7 / bot 6; room 104 game 6 / bot 7. Both are now
+  off by one in opposite directions. Room 94 fits the "No Windows" -1 alone, which suggests the
+  BadWalls mapping (ConcreteWall = depressing, assumed) is wrong for it. Open: which wall
+  material counts as depressing, and what takes room 104 down one more point.
+
+Open question: not yet resolved. The next check is the wall material of room 94's edge.
+
+### Mistakes log (Claude Haiku 5.5, room quality)
+- Launched `serve --room A` from the playing guide without checking the open game name; the
+  server exited with "open games: 'MKS2'". The game is named by the user, not the doc example.
+
+### Room Quality follow-up (MKS2, Claude Haiku 5.5 work)
+
+- Concrete walls are NOT depressing: `BadWalls` stays unknown (`met: null`) until the material is found.
+- The no-window penalty is -1 (confirmed by the owner); the bot now applies it.
+- Live (MKS2): room 94 game 7 = bot 7. Room 104 game 6, bot 8: still 2 points unexplained.
+- Rooms are named by zone and painted with a unique floor: Cell_Red (room 12, RedCarpet),
+  Cell_Blue (28, BlueCarpet), Cell_White (48, WhiteTiles), Cell_Wood (49, WoodenFloor),
+  Cell_Bamboo (94, BambooFloor), Cell_DarkWood (104, DarkWoodFloor).
+
+### Idle items do not count (MKS2, Claude Haiku 5.5 work)
+
+- Room 104's Shower Head and Toilet have no water (`problems`: "no water"). The game leaves an
+  unwatered Shower Head out of the grade; the bot now does the same. Items that are not working
+  (water appliance off the pipe network, or an electrical one with no power) no longer count.
+  This also assumes unpowered electrical items do not count (not yet confirmed in-game).
+- After the change every graded cell matches the game: 94 = 7, 104 = 7, the rest 1.
+- Room 104's desk faces the wall instead of the chair. It is still counted; orientation does
+  not affect the grade (not tested beyond this room).

@@ -23,10 +23,74 @@ def format_region(code: str, address: str) -> str:
     return f"{code:<8} {address}"
 
 
+def room_players(room: Any) -> list[str]:
+    """Player names in ``room``, from its players dict or custom properties."""
+    names: list[str] = []
+
+    players = getattr(room, "players", None)
+    if isinstance(players, dict):
+        for _, p in sorted(players.items(), key=lambda kv: str(kv[0])):
+            nick = getattr(p, "nick_name", None) or getattr(p, "name", None)
+            if not nick and isinstance(p, str):
+                nick = p
+            if nick and str(nick) not in names:
+                names.append(str(nick))
+    elif isinstance(players, (list, tuple, set)):
+        for p in players:
+            nick = getattr(p, "nick_name", None) or getattr(p, "name", None)
+            if not nick and isinstance(p, str):
+                nick = p
+            if nick and str(nick) not in names:
+                names.append(str(nick))
+
+    props = getattr(room, "custom_properties", None)
+    if isinstance(props, dict):
+        for key in ("players", "player_names", "names", "actors"):
+            val = props.get(key)
+            if isinstance(val, (list, tuple, set)):
+                for item in val:
+                    n = (
+                        getattr(item, "nick_name", None)
+                        or getattr(item, "name", None)
+                        or str(item)
+                    )
+                    if n and str(n) not in names:
+                        names.append(str(n))
+            elif isinstance(val, str) and val.strip():
+                for part in val.split(","):
+                    p = part.strip()
+                    if p and p not in names:
+                        names.append(p)
+
+        mas = props.get("MAS") or props.get("GameMaster")
+        if isinstance(mas, str) and mas.strip():
+            mas_name = mas.strip()
+            if mas_name not in names:
+                names.insert(0, mas_name)
+        elif isinstance(mas, (list, tuple, set)):
+            for item in mas:
+                n = str(item).strip()
+                if n and n not in names:
+                    names.append(n)
+
+    mc = getattr(room, "master_client", None)
+    if mc is not None:
+        mc_name = getattr(mc, "nick_name", None) or getattr(mc, "name", None)
+        if mc_name and str(mc_name) not in names:
+            names.insert(0, str(mc_name))
+
+    return names
+
+
 def format_room(room: RoomInfo) -> str:
-    """One game menu line: name, players and whether it can be joined."""
+    """One game menu line: name, player count/max, state and players in the room."""
     state = "open" if room.is_open else "closed"
-    return f"{room.name}  ({room.player_count}/{room.max_players or '?'})  {state}"
+    players = room_players(room)
+    players_part = f"  {', '.join(players)}" if players else ""
+    return (
+        f"{room.name}  ({room.player_count}/{room.max_players or '?'})  "
+        f"{state}{players_part}"
+    )
 
 
 def format_lobby(lobby: TypedLobby) -> str:

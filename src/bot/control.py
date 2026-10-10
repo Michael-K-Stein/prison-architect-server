@@ -556,6 +556,10 @@ class _Handler(BaseHTTPRequestHandler):
                 self._reply(200, c.session.state.staff_needs())
             elif url.path == "/connect":
                 self._reply(200, c.session.state.connect_plan(query.get("kind", "")))
+            elif url.path == "/quality":
+                self._reply(
+                    200, {"rooms": c.session.state.room_quality(query.get("room", ""))}
+                )
             elif url.path == "/todo":
                 state = c.session.state
                 if query.get("going_green"):

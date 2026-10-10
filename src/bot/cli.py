@@ -32,6 +32,7 @@ from src.bot.control import DEFAULT_PORT, ControlServer, call
 from src.bot.flow import join_flow, join_room, pick
 from src.bot.formatting import format_region
 from src.bot.hud import run_hud
+from src.bot.monitor import DEFAULT_INTERVAL, run_monitor
 from src.bot.reconnect import Reconnector
 from src.bot.room_cli import building_app, door_app, room_app
 from src.bot.session import (
@@ -223,6 +224,85 @@ def regions(ctx: typer.Context) -> None:
             console.print(format_region(code, address), markup=False)
 
 
+@app.command()
+def monitor(
+    ctx: typer.Context,
+    region: Annotated[
+        str | None,
+        typer.Option(
+            "-r",
+            "--region",
+            help="Photon region to monitor (default: all available regions).",
+        ),
+    ] = None,
+    interval: Annotated[
+        float,
+        typer.Option(
+            "-i",
+            "--interval",
+            help="Seconds between refreshes.",
+        ),
+    ] = DEFAULT_INTERVAL,
+    once: Annotated[
+        bool,
+        typer.Option(
+            "--once",
+            help="Print games once and exit immediately without live updating.",
+        ),
+    ] = False,
+) -> None:
+    """Real-time monitor all live games across regions."""
+    opts: Options = ctx.obj
+    require_app_id(opts)
+    with recording(opts) as recorder:
+        try:
+            run_monitor(
+                opts,
+                region=region,
+                interval=interval,
+                once=once,
+                recorder=recorder,
+                console=console,
+            )
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Monitor stopped.[/yellow]")
+        except ConnectError as exc:
+            log.error("monitor error: %s", exc)
+            console.print(f"[red]Error:[/red] {exc}", markup=True, highlight=False)
+            raise typer.Exit(1) from None
+
+
+@app.command(name="games")
+def games_cmd(
+    ctx: typer.Context,
+    region: Annotated[
+        str | None,
+        typer.Option(
+            "-r",
+            "--region",
+            help="Photon region to monitor (default: all available regions).",
+        ),
+    ] = None,
+    interval: Annotated[
+        float,
+        typer.Option(
+            "-i",
+            "--interval",
+            help="Seconds between refreshes.",
+        ),
+    ] = DEFAULT_INTERVAL,
+    once: Annotated[
+        bool,
+        typer.Option(
+            "--once",
+            help="Print games once and exit immediately without live updating.",
+        ),
+    ] = False,
+) -> None:
+    """List or real-time monitor all live games (alias for `bot monitor`)."""
+    monitor(ctx, region=region, interval=interval, once=once)
+
+
 def run(opts: Options, game: str | None = None) -> None:
     """The interactive flow: region, lobby, game, menu (``game`` skips the picker)."""
     session: Session | None = None
@@ -292,7 +372,7 @@ def serve(
                 server.auto_reconnect = True
                 Reconnector(
                     server,
-                    lambda: join_room(opts, opts.region, room, recorder),
+                    lambda: join_room(opts, opts.region, room, recorder, retry=False),
                     opts.password,
                 ).start()
             reason = server.wait()
@@ -955,6 +1035,22 @@ def ctl_connect(
             indent=1,
         )
     )
+
+
+@ctl.command("quality")
+def ctl_quality(
+    ctx: typer.Context,
+    room: Annotated[
+        str,
+        typer.Argument(
+            help="A room type (Cell) or a room index; default: all graded rooms."
+        ),
+    ] = "",
+) -> None:
+    """Room Quality: the grade (0-15; 8-15 are DLC) of each graded room and what raises or
+    lowers it (room size steps, items, windows...). `quality` is the game's own value;
+    `computed` adds up the criteria the bot can see, `met: null` ones it cannot."""
+    _show(ctx, "GET", f"/quality?room={quote(room)}" if room else "/quality")
 
 
 @ctl.command("todo")

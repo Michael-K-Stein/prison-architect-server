@@ -16,7 +16,7 @@ from typing import Annotated
 
 import typer
 
-from src.bot import building, rooms
+from src.bot import building, prefabs, rooms
 from src.bot.control import call
 from src.protocol.room_rules import ROOM_RULES
 
@@ -448,28 +448,13 @@ def building_plan(
         raise typer.Exit(1)
 
 
-@building_app.command("build")
-def building_build(
-    ctx: typer.Context,
-    file: Annotated[str, typer.Argument(help="Building spec (JSON).")],
-    timeout: Annotated[
-        int, typer.Option(help=f"Seconds per wait (at most {STAGE_TIMEOUT_MAX}).")
-    ] = 150,
+def run_building(
+    port: int, b: building.Building, timeout: int, resume: bool = False
 ) -> None:
-    """Build a planned building: foundation, entrance doors, internal walls, internal
-    doors, room zones, objects, waiting for each stage. Blocks for minutes.
+    """Build a validated building: stages in order with waits, door swaps, then print.
 
-    The whole area must be empty ground; the plan is validated first.
-    """
-    port = ctx.obj
+    ``resume``: the foundation is already there (a build that was cut off): skip that stage."""
     timeout = min(timeout, STAGE_TIMEOUT_MAX)
-    b = _load_building(file)
-    errors = building.validate(b)
-    if errors:
-        typer.echo(
-            json.dumps({"refused": errors, "picture": building.render(b)}, indent=1)
-        )
-        raise typer.Exit(1)
     done: list[str] = []
     warnings: list[str] = []
     inner_walls = building.walls(b) - {
@@ -483,10 +468,14 @@ def building_build(
         return _area(port, b.x, b.y, b.width, b.height)
 
     try:
-        if any(set(r) & set("WFB") for r in read()):
+        started = any(set(r) & set("WFB") for r in read())
+        if started and not resume:
             _fail("the area has walls/floor/frames already; use `ctl room clear` first")
         call("POST", "/send", {"action": "GameSpeedChange", "args": ["10"]}, port=port)
         for name, jobs in building.stages(b):
+            if name == "foundation" and resume and started:
+                done.append("foundation (already there)")
+                continue
             status, data = call("POST", "/build", {"jobs": jobs}, port=port)
             if status >= 400:
                 _fail(f"stage {name} refused", detail=data, done=done)
@@ -535,3 +524,88 @@ def building_build(
             "next": "`ctl refresh`, then check `problems` for these rooms",
         },
     )
+
+
+@building_app.command("build")
+def building_build(
+    ctx: typer.Context,
+    file: Annotated[str, typer.Argument(help="Building spec (JSON).")],
+    timeout: Annotated[
+        int, typer.Option(help=f"Seconds per wait (at most {STAGE_TIMEOUT_MAX}).")
+    ] = 150,
+    resume: Annotated[
+        bool,
+        typer.Option(
+            help="Continue a cut-off build: skip the foundation if it is there."
+        ),
+    ] = False,
+) -> None:
+    """Build a planned building: foundation, entrance doors, internal walls, internal
+    doors, room zones, objects, waiting for each stage. Blocks for minutes.
+
+    The whole area must be empty ground; the plan is validated first.
+    """
+    b = _load_building(file)
+    errors = building.validate(b)
+    if errors:
+        typer.echo(
+            json.dumps({"refused": errors, "picture": building.render(b)}, indent=1)
+        )
+        raise typer.Exit(1)
+    run_building(ctx.obj, b, timeout, resume)
+
+
+@room_app.command("prefabs")
+def room_prefabs(
+    room: Annotated[str | None, typer.Argument(help="Room type, or all.")] = None,
+) -> None:
+    """The game's own room layouts (prefabs), largest first: name, outer size, room type."""
+    kind = _kind(room) if room else None
+    out = [
+        {
+            "prefab": name,
+            "room": prefabs.PREFABS[name]["room"],
+            "outer": [prefabs.PREFABS[name]["w"], prefabs.PREFABS[name]["h"]],
+            "objects": len(prefabs.PREFABS[name]["objects"]),
+        }
+        for name in prefabs.for_room(kind)
+    ]
+    typer.echo(json.dumps(out, indent=1))
+
+
+@room_app.command("prefab")
+def room_prefab(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Argument(help="Prefab name (`ctl room prefabs`).")],
+    x: Annotated[int, typer.Argument(help="Top left cell of the building.")],
+    y: Annotated[int, typer.Argument(help="Top left cell.")],
+    dry_run: Annotated[bool, typer.Option(help="Only check and show it.")] = False,
+    timeout: Annotated[
+        int, typer.Option(help=f"Seconds per wait (at most {STAGE_TIMEOUT_MAX}).")
+    ] = 150,
+    resume: Annotated[
+        bool,
+        typer.Option(
+            help="Continue a cut-off build: skip the foundation if it is there."
+        ),
+    ] = False,
+) -> None:
+    """Build the game's own layout for a room (a standard / lavish design with the right
+    facing and doors): it is checked against the rules like any building first."""
+    if name not in prefabs.PREFABS:
+        _fail(f"unknown prefab {name!r}; see `ctl room prefabs`")
+    try:
+        b = building.parse(prefabs.to_spec(name, x, y))
+    except ValueError as exc:
+        _fail(str(exc))
+        raise
+    errors = building.validate(b)
+    if errors or dry_run:
+        typer.echo(
+            json.dumps(
+                {"ok": not errors, "problems": errors, "picture": building.render(b)},
+                indent=1,
+            )
+        )
+        raise typer.Exit(1 if errors else 0)
+    run_building(ctx.obj, b, timeout, resume)

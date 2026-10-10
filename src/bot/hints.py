@@ -136,6 +136,9 @@ OBJECT_HINTS: dict[str, tuple[str, ...]] = {
     "JailDoor": DOORS[:1] + ENTRANCE[1:2],
     "Door": DOORS[1:2] + ENTRANCE[1:2],
     "StaffDoor": DOORS[1:2] + ENTRANCE[1:2],
+    "SoftPillow": (
+        "A SoftPillow MUST be placed on the top part of a ComfyBed (netted camp bed).",
+    ),
     "Battery": GREEN[3:] + POWER[2:],
     "Transformer": GREEN + POWER[2:],
     "PowerExportMeter": GREEN[3:],

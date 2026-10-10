@@ -107,6 +107,15 @@ def test_room_region_lobby_formatting() -> None:
     room.is_open = False
     room.max_players = 0
     assert formatting.format_room(room) == "Cell Block A  (2/?)  closed"
+    room.custom_properties["MAS"] = "Host"
+    assert formatting.format_room(room) == "Cell Block A  (2/?)  closed  Host"
+    room.custom_properties["players"] = ["Host", "Guest"]
+    assert formatting.format_room(room) == "Cell Block A  (2/?)  closed  Host, Guest"
+    room.players = {
+        1: SimpleNamespace(nick_name="Host"),
+        2: SimpleNamespace(nick_name="Guest"),
+    }
+    assert formatting.format_room(room) == "Cell Block A  (2/?)  closed  Host, Guest"
     assert formatting.format_region("eu", "1.2.3.4:4530").startswith("eu ")
     assert formatting.format_lobby(TypedLobby()) == "(default)  [Default]"
     sql = TypedLobby("x", LobbyType.SqlLobby)
