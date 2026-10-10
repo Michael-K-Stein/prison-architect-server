@@ -13,6 +13,15 @@ def test_long_names():
     assert long_name("Finance", "st") is None
 
 
+def test_finance_keys_use_the_whole_dotted_key():
+    assert long_name("Finance", "v.6") == "Balance"
+    assert long_name("Finance", "tr.v.22") == "PowerExport"
+    assert long_name("Finance", "tr.tOO") == "OtherOutgoing"
+    assert long_name("Finance", "tr.v.99") is None
+    assert long_name("Finance", "pwr_Kitchen") == "PrisonerWageRate_Kitchen"
+    assert long_name("Finance", "sp") == "SalePrice"
+
+
 def test_to_dict_labels_short_keys():
     node = StateNode()
     node.merge(Node("0", [("st", 2), ("Type", 5)]))

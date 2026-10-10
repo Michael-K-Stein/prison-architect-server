@@ -55,6 +55,24 @@ def say_command(server: PrisonArchitectServer) -> Command:
     return Command("say [host] SPEAKER TEXT", "an adviser speaks in the game", run)
 
 
+def capacity_command(server: PrisonArchitectServer) -> Command:
+    """``capacity [N]``: show or set how many players a room takes (default 4)."""
+    from pyphotonrealtime.server import Role
+
+    def run(args: list[str]) -> str:
+        game = server.handlers[Role.GameServer]
+        if not args:
+            return f"room capacity: {game.max_players}"  # type: ignore[attr-defined]
+        try:
+            count = int(args[0])
+        except ValueError:
+            raise ValueError("capacity must be a whole number") from None
+        rooms = game.set_capacity(count)  # type: ignore[attr-defined]
+        return f"room capacity {count} (new rooms and {rooms} existing)"
+
+    return Command("capacity [N]", "show or set the players per room", run)
+
+
 def start_local(opts: CommonOptions, upstream: Optional[str] = None) -> None:
     if not 1 <= opts.max_players <= 16:
         raise typer.BadParameter("max_players must be between 1 and 16")
@@ -86,7 +104,13 @@ def start_local(opts: CommonOptions, upstream: Optional[str] = None) -> None:
             *passthrough,
         )
         run_console(
-            CommandTable({"loglevel": loglevel_command(), "say": say_command(server)}),
+            CommandTable(
+                {
+                    "loglevel": loglevel_command(),
+                    "say": say_command(server),
+                    "capacity": capacity_command(server),
+                }
+            ),
             pane=pane,
         )
         print("\nShutting down servers...")

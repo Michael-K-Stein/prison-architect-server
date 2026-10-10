@@ -75,6 +75,7 @@ KEYS: dict[str, dict[str, str]] = {
         "inppwr": "InputPower: green power arriving at a Transformer (sum of the sources' Capacity)",
         "excspwr": "ExcessPower: InputPower minus Demand, available for Batteries and export",
         "lnkpem": "? bool, linked PowerExportMeter (Transformer)",
+        "sablpwr": "totalSellablePower of a PowerExportMeter: stored energy it can sell (journal2, WireDataRequested live test)",
         "ctran": "? ObjectId-like int, -1 = none (seen on generators and Transformers)",
         # container, door, search, vehicle
         "ct": "Contents (container) | Target (needs)",
@@ -168,6 +169,66 @@ KEYS: dict[str, dict[str, str]] = {
         "v": "velocity (v.x, v.y)",
         "l": "? 60.0 in captures (lifetime?)",
     },
+    "Finance": {
+        # FinanceSystem (fn 0x14059CED0 registers the streamed fields; 0x1405A0F30
+        # reads the save with the long names). Dotted keys are listed whole.
+        # Save fields at the same offsets as the short keys:
+        "sp": "SalePrice: int (save field SalePrice)",
+        "bl": "BankLoan: int (save field BankLoan)",
+        "bcr": "BankCreditRating: float (save field BankCreditRating)",
+        "o": "Ownership: int (save field Ownership, percent)",
+        "spm": "StaffPayModifier: float (save field StaffPayModifier)",
+        # 12 ints (this+52), registered as "v.%i"; v.6 is the bank balance.
+        "v.0": "? v.0: int slot of the 12-slot v array (meaning not decoded)",
+        "v.1": "? v.1: int slot of the 12-slot v array (meaning not decoded)",
+        "v.2": "? v.2: int slot of the 12-slot v array (meaning not decoded)",
+        "v.3": "? v.3: int slot of the 12-slot v array (meaning not decoded)",
+        "v.4": "? StaffHireSpend: int slot; moves by the price of each staff hire (object_Chief, object_Foreman, object_Lawyer) (guess)",
+        "v.5": "? v.5: int slot of the 12-slot v array (meaning not decoded)",
+        "v.6": "Balance: bank balance in dollars (equals save Balance and World.Balance)",
+        "v.7": "? v.7: int slot of the 12-slot v array (meaning not decoded)",
+        "v.8": "? v.8: int slot of the 12-slot v array (meaning not decoded)",
+        "v.9": "? v.9: int slot of the 12-slot v array (meaning not decoded)",
+        "v.10": "? v.10: int slot of the 12-slot v array (meaning not decoded)",
+        "v.11": "? v.11: int slot of the 12-slot v array (meaning not decoded)",
+        # Five scalars after the 28 tr.v.<n> slots (this+360..376). The cashflow
+        # tick (fn 0x14059F3E0) charges ((tI - tO) + (tOI - tOO)) / 24 per hour.
+        "tv": "? TargetValue: int, 80110000 or 80120000 in the bot capture (guess)",
+        "tr.b": "? BalanceBeforeTxn: balance before the latest transaction (tr.b - v.6 = 64 at each cashflow)",
+        "tr.tI": "TotalIncome: money in this period (save: 2000, equal to tr.v.0 there)",
+        "tr.tO": "TotalOutgoing: money out this period, without reform programs (tr.v.16)",
+        "tr.tOI": "OtherIncome: equals tr.v.22 (PowerExport) in every capture sample",
+        "tr.tOO": "OtherOutgoing: equals -tr.v.16 (ReformProgs) in every capture sample",
+        # 28 per-category period totals (fn 0x1405A2580 table, index = n).
+        "tr.v.0": "FederalGrant: period total, category 0 (finances_category_federalgrant)",
+        "tr.v.1": "MinSecPrisoners: period total, category 1",
+        "tr.v.2": "MedSecPrisoners: period total, category 2",
+        "tr.v.3": "MaxSecPrisoners: period total, category 3",
+        "tr.v.4": "Prisoners: period total, category 4",
+        "tr.v.5": "PrisonerBonus: period total, category 5",
+        "tr.v.6": "Workmen: period total, category 6",
+        "tr.v.7": "Guards: period total, category 7 (guard pay; -22950 in one period)",
+        "tr.v.8": "Admin: period total, category 8 (steps -200 per staff hire in the capture)",
+        "tr.v.9": "Staff: period total, category 9",
+        "tr.v.10": "Food: period total, category 10",
+        "tr.v.11": "StaffFood: period total, category 11",
+        "tr.v.12": "Electricity: period total, category 12",
+        "tr.v.13": "Workshops: period total, category 13",
+        "tr.v.14": "Upkeep: period total, category 14",
+        "tr.v.15": "LoanInterest: period total, category 15",
+        "tr.v.16": "ReformProgs: period total, category 16 (negative; the other outgoing, tr.tOO)",
+        "tr.v.17": "PrisonerWages: period total, category 17",
+        "tr.v.18": "NoIncident: period total, category 18",
+        "tr.v.19": "Exports: period total, category 19",
+        "tr.v.20": "ShopRevenue: period total, category 20",
+        "tr.v.21": "CorpTax: period total, category 21 (small negative, -3 to -6)",
+        "tr.v.22": "PowerExport: period total, category 22 (= DailyPowerExports; the other income, tr.tOI)",
+        "tr.v.23": "CivilianCommerce: period total, category 23",
+        "tr.v.24": "Reformed: period total, category 24",
+        "tr.v.25": "Reoffended: period total, category 25",
+        "tr.v.26": "CoveragePlans: period total, category 26",
+        "tr.v.27": "ZombiePayments: period total, category 27",
+    },
 }
 """System -> short key -> long name and note."""
 
@@ -222,12 +283,21 @@ def long_name(system: str, key: str) -> str | None:
     names = KEYS.get(system)
     if not names:
         return None
+    if key in names:
+        # A whole dotted key (Finance "tr.v.22") has its own entry.
+        return _head(names[key])
     base, dot, suffix = key.partition(".")
     if base in names:
-        note = names[base]
-        name = note.split(":")[0] if ":" in note else note
+        name = _head(names[base])
     elif base.startswith("sl") and base[2:].isdigit():
         name = f"Slot{base[2:]}"
+    elif base.startswith("pwr_"):
+        name = f"PrisonerWageRate_{base[4:]}"
     else:
         return None
     return name + dot + suffix
+
+
+def _head(note: str) -> str:
+    """The long name at the front of a note (``Name: text`` gives ``Name``)."""
+    return note.split(":")[0] if ":" in note else note

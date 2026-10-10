@@ -54,6 +54,7 @@ def start_proxy(
     )
     from src.cli.attach import GameTracker
     from src.cli.balance import BalanceOverride
+    from src.cli.filter_command import filter_commands
     from src.cli.inject_commands import inject_commands
     from src.cli.packet_view import PlainPacket, packet_view
     from pyphotonrealtime.realtime._convert import to_param
@@ -77,6 +78,7 @@ def start_proxy(
     hops: dict[tuple[str, int], int] = {}
     proxies: list = []  # every PhotonProxy (the tunnel and each followed hop)
     balance = BalanceOverride()
+    hidden = list(hide or [])  # edited in place by the /filter and /hide commands
     tracker = GameTracker(lambda s: any(s in p.sessions for p in proxies))
 
     def local_port_for(address: str) -> str:
@@ -135,7 +137,7 @@ def start_proxy(
 
     def show(packet_id, direction, packet, injected=False):
         if isinstance(packet, PhotonOperationPacket):
-            if not injected and hide and is_hidden(packet_label(packet), hide):
+            if not injected and hidden and is_hidden(packet_label(packet), hidden):
                 return packet
             to_server = direction == Direction.ToServer
             lines = compact_lines(packet) if compact else [packet_label(packet)]
@@ -182,6 +184,7 @@ def start_proxy(
                 "record": Command("record [PATH|off]", RECORD_HELP, record_command),
                 "loglevel": loglevel_command(),
                 **inject_commands(tracker, balance, recorder.record, show),
+                **filter_commands(hidden),
             }
         )
         pane.attached = lambda: (tracker.status(), tracker.current() is not None)

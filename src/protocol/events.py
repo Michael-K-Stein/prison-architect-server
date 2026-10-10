@@ -42,6 +42,7 @@ from pyphotonrealtime.protocol.operation_code import OperationCode
 from pyphotonrealtime.protocol.param.int8_slice_param import Int8SliceParameter
 from pyphotonrealtime.protocol.param.parameter_key import ParameterKey
 
+from src.protocol.enums import ROOM_TYPES
 from src.protocol.rpc import RpcShapeError, format_rpc, lookup, parse, rpc_name
 from src.protocol.snapshot import (
     Node,
@@ -59,6 +60,7 @@ if TYPE_CHECKING:
 SNAPSHOT_EVENT = 9
 SPAWN_EVENT = 13
 CASHFLOW_EVENT = 118
+WAGE_EVENT = 116
 LEGACY_EVENT_NAMES = {
     # Our own guesses, used before the game's names were known. Old filters
     # such as ``RaiseEvent:SystemState`` keep matching: labels and filters
@@ -172,8 +174,21 @@ def log_lines(packet: PhotonOperationPacket) -> list[str]:
         return lines
     data = packet.get_payload().params[ParameterKey.Data]
     raw = f"  {get_parameter_key_name(ParameterKey.Data)}: {data}"
-    lines = [line for line in lines if line != raw]
+    # pyPhotonRealtime has no names for the game's event codes: ``Operation: UNKNOWN[76]``
+    name = f"Operation: {rpc_name(event[0])}"
+    lines = [
+        name if line.startswith("Operation: UNKNOWN[") else line
+        for line in lines
+        if line != raw
+    ]
     return lines + ["  " + line for line in format_event(*event)]
+
+
+def _wage_text(args: list[Any]) -> str:
+    """``PrisonerWageChanged(room type, rate)``: ``room=Kitchen (8), rate=0.501``."""
+    room, rate = args
+    name = ROOM_TYPES.get(room, "?") if isinstance(room, int) else "?"
+    return f"room={name} ({room}), rate={rate:.3f}"
 
 
 def format_event(code: int, data: bytes) -> list[str]:
@@ -193,6 +208,8 @@ def format_event(code: int, data: bytes) -> list[str]:
                 f"{title}:",
                 f"  {name}: amount {args[0]:+} (int {args[2]}, string {(args[3] or '')!r})",
             ]
+        if code == WAGE_EVENT and len(args) == 2:
+            return [f"{title}:", f"  {_wage_text(args)}"]
         if code == SPAWN_EVENT and len(args) == 3:
             uid, index, kind = args
             return [f"{title}:", f"  uId {uid} as object {index}, type {kind}"]
@@ -300,6 +317,8 @@ def compact_event(code: int, data: bytes) -> list[str]:
             if args[2] or args[3]:
                 extra = f" (int {args[2]}, string {(args[3] or '')!r})"
             return [f"{title} {name} {args[0]:+}{extra}"]
+        if code == WAGE_EVENT and len(args) == 2:
+            return [f"{title} {_wage_text(args)}"]
         if code == SPAWN_EVENT and len(args) == 3:
             return [f"{title} uId {args[0]} object {args[1]} type {args[2]}"]
         if code == SNAPSHOT_EVENT and len(args) >= 2:

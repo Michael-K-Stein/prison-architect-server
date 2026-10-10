@@ -91,11 +91,14 @@ def test_payloads() -> None:
         "Event 9 (DirectoryData):",
         "  'Finance'",
         "  snapshot: 40 B zlib -> 31 B",
-        "    Finance {tr.b=30075, v.6=30110}",
+        "    Finance {? BalanceBeforeTxn (tr.b)=30075, Balance (v.6)=30110}",
     ]
 
     lines = log_lines(packet(FINANCE))
-    assert "    Finance {tr.b=30075, v.6=30110}" in lines[-1], lines
+    assert (
+        "    Finance {? BalanceBeforeTxn (tr.b)=30075, Balance (v.6)=30110}"
+        in lines[-1]
+    ), lines
     assert not any(line.startswith("  Data/") for line in lines), lines
 
     label = packet_label(packet(FINANCE))
@@ -187,3 +190,13 @@ if __name__ == "__main__":
     test_object_removed_typed()
     test_unknown_code_falls_back_to_flat_values()
     print("ok")
+
+
+def test_wage_changed_names_the_room_type() -> None:
+    from src.protocol import events, rpc
+
+    data = rpc.build(116, 8, 0.501)
+    assert events.format_event(116, data)[1] == "  room=Kitchen (8), rate=0.501"
+    assert events.compact_event(116, data) == [
+        "Event 116 PrisonerWageChanged room=Kitchen (8), rate=0.501"
+    ]

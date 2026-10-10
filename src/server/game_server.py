@@ -45,6 +45,32 @@ class PrisonArchitectGameServer(GameServer):
 
     _spoofing = False
 
+    def _capacity_properties(self, count: int) -> HashtableParameter:
+        return HashtableParameter(
+            {
+                Int8Parameter(GamePropertyKey.MaxPlayers.value.value): Int8Parameter(
+                    count
+                ),
+                Int8Parameter(
+                    GamePropertyKey.MaxPlayersInt.value.value
+                ): Int32Parameter(count),
+            }
+        )
+
+    def set_capacity(self, count: int) -> int:
+        """Set the player limit for new rooms and every room that exists.
+
+        Players already inside stay; a full room just refuses further joins.
+        Returns how many existing rooms were changed.
+        """
+        if not 1 <= count <= 16:
+            raise ValueError("capacity must be between 1 and 16")
+        self.max_players = count
+        rooms = list(self.server.rooms.values())
+        for room in rooms:
+            room.properties.update(self._capacity_properties(count))
+        return len(rooms)
+
     def inject_event(
         self,
         code: int,

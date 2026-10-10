@@ -39,6 +39,7 @@ from pyphotonrealtime.protocol.serialization_protocol import SerializationProtoc
 from pyphotonrealtime.server import Direction
 
 from src.capture.schema import TO_CLIENT, TO_SERVER
+from src.protocol.rpc import rpc_name
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -98,7 +99,10 @@ class Packet:
             return f"format 0x{self.format:02x}"
         command = get_command_name(CommandCode(self.command))
         lookup = get_event_name if self.is_event else get_operation_name
-        return f"{command}: {lookup(self.code)}"
+        name = lookup(self.code)
+        if self.is_event and name.startswith("UNKNOWN["):
+            name = rpc_name(self.code)  # the game's RPC / DirectoryData / spawn codes
+        return f"{command}: {name}"
 
     def decode(self) -> Decoded:
         """Parse the payload (operations, responses and events only)."""

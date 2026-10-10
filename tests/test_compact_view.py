@@ -38,7 +38,7 @@ def test_cashflow_is_one_line() -> None:
 
 def test_snapshot_fits_on_one_line() -> None:
     assert compact_lines(packet(FINANCE)) == [
-        "Operation:RaiseEvent DirectoryData:Finance {tr.b=30075, v.6=30110}"
+        "Operation:RaiseEvent DirectoryData:Finance {? BalanceBeforeTxn (tr.b)=30075, Balance (v.6)=30110}"
     ]
 
 
