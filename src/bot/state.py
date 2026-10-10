@@ -29,6 +29,7 @@ from src.bot.names import ObjectNames
 from src.protocol.net_keys import label
 from src.protocol.room_rules import ROOM_RULES
 from src.protocol.enums import (
+    STAFF_TYPES,
     ADVISERS,
     ELECTRICAL,
     OBJECT_TYPES,
@@ -65,6 +66,8 @@ GENERATORS = frozenset(
 OVERLOADED = 1
 """``Overloaded`` value of a generator whose network demands more than it can supply
 (seen with Capacity 50 and 65 demand); 3 is also seen, see journal2."""
+TIRED = 25.0
+"""``EnergyLevel`` below this counts as tired (0 is exhausted; a rested person has 50-100)."""
 SAVE_SYSTEM = "Save"
 """Where the join handshake's full save tree is kept in ``systems``."""
 
@@ -447,6 +450,54 @@ class GameState:
                 if item.fields.get("Id.i") == index:
                     return item.fields.get("Id.u")
             return (self.rooms.get(index) or {}).get("uId")
+
+    def staff_needs(self) -> dict[str, Any]:
+        """Energy / rest status of every staff member, per type and one by one.
+
+        Live ``ObjectData`` (``el`` EnergyLevel, ``rs`` RestState, ``ca`` current Action).
+        ``rs`` 1 = rest required (the save's ``RestStateRequired``): exhausted. Energy 0
+        is also exhausted; below ``TIRED`` is tired. Workmen reading 0 need a Staffroom
+        (``ctl rules Staffroom``).
+        """
+        with self.lock:
+            node = self.systems.get("ObjectData")
+            people = []
+            for index, obj in node.children.items() if node else ():
+                f = obj.fields
+                kind = f.get("name") or self.type_names.get(f.get("t", -1), "")
+                if kind not in STAFF_TYPES:
+                    continue
+                energy, rest = f.get("el"), f.get("rs")
+                if rest == 1 or (energy is not None and energy <= 0):
+                    status = "exhausted"
+                elif energy is not None and energy < TIRED:
+                    status = "tired"
+                else:
+                    status = "ok"
+                people.append(
+                    {
+                        "index": int(index),
+                        "uId": f.get("uId"),
+                        "type": kind,
+                        "name": self.names.name_of(int(index), f.get("uId")),
+                        "energy": None if energy is None else round(float(energy), 1),
+                        "rest_state": rest,
+                        "action": f.get("ca"),
+                        "status": status,
+                    }
+                )
+            by_type: dict[str, dict[str, Any]] = {}
+            for p in people:
+                t = by_type.setdefault(
+                    p["type"], {"count": 0, "exhausted": 0, "tired": 0, "ok": 0}
+                )
+                t["count"] += 1
+                t[p["status"]] += 1
+            return {
+                "summary": dict(sorted(by_type.items())),
+                "exhausted": sum(t["exhausted"] for t in by_type.values()),
+                "staff": sorted(people, key=lambda p: (p["type"], p["index"])),
+            }
 
     def named(self, index: int, uid: int | None = None) -> str:
         """``"Name "`` for a named object (note the space), else ``""``."""

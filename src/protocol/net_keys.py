@@ -38,7 +38,7 @@ KEYS: dict[str, dict[str, str]] = {
         "ba": "BodyArmour",
         "sh": "Shackled",
         "ci": "Carrying: the object a person carries",
-        "el": "Energy",
+        "el": "EnergyLevel: the save field is Energy; 0 = exhausted",
         "rs": "RestState",
         "rt": "ReloadTimer",
         "ait": "AiSetTarget",

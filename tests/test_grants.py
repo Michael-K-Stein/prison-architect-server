@@ -49,3 +49,24 @@ def test_hints_for_commands():
     assert catalog.parse_args(action, ["Closed"], GameState()) == [0]
     assert catalog.parse_args(action, ["fill capacity"], GameState()) == [1]
     assert catalog.parse_args(action, ["None"], GameState()) == [0]
+
+
+def test_staff_needs_flags_exhausted_workmen():
+    from src.bot.state import StateNode
+
+    state = GameState()
+    state.systems["ObjectData"] = StateNode(
+        children={
+            "9": StateNode({"uId": 1, "name": "Workman", "el": 0.0, "rs": 1}),
+            "10": StateNode({"uId": 2, "name": "Workman", "el": 80.0, "rs": 0}),
+            "11": StateNode({"uId": 3, "name": "Cook", "el": 10.0, "rs": 0}),
+            "12": StateNode({"uId": 4, "name": "Prisoner"}),
+        }
+    )
+    needs = state.staff_needs()
+    assert needs["exhausted"] == 1
+    assert needs["summary"] == {
+        "Cook": {"count": 1, "exhausted": 0, "tired": 1, "ok": 0},
+        "Workman": {"count": 2, "exhausted": 1, "tired": 0, "ok": 1},
+    }
+    assert [p["status"] for p in needs["staff"]] == ["tired", "exhausted", "ok"]

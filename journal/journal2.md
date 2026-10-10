@@ -1925,3 +1925,19 @@ controls which prisoner categories are taken (`Save Intake/Categories`:
 `NextIntake`, `Queue`); not wired into the bot yet. After `IntakeTypeChange 0` the host
 reported `IntakeType=0`; the prisoner count still rose from 59 to 67 from arrivals already
 on the way.
+
+### Staff needs and exhausted workmen (MKS2, user: `el` == EnergyLevel)
+
+- Live `ObjectData` of every staff member carries `el` **EnergyLevel** (0 = exhausted; a
+  rested person reads 50-100: Warden 51.7, Accountant 85.4), `rs` RestState (1 = the save's
+  `RestStateRequired`; 0 otherwise, the Accountant who the save calls `RestStateResting`
+  reads 0 live) and `ca` the current need Action (25 for the 18 busy workmen). All 26
+  Workmen read `el=0`, `rs=1` (save: `RestState='RestStateRequired'`, `Needs/Action=
+  'StaffDuties'`, `Needs/BreakTime` about -17360, i.e. a break overdue for days): they
+  cannot rest because no Staffroom exists (`Staffroom`: 4x4 indoor, seats, DrinkMachine)
+  and were also stuck at the jail door. Three Guards were hired so the door can be opened.
+- Bot: `ctl staff` / `GET /staff` lists every staff member with `energy`, `rest_state`,
+  `action`, `status` (exhausted / tired below 25 / ok) and per-type counts. Staff-related
+  commands (`ctl hire`, BeginResearch, ToggleResearchDesired, reform/guard actions)
+  attach a compact `staff_status` to every third reply, and the hire hint tells the
+  agent to check `ctl staff` and build a Staffroom.

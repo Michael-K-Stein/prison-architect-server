@@ -58,11 +58,38 @@ game's ``adviser_name_*`` language keys (``base-language.txt``). Only 1 = The CE
 is confirmed (``help_warning_prisonerreleased`` came with 1 and the user saw it as
 a call from "The CEO", MKS2 packet 7372); the rest follow the same key order."""
 
+STAFF_TYPES = frozenset(
+    {
+        "Workman",
+        "Guard",
+        "RiotGuard",
+        "ArmedGuard",
+        "Doctor",
+        "Cook",
+        "Warden",
+        "Janitor",
+        "Gardener",
+        "Foreman",
+        "Chief",
+        "Lawyer",
+        "Accountant",
+        "Psychologist",
+        "DogHandler",
+        "Orderly",
+        "Sniper",
+        "ParoleOfficer",
+        "ParoleLawyer",
+        "Farmer",
+    }
+)
+"""Object type names of every staff member (all have EnergyLevel ``el`` and RestState ``rs``)."""
+
 STAFF = frozenset({"Workman", "Guard", "Doctor", "Cook", "Warden"})
 """Object type names that are staff. Partial (journal2, IDA object table)."""
 
 __all__ = [
     "ADVISERS",
+    "STAFF_TYPES",
     "INTAKE_MODES",
     "ELECTRICAL",
     "FOUNDATION_MATERIALS",

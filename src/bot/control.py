@@ -50,6 +50,8 @@ NAME_TABLES = {
     },
 }
 """``/names/<table>``: the game's id -> name tables."""
+STAFF_STATUS_EVERY = 3
+"""Staff-related commands attach ``staff_status`` to every 3rd reply."""
 AREA_DEFAULTS = (("x", 0), ("y", 0), ("w", 10), ("h", 10))
 
 
@@ -62,6 +64,7 @@ class ControlServer:
         self.stopped = threading.Event()
 
         handler = type("Handler", (_Handler,), {"control": self})
+        self._staff_calls = 0
         self.httpd = ThreadingHTTPServer(("127.0.0.1", port), handler)
         self.httpd.daemon_threads = True
         self._thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
@@ -261,6 +264,7 @@ class ControlServer:
             "name": action.name,
             "data_hex": data.hex(),
             "hints": hints.for_action(action.name),
+            **self._with_staff(action.name in hints.STAFF_ACTIONS),
         }
 
     def build(self, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
@@ -278,6 +282,7 @@ class ControlServer:
             "sent": bool(sent),
             "jobs": [vars(j) for j in jobs],
             "hints": hints.for_jobs(specs),
+            **self._with_staff(hints.is_staff_job(specs)),
         }
 
     def names(self, table: str, query: str) -> tuple[int, dict[str, Any]]:
@@ -287,6 +292,18 @@ class ControlServer:
             return 404, {"error": f"unknown table; one of {', '.join(NAME_TABLES)}"}
         q = query.lower()
         return 200, {str(i): n for i, n in found.items() if q in n.lower()}
+
+    def _with_staff(self, relevant: bool) -> dict[str, Any]:
+        status = self.staff_status() if relevant else None
+        return {"staff_status": status} if status else {}
+
+    def staff_status(self, every: int = STAFF_STATUS_EVERY) -> dict[str, Any] | None:
+        """A compact staff-needs summary on every ``every``-th staff-related reply."""
+        self._staff_calls += 1
+        if self._staff_calls % every:
+            return None
+        needs = self.session.state.staff_needs()
+        return {"exhausted": needs["exhausted"], "by_type": needs["summary"]}
 
     def recent(self, since: int, limit: int) -> dict[str, Any]:
         """``/events``: logged lines with ``seq > since`` (at most ``limit``)."""
@@ -362,6 +379,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._reply(*c.names(url.path[7:], query.get("q", "")))
             elif url.path == "/alias":
                 self._reply(*c.alias(None))
+            elif url.path == "/staff":
+                self._reply(200, c.session.state.staff_needs())
             elif url.path == "/hints":
                 topic = query.get("topic", "")
                 found = hints.TOPICS.get(topic) if topic else None

@@ -27,6 +27,8 @@ POWER = (
     "Battery and Transformer are indoor only; generators are outdoor.",
 )
 PEOPLE = (
+    "`ctl staff` shows every staff member's EnergyLevel and RestState; workmen at 0 are "
+    "exhausted and work badly until they can rest in a Staffroom.",
     "Prisoners without a cell/bed can die or escape, which cuts reputation and income: "
     "pause intake (IntakeTypeChange Closed) when prisoners exceed beds.",
     "Research needs the matching staff member hired AND seated in his own Office room "
@@ -96,7 +98,11 @@ TOOL_HINTS: dict[str, tuple[str, ...]] = {
     "room": BUILD[:1],
     "place": BUILD,
     "line": POWER[:1] + BUILD[:1],
-    "hire": PEOPLE[1:],
+    "hire": PEOPLE[1:]
+    + (
+        "Exhausted staff (EnergyLevel 0) stop working: check `ctl staff`; they need a "
+        "Staffroom (`ctl rules Staffroom`: 4x4 indoor, seats, DrinkMachine) to rest.",
+    ),
     "demolish": (
         "Bulldozing removes terrain/walls/floors; objects (and often cables) stay.",
     ),
@@ -122,3 +128,21 @@ def for_jobs(specs: list[dict]) -> list[str]:
                 if text not in out:
                     out.append(text)
     return out
+
+
+STAFF_ACTIONS = frozenset(
+    {
+        "BeginResearch",
+        "ToggleResearchDesired",
+        "ToggleStaffKeys",
+        "AssignGuardToPrisoner",
+        "StartReformProgram",
+        "ScheduleProgram",
+    }
+)
+"""Actions after which the reply may carry ``staff_status`` (sporadically)."""
+
+
+def is_staff_job(specs: list[dict]) -> bool:
+    """Whether the build specs hire staff or place staff-run rooms/objects."""
+    return any(str(s.get("tool", "")).lower() == "hire" for s in specs)

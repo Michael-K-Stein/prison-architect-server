@@ -454,6 +454,12 @@ def ctl_hints(
     _show(ctx, "GET", "/hints" + (f"?topic={topic}" if topic else ""))
 
 
+@ctl.command("staff")
+def ctl_staff(ctx: typer.Context) -> None:
+    """Energy and rest status of every staff member (exhausted / tired / ok)."""
+    _show(ctx, "GET", "/staff")
+
+
 @ctl.command("hire")
 def ctl_hire(
     ctx: typer.Context,
