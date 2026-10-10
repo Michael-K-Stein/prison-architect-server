@@ -1475,3 +1475,19 @@ was wrong: `Dismantle` is a `WorkQueue` field and stays 0 here.
 - Open: `target_PowerStation` has the only progress task (`TimePassedGreen` 5,
   deadline 14400): it needs a running station; no data for the other targets in
   the save.
+
+### Why every research is stuck (host user; `data/research.txt`)
+
+Each research has `Requires` (another research), `Cost` (negative, charged up
+front) and `Admin`: the research whose staff entity must be **hired and in his
+office** (the game shows "REQUIRED: Chief|Accountant|..."). The staff entity is
+that research's `Sprite`: Warden -> Warden (132), Maintainance -> Foreman (134),
+Security -> Chief (133), Legal -> Lawyer (138), MentalHealth -> Psychologist
+(135), Finance -> Accountant (137). Counts of `Admin`: Security 14, Warden 10,
+Finance 6, Legal 6, Maintainance 5. So Haiku's 23 paid researches never ran:
+no Chief/Lawyer/Accountant/Foreman existed. `src/protocol/research_rules.py`
+(generated from the game files), `ctl research`; hire with `ctl hire <role>`
+(`Staff` job; the roles are in the object table).
+- Money cheat attempt on the dummy game: `IncreaseLoan` (49) x3 and `AcceptGrant`
+  on an in-progress / completed grant changed nothing (balance moved only by
+  cashflow). No RPC credits money; a client cannot send `TransactionAdded`.

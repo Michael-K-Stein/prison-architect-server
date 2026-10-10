@@ -308,6 +308,19 @@ def ctl_rules(
     )
 
 
+@ctl.command("research")
+def ctl_research(
+    name: Annotated[
+        str | None, typer.Argument(help="e.g. Cctv; all if omitted.")
+    ] = None,
+) -> None:
+    """What each research needs (staff to hire, prerequisite, cost), from the game data."""
+    from src.protocol.research_rules import RESEARCH_RULES, describe
+
+    names = [name] if name else list(RESEARCH_RULES)
+    typer.echo(json.dumps([describe(n) or f"unknown {n!r}" for n in names], indent=1))
+
+
 @ctl.command("actions")
 def ctl_actions(
     ctx: typer.Context,
