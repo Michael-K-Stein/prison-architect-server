@@ -51,3 +51,19 @@ def test_any_utility_spec_works() -> None:
     objs = [{"Type": "Boiler", "Id.i": 1, "Pos.x": 1.5, "Pos.y": 1.5}]
     out = analyze({(1, 2), (2, 2)}, objs, water)
     assert out["utility"] == "water" and out["networks"][0]["kind"] == "hot"
+
+
+def test_water_appliance_without_a_pump_is_unserved() -> None:
+    from src.bot import network
+
+    pipes = {(5, 16), (6, 16), (7, 16)}
+    sink = {"Type": "Sink", "Pos.x": 6.5, "Pos.y": 16.5, "Id.i": 1}
+    beside = {"Type": "Toilet", "Pos.x": 6.5, "Pos.y": 17.5, "Id.i": 4}
+    far = {"Type": "Toilet", "Pos.x": 30.5, "Pos.y": 17.5, "Id.i": 2}
+    pump = {"Type": "WaterPumpStation", "Pos.x": 6.5, "Pos.y": 14.5, "Id.i": 3}
+    objects = [sink, far, beside]
+    unserved = network.unserved(pipes, objects, network.WATER)
+    assert [o["Id.i"] for o in unserved] == [1, 2, 4]
+    # a pump next to the pipes feeds them; only a pipe ON the appliance's cell serves it
+    unserved = network.unserved(pipes, [*objects, pump], network.WATER)
+    assert [o["Id.i"] for o in unserved] == [2, 4]

@@ -55,6 +55,17 @@ GREEN = (
     "back to the grid for money (Power Export goals). The Transformer shows Production / "
     "Expenditure / Excess power.",
 )
+WATER = (
+    "Toilets, Sinks and ShowerHeads (also Sprinklers, Drains, LaundryMachines, Radiators) "
+    "need WATER: a pipe must lie ON the same cell as the appliance (not next to it), in "
+    "a network that leads to a WaterPumpStation (3x3, id 245, price 5000). An unpiped one flashes an error sign and its room does not work "
+    "(cells without a working Toilet, kitchens without a Sink, showers). `ctl state` "
+    "`problems` lists them as 'no water'; `ctl network water` shows the pipe networks.",
+    "The pump is an electrical object: a cable must touch it and the AC grid must power it. "
+    "Lay a PipeLarge main line (`ctl build line X Y W H -n PipeLarge`), then PipeSmall "
+    "branches (`-n PipeSmall`) ending on a cell the appliance covers (a 3x1 Sink: any of its 3 cells). Pipes and "
+    "cables are separate layers and may share cells; pipes pass under walls.",
+)
 PEOPLE = (
     "`ctl staff` shows every staff member's EnergyLevel and RestState; workmen at 0 are "
     "exhausted and work badly until they can rest in a Staffroom.",
@@ -91,6 +102,7 @@ TOPICS: dict[str, tuple[str, ...]] = {
     "entrance": ENTRANCE,
     "power": POWER,
     "green": GREEN,
+    "water": WATER,
     "people": PEOPLE,
     "grants": GRANTS,
     "build": BUILD,
@@ -111,6 +123,12 @@ ACTION_HINTS: dict[str, tuple[str, ...]] = {
     "RemovePrisoner": (
         "Removing a prisoner costs 5000 (securitymenu_RemovedPrisoner).",
     ),
+    "LandPurchaseRequest": (
+        "Buys a strip of land: x, y, w, h of the NEW cells, then false, true (as the client sends "
+        "it: `LandPurchaseRequest 0 80 100 40 false true` grew the map from 80 to 120 rows). It "
+        "costs about 5 per cell and the host drops the game speed to 1 afterwards: send "
+        "GameSpeedChange 10 again.",
+    ),
     "GameSpeedChange": ("The host accepts any value up to 10 and clamps higher ones.",),
 }
 
@@ -129,6 +147,17 @@ OBJECT_HINTS: dict[str, tuple[str, ...]] = {
         "the same network as green sources.",
         *POWER[1:2],
     ),
+    "Toilet": WATER[:1],
+    "Sink": WATER[:1],
+    "ShowerHead": WATER[:1],
+    "Sprinkler": WATER[:1],
+    "Drain": WATER[:1],
+    "LaundryMachine": WATER[:1],
+    "Radiator": WATER[:1],
+    "WaterPumpStation": WATER,
+    "PipeLarge": WATER[1:],
+    "PipeSmall": WATER[1:],
+    "PipeValve": WATER[1:],
     "Capacitor": POWER[:1],
     "ElectricalCable": POWER[:1],
 }
@@ -137,7 +166,7 @@ TOOL_HINTS: dict[str, tuple[str, ...]] = {
     "foundation": ENTRANCE + DOORS + BUILD,
     "room": ENTRANCE[:2] + BUILD[:1],
     "place": BUILD,
-    "line": POWER[:1] + BUILD[:1],
+    "line": POWER[:1] + WATER[1:] + BUILD[:1],
     "hire": PEOPLE[1:]
     + (
         "Exhausted staff (EnergyLevel 0) stop working: check `ctl staff`; they need a "

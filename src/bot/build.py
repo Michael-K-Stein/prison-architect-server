@@ -198,6 +198,20 @@ def hire(role: str) -> Job:
 
 
 TOOLS["demolish"] = (demolish, ("x", "y", "width", "height"), "material")
+
+
+def dismantle(
+    x: int, y: int, width: int = 1, height: int = 1, kind: str = "DismantleUtility"
+) -> Job:
+    """Remove cables and pipes (``DismantleUtility``, 333) or objects (``DismantleObject``,
+    332): an ``Objects`` job whose material is that pseudo-object, as a client sends
+    it (``captures/bot-goal/todos-10-10-2026-17-13.sqlite`` packet 66374)."""
+    if kind not in ("DismantleUtility", "DismantleObject"):
+        raise KeyError(kind)
+    return Job("Objects", id_of(OBJECTS, kind), x, y, width, height)
+
+
+TOOLS["dismantle"] = (dismantle, ("x", "y", "width", "height"), "kind")
 TOOLS["raw"] = (raw, (), "material")
 TOOLS["hire"] = (hire, (), "role")
 

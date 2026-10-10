@@ -20,21 +20,26 @@ add a :class:`Utility` to :data:`UTILITIES`; nothing else changes.
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 Cell = tuple[int, int]
 Network = dict[str, Any]
 
-SIZES = {
-    "SolarPanels": (3, 2),
-    "WindTurbine": (2, 3),
-    "SolarWindHybrid": (3, 3),
-    "Transformer": (2, 2),
-}
-"""Footprints (w, h) from ``materials*.txt``; any other object counts as 1x1."""
+
+def _load_sizes() -> dict[str, tuple[int, int]]:
+    """Footprints (w, h) from ``materials*.txt`` (``data/object_sizes.json``)."""
+    path = Path(__file__).parent / "data" / "object_sizes.json"
+    objects = json.loads(path.read_text(encoding="utf-8"))["objects"]
+    return {name: (info["w"], info["h"]) for name, info in objects.items()}
+
+
+SIZES = _load_sizes()
+"""Footprints (w, h); an object missing from the table counts as 1x1."""
 REACH = ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1))
 """A cell and its four neighbours: an object touches a line when its footprint is there."""
 
@@ -53,6 +58,9 @@ class Utility:
     consumer: Callable[[dict[str, Any]], bool] = lambda obj: "Powered" in obj
     """True for an object that draws from the line (sources, converters and passive
     parts are excluded before this is asked)."""
+    adjacent: bool = True
+    """Whether an object touches a line from a neighbouring cell (cables do); False:
+    the line must be on a cell the object covers (pipes, journal2)."""
     classify: Callable[[Network], str] = lambda net: "stray"
     """Kind of a network from its census (``roles``, ``converters``, ``consumers``)."""
     check: Callable[[Network, str], list[str]] = lambda net, where: []
@@ -65,6 +73,10 @@ def footprint(obj: dict[str, Any]) -> set[Cell]:
     x0 = round(obj["Pos.x"] - w / 2)
     y0 = round(obj["Pos.y"] - h / 2)
     return {(x0 + i, y0 + j) for i in range(w) for j in range(h)}
+
+
+def _reach(comp: list[Cell]) -> set[Cell]:
+    return {(x + dx, y + dy) for x, y in comp for dx, dy in REACH}
 
 
 def components(cells: set[Cell]) -> list[list[Cell]]:
@@ -98,14 +110,18 @@ def analyze(
     joins: dict[Any, set[int]] = {}
     # converter id -> the networks it touches (its two sides must differ)
     for n, comp in enumerate(components(cells)):
-        reach = {(x + dx, y + dy) for x, y in comp for dx, dy in REACH}
+        reach = _reach(comp)
         touching: Counter[str] = Counter()
         consumers: Counter[str] = Counter()
         unpowered = 0
         for obj, cover in placed:
-            if not cover & reach:
-                continue
             kind = obj.get("Type", "?")
+            draws = (
+                kind not in every_source | utility.passive | utility.converters
+                and utility.consumer(obj)
+            )
+            if not cover & (set(comp) if draws and not utility.adjacent else reach):
+                continue
             touching[kind] += 1
             if kind in utility.converters:
                 joins.setdefault(obj.get("Id.i"), set()).add(n)
@@ -146,6 +162,26 @@ def analyze(
         "problems": problems,
         "ok": not problems,
     }
+
+
+def unserved(
+    cells: set[Cell], objects: list[dict[str, Any]], utility: Utility
+) -> list[dict[str, Any]]:
+    """Consumers that touch no line network holding a source of ``utility``."""
+    placed = [(o, footprint(o)) for o in objects if "Pos.x" in o and "Pos.y" in o]
+    sources = frozenset().union(*utility.sources.values())
+    fed: set[Cell] = set()
+    for comp in components(cells):
+        reach = _reach(comp)
+        if any(o.get("Type") in sources and cover & reach for o, cover in placed):
+            fed.update(reach if utility.adjacent else comp)
+    return [
+        o
+        for o, cover in placed
+        if o.get("Type") not in sources | utility.passive
+        and utility.consumer(o)
+        and not cover & fed
+    ]
 
 
 def _electricity_kind(net: Network) -> str:
@@ -191,5 +227,38 @@ ELECTRICITY = Utility(
 )
 """Raw green (blue) lines need a Transformer before they can feed consumers (green)."""
 
-UTILITIES: dict[str, Utility] = {ELECTRICITY.name: ELECTRICITY}
+WATER_CONSUMERS = frozenset(
+    {"Toilet", "Sink", "ShowerHead", "Sprinkler", "Drain", "LaundryMachine", "Radiator"}
+)
+"""Objects with ``Filter RequiresWater`` / ``WaterUtility`` in ``materials.txt``."""
+
+
+def _water_kind(net: Network) -> str:
+    if net["roles"]["pump"]:
+        return "pumped"
+    return "unfed" if net["consumers"] else "stray"
+
+
+def _water_check(net: Network, where: str) -> list[str]:
+    if net["kind"] == "unfed":
+        return [
+            f"{where}: {net['consumers']} water appliances, no WaterPumpStation on "
+            "these pipes"
+        ]
+    return []
+
+
+WATER = Utility(
+    name="water",
+    node="Water",
+    sources={"pump": frozenset({"WaterPumpStation"})},
+    passive=frozenset({"PipeValve", "WaterBoiler"}),
+    consumer=lambda obj: obj.get("Type") in WATER_CONSUMERS,
+    adjacent=False,
+    classify=_water_kind,
+    check=_water_check,
+)
+"""Pipes: every sink, toilet and shower head needs a pipe ON its cell, in a pumped network."""
+
+UTILITIES: dict[str, Utility] = {ELECTRICITY.name: ELECTRICITY, WATER.name: WATER}
 """Utilities ``ctl network`` can validate, by name."""

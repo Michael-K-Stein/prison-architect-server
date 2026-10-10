@@ -103,7 +103,7 @@ ARG_NAMES: dict[int, tuple[str, ...]] = {
     83: ("program",),
     85: ("program", "day?", "hour?", "room"),
     86: ("program", "manual"),
-    87: ("x?", "y?", "w?", "h?", "flag1?", "flag2?"),
+    87: ("x", "y", "w", "h", "flag1", "flag2"),  # LandPurchaseRequest, journal2
     92: ("from", "to"),
     93: ("object",),
     96: ("speed",),
@@ -122,7 +122,7 @@ ARG_NAMES: dict[int, tuple[str, ...]] = {
     109: ("room", "a?", "b?"),
     110: ("type", "x?", "y?", "a?", "b?"),
     111: ("plan", "a?", "b?"),
-    116: ("category?", "wage"),
+    116: ("room_type", "rate"),  # PrisonerWageChanged: room type id, 0..1 (journal2)
     120: ("plan?", "value?"),
     121: ("category?", "rate"),
     122: ("per_day",),
@@ -368,6 +368,7 @@ SOURCES: dict[str, str] = {
     "other": "room",
     "speed": "speed",
     "intake": "intake",
+    "room_type": "room_type",
 }
 """Argument name -> where its choices come from (see :func:`choices`)."""
 
@@ -398,6 +399,8 @@ def choices(arg: Arg, state: Any = None) -> list[Choice]:
         return [Choice(v, label) for v, label in SPEEDS.items()]
     if kind == "intake":
         return [Choice(v, n) for v, n in sorted(INTAKE_MODES.items())]
+    if kind == "room_type":
+        return [Choice(v, n) for v, n in sorted(ROOM_TYPES.items()) if v]
     if kind == "vehicle":
         return [Choice(v, n) for v, n in sorted(VEHICLES.items()) if v]
     if kind == "research":

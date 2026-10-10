@@ -619,11 +619,33 @@ class GameState:
             cells = set()
             for key in node.children if node else ():
                 parts = key.split()
-                if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
+                if len(parts) in (2, 3) and all(p.isdigit() for p in parts[:2]):
                     cells.add((int(parts[0]), int(parts[1])))
             objects = self.save.children.get("Objects")
             fields = [i.fields for i in objects.children.values()] if objects else []
             return network.analyze(cells, fields, spec)
+
+    def _no_water(self) -> list[str]:
+        """Water appliances (sink, toilet, shower head...) off a pumped pipe network.
+
+        Call with the lock held. The game flashes an error sign on each of them.
+        """
+        assert self.save is not None
+        spec = network.WATER
+        node = self.save.children.get(spec.node)
+        cells = set()
+        for key in node.children if node else ():
+            parts = key.split()
+            if len(parts) in (2, 3) and all(p.isdigit() for p in parts[:2]):
+                cells.add((int(parts[0]), int(parts[1])))
+        objects = self.save.children.get("Objects")
+        fields = [i.fields for i in objects.children.values()] if objects else []
+        return [
+            f"{self.named(o.get('Id.i'), o.get('Id.u'))}{o['Type']} #{o.get('Id.i')} at "
+            f"{o.get('Pos.x', '?')},{o.get('Pos.y', '?')}: no water (pipe it to a "
+            "powered WaterPumpStation: PipeLarge main line, PipeSmall to each device)"
+            for o in network.unserved(cells, fields, spec)
+        ]
 
     def room_list(self) -> list[dict[str, Any]]:
         """Rooms from the last save: index, type, and the assigned prisoner (cells)."""
@@ -695,6 +717,7 @@ class GameState:
                     out.append(
                         f"{who}{f['Type']} #{f.get('Id.i')} at {pos}: no power{hint}"
                     )
+            out.extend(self._no_water())
             return out
 
     def _rule_problems(self) -> list[str]:

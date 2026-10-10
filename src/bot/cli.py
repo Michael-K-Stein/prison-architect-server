@@ -30,6 +30,7 @@ from src.bot.control import DEFAULT_PORT, ControlServer, call
 from src.bot.flow import join_flow, join_room, pick
 from src.bot.formatting import format_region
 from src.bot.hud import run_hud
+from src.bot.room_cli import room_app
 from src.bot.session import (
     APP_VERSION,
     CLAUDE_ORANGE,
@@ -584,6 +585,123 @@ def ctl_staff(ctx: typer.Context) -> None:
     _show(ctx, "GET", "/staff")
 
 
+@ctl.command("wires")
+def ctl_wires(
+    ctx: typer.Context,
+    request: Annotated[
+        bool,
+        typer.Option("--request", help="Send WireDataRequested (94) first and wait."),
+    ] = False,
+) -> None:
+    """Which objects are wired to which (export meter -> Transformer links)."""
+    _show(ctx, "GET", "/wires" + ("?request=1" if request else ""))
+
+
+ISSUES_FILE = Path("bot-issues.jsonl")
+"""Where `ctl issue` appends: one JSON object per line, read by the bot's maintainer."""
+
+
+ctl.add_typer(room_app, name="room")
+
+
+@ctl.command("issue")
+def ctl_issue(
+    text: Annotated[str, typer.Argument(help="What blocks you, and which task.")],
+    task: Annotated[
+        str, typer.Option("--task", help="The task it blocks (e.g. 'build Library').")
+    ] = "",
+) -> None:
+    """Report a missing or broken bot feature that blocks a task (then do other work)."""
+    import time
+
+    entry = {"time": time.strftime("%Y-%m-%d %H:%M:%S"), "task": task, "issue": text}
+    with ISSUES_FILE.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(entry) + "\n")
+    typer.echo(json.dumps({"filed": entry}, indent=1))
+
+
+LAND_PRICE_PER_CELL = 5.088
+"""About what the host charges per cell (journal2: 100x10 cells cost 5088)."""
+
+
+@ctl.command("land")
+def ctl_land(
+    ctx: typer.Context,
+    where: Annotated[
+        str,
+        typer.Argument(help="info, south N, east N, or buy X Y W H (new cells)."),
+    ] = "info",
+    numbers: Annotated[
+        list[int] | None, typer.Argument(help="N rows/columns, or X Y W H.")
+    ] = None,
+    speed: Annotated[
+        int, typer.Option(help="Game speed to restore (the host resets it to 1).")
+    ] = 10,
+) -> None:
+    """Show or buy land: `land` (size, price), `land south 20`, `land east 10`,
+    `land buy X Y W H`. A purchase costs about 5 per cell and resets the game speed."""
+    port = ctx.obj
+    numbers = numbers or []
+    try:
+        _, save = call("GET", "/state/Save?depth=0", port=port)
+        w, h = int(save["NumCellsX"]), int(save["NumCellsY"])
+        balance = float(save["Balance"])
+        info = {
+            "map": [w, h],
+            "origin": [save.get("OriginW"), save.get("OriginH")],
+            "balance": balance,
+            "price_per_cell": LAND_PRICE_PER_CELL,
+        }
+        if where == "info":
+            typer.echo(json.dumps(info, indent=1))
+            return
+        if where in ("south", "east") and len(numbers) == 1 and numbers[0] > 0:
+            n = numbers[0]
+            rect = (0, h, w, n) if where == "south" else (w, 0, n, h)
+        elif where == "buy" and len(numbers) == 4 and min(numbers) >= 0:
+            rect = tuple(numbers)
+        else:
+            _fail("usage: land | land south N | land east N | land buy X Y W H")
+        cost = rect[2] * rect[3] * LAND_PRICE_PER_CELL
+        if cost > balance:
+            _fail(f"about {cost:.0f} needed, balance is {balance:.0f}")
+        status, data = call(
+            "POST",
+            "/send",
+            {"action": "LandPurchaseRequest", "args": [*rect, False, True]},
+            port=port,
+        )
+        if status >= 400:
+            _fail(f"refused: {data}")
+        after = save
+        for _ in range(5):  # the host applies it within a few seconds
+            call("POST", "/refresh", {"seconds": 5}, port=port)
+            _, after = call("GET", "/state/Save?depth=0", port=port)
+            if [after["NumCellsX"], after["NumCellsY"]] != [w, h]:
+                break
+        call(
+            "POST",
+            "/send",
+            {"action": "GameSpeedChange", "args": [speed]},
+            port=port,
+        )
+    except OSError as exc:
+        _fail(f"no control server: {exc}")
+    grown = [int(after["NumCellsX"]), int(after["NumCellsY"])]
+    typer.echo(
+        json.dumps(
+            {
+                "requested": list(rect),
+                "map": grown,
+                "grew": grown != [w, h],
+                "spent": round(balance - float(after["Balance"])),
+                "speed_restored": speed,
+            },
+            indent=1,
+        )
+    )
+
+
 @ctl.command("hire")
 def ctl_hire(
     ctx: typer.Context,
@@ -619,6 +737,32 @@ def ctl_demolish(
     """Bulldoze an area; then DemolishWalls, then ClearIndoorArea to clear a building."""
     spec = {"tool": "demolish", **_rect(x, y, width, height, zone)}
     _show(ctx, "POST", "/build", {"jobs": [{**spec, "material": name}]})
+
+
+@ctl.command("dismantle")
+def ctl_dismantle(
+    ctx: typer.Context,
+    x: Annotated[int | None, typer.Argument(help="Left cell.")] = None,
+    y: Annotated[int | None, typer.Argument(help="Top cell.")] = None,
+    width: Annotated[int, typer.Argument(help="Cells wide.")] = 1,
+    height: Annotated[int, typer.Argument(help="Cells high.")] = 1,
+    objects: Annotated[
+        bool,
+        typer.Option(
+            "--objects", help="Dismantle objects (DismantleObject), not cables/pipes."
+        ),
+    ] = False,
+    zone: Annotated[
+        str | None,
+        typer.Option(
+            "--zone", "-z", help="A named zone (`ctl zone`) instead of X Y W H."
+        ),
+    ] = None,
+) -> None:
+    """Remove cables and pipes (DismantleUtility) in an area; `--objects` for objects."""
+    spec = {"tool": "dismantle", **_rect(x, y, width, height, zone)}
+    kind = "DismantleObject" if objects else "DismantleUtility"
+    _show(ctx, "POST", "/build", {"jobs": [{**spec, "kind": kind}]})
 
 
 @ctl.command("wire")

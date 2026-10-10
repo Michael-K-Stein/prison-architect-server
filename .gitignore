@@ -11,3 +11,4 @@ bot-names.json
 bot-zones.json
 *.log
 serve*.out
+bot-issues.jsonl

@@ -33,7 +33,7 @@ from typing import Any
 from urllib import error, request
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from src.bot import build, catalog, hints, objecthints
+from src.bot import build, catalog, hints, objecthints, wiredata
 from src.bot.names import NameError_
 from src.bot.zones import Zones, bounds, mask_rows
 from src.protocol.grants import GRANTS
@@ -58,6 +58,10 @@ NAME_TABLES = {
 STAFF_STATUS_EVERY = 3
 """Staff-related commands attach ``staff_status`` to every 3rd reply."""
 AREA_DEFAULTS = (("x", 0), ("y", 0), ("w", 10), ("h", 10))
+
+
+MAX_AREA = 200
+"""Our own limit on one ``area`` reply (a whole map is 100x80), not a game rule."""
 
 
 class ControlServer:
@@ -295,6 +299,29 @@ class ControlServer:
             return 400, {"error": f"need set, x, y, w, h: {exc}"}
         return 200, {"zones": zones.all(), "groups": zones.groups()}
 
+    def wires(self, ask: bool) -> dict[str, Any]:
+        """Object wiring (``wirec`` / ``wirei``); ``ask`` sends WireDataRequested first."""
+        state = self.session.state
+        found = (
+            wiredata.request(self.session, state) if ask else wiredata.wire_data(state)
+        )
+        return {
+            str(i): {
+                "connections": [
+                    {
+                        "index": link.index,
+                        "uid": link.uid,
+                        "triggered": link.triggered,
+                        "time_index": link.time_index,
+                        "via": list(link.via),
+                    }
+                    for link in w.connections
+                ],
+                "inputs": [list(pair) for pair in w.inputs],
+            }
+            for i, w in sorted(found.items())
+        }
+
     def area(self, query: dict[str, str]) -> dict[str, Any]:
         """``/area``: the grid of a rectangle or a ``zone``, plus the zones it touches."""
         zones = self._zones()
@@ -306,7 +333,7 @@ class ControlServer:
         else:
             rects = []
             x, y, w, h = (int(query.get(k, d)) for k, d in AREA_DEFAULTS)
-        reply = self.session.state.area(x, y, min(w, 60), min(h, 60))
+        reply = self.session.state.area(x, y, min(w, MAX_AREA), min(h, MAX_AREA))
         if len(rects) > 1:  # a group: only its own cells, not its bounding box
             reply["rows"] = mask_rows(reply["rows"], x, y, rects)
             reply.pop("materials")
@@ -457,6 +484,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._reply(*c.alias(None))
             elif url.path == "/staff":
                 self._reply(200, c.session.state.staff_needs())
+            elif url.path == "/wires":
+                self._reply(200, c.wires("request" in query))
             elif url.path == "/hints" and "object" in query:
                 self._reply(*c.object_hint(query["object"]))
             elif url.path == "/hints":

@@ -77,3 +77,9 @@ def test_composites_round_trip() -> None:
     data = rpc.build(61, *args)
     assert data == bytes.fromhex("0204 0201 0202 01 00 0203 0205")
     assert rpc.parse(61, data).args[1] == ("MisconductPolicy", (1, 2, True, False, 3))
+
+
+def test_wage_change_takes_a_room_type_name() -> None:
+    from src.bot import catalog
+
+    assert catalog.parse_args(catalog.ACTIONS[116], ["Kitchen", "0.6"]) == [8, 0.6]

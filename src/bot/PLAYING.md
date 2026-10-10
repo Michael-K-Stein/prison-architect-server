@@ -164,3 +164,19 @@ Object hints come from the game's own tooltips (`src/bot/data/object_hints.json`
 for the objects in that build, but only the first time the session uses each one, plus a
 reminder after 25 more build replies or 30 minutes; at most three per reply. Read the full
 text of any object with `ctl hints --object Transformer`.
+
+## Whole rooms: `ctl room`
+
+`ctl room plan ROOM [--variant min|lavish] [X Y]` shows the layout the bot would build (ASCII,
+objects, stages); `ctl room build ROOM X Y [--variant min|lavish]` builds it: foundation, waits for the
+floor, door (bottom wall), waits for the walls, zones the room, places the objects. The plan comes from
+the game's rules (`ctl rules`) and the object sizes (`src/bot/data/object_sizes.json`). `lavish` is
+bigger, with fancy alternatives (Comfy / Superior / Oak / Fancy) and plants. It refuses ground that
+already has walls or floor, but does not look for objects, cables or other rooms under the footprint:
+check `ctl state Save Objects` first and leave a one-cell gap. Afterwards `ctl refresh` and read
+`problems` for the room. Appliances that need water (Toilet, Sink, ShowerHead...) need a pipe ON their
+cell (`ctl wire X1 Y1 X2 Y2 -n PipeSmall` to a pumped PipeLarge line); lights and devices need an AC
+cable (`ctl hints power`, `ctl hints water`).
+
+If a bot feature you need is missing or wrong, report it with `ctl issue "text" --task "what you
+wanted"` (appended to `bot-issues.jsonl`) and carry on with something else.
