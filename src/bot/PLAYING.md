@@ -149,3 +149,9 @@ Entrances: every foundation or room needs a door that works for everyone it serv
 StaffDoor or Door. Rooms prisoners must reach (cells, dormitories, canteen, shower, yard)
 need a Door or JailDoor; prisoners cannot open StaffDoors. `ctl hints entrance` repeats this
 and it is attached to `ctl build foundation|room` replies.
+
+Object hints come from the game's own tooltips (`src/bot/data/object_hints.json`, built by
+`python -m src.bot.hintgen "<language dir>"`). A `ctl build` reply carries `object_hints`
+for the objects in that build, but only the first time the session uses each one, plus a
+reminder after 25 more build replies or 30 minutes; at most three per reply. Read the full
+text of any object with `ctl hints --object Transformer`.

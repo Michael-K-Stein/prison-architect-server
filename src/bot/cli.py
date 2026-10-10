@@ -450,8 +450,17 @@ def ctl_hints(
         str | None,
         typer.Argument(help="doors, entrance, power, green, people, grants or build."),
     ] = None,
+    object_name: Annotated[
+        str | None,
+        typer.Option(
+            "--object", help="Full game hint for one object, e.g. Transformer."
+        ),
+    ] = None,
 ) -> None:
     """Game rules to remember (also shown in action details and command replies)."""
+    if object_name:
+        _show(ctx, "GET", f"/hints?object={quote(object_name)}")
+        return
     _show(ctx, "GET", "/hints" + (f"?topic={topic}" if topic else ""))
 
 

@@ -10,6 +10,7 @@ and send RPCs. Listens on 127.0.0.1 only. Endpoints::
     POST /send   {"action", "args"}  parse, build and raise an RPC
     POST /build  {"jobs": [spec]}    build jobs (foundation/wall/floor/room/place)
     GET  /names/<table>?q=text       game ids by name (objects, materials, rooms...)
+    GET  /hints?object=NAME          the full game hint for one object (any time)
     GET  /area?x=&y=&w=&h=           what the map cells there are made of (a grid)
     POST /refresh {"seconds"}        re-fetch the full save (rooms, problems), then /state
     GET  /events                     numbered feed lines (?since=N&limit=M)
@@ -30,7 +31,7 @@ from typing import Any
 from urllib import error, request
 from urllib.parse import parse_qs, unquote, urlsplit
 
-from src.bot import build, catalog, hints
+from src.bot import build, catalog, hints, objecthints
 from src.protocol.grants import GRANTS
 from src.protocol import enums, rpc
 
@@ -65,6 +66,7 @@ class ControlServer:
 
         handler = type("Handler", (_Handler,), {"control": self})
         self._staff_calls = 0
+        self.object_hints = objecthints.ObjectHintTracker()
         self.httpd = ThreadingHTTPServer(("127.0.0.1", port), handler)
         self.httpd.daemon_threads = True
         self._thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
@@ -278,12 +280,22 @@ class ControlServer:
             return 400, {"error": str(exc)}
         sent = self.session.build(jobs)
         log.info("control /build %r -> sent=%s", specs, sent)
-        return 200, {
+        reply: dict[str, Any] = {
             "sent": bool(sent),
             "jobs": [vars(j) for j in jobs],
             "hints": hints.for_jobs(specs),
             **self._with_staff(hints.is_staff_job(specs)),
         }
+        if due := self.object_hints.take(_object_names(specs)):
+            reply["object_hints"] = due
+        return 200, reply
+
+    def object_hint(self, name: str) -> tuple[int, dict[str, Any]]:
+        """``/hints?object=NAME``: the full game hint for one object, any time."""
+        entry = objecthints.lookup(name)
+        if entry is None:
+            return 404, {"error": f"no object hint for {name!r}"}
+        return 200, entry
 
     def names(self, table: str, query: str) -> tuple[int, dict[str, Any]]:
         """``/names/<table>``: id -> name for objects/materials/rooms/..."""
@@ -313,6 +325,16 @@ class ControlServer:
             "events": [{"seq": s, "at": at, "line": line} for s, at, line in items],
             "last": state.seq,
         }
+
+
+def _object_names(specs: list[dict]) -> list[str]:
+    """Object names a build job refers to (same fields as :func:`hints.for_jobs`)."""
+    return [
+        str(spec[key])
+        for spec in specs
+        for key in ("object", "role", "kind")
+        if spec.get(key)
+    ]
 
 
 def _arg(arg: catalog.Arg) -> dict[str, Any]:
@@ -381,6 +403,8 @@ class _Handler(BaseHTTPRequestHandler):
                 self._reply(*c.alias(None))
             elif url.path == "/staff":
                 self._reply(200, c.session.state.staff_needs())
+            elif url.path == "/hints" and "object" in query:
+                self._reply(*c.object_hint(query["object"]))
             elif url.path == "/hints":
                 topic = query.get("topic", "")
                 found = hints.TOPICS.get(topic) if topic else None
