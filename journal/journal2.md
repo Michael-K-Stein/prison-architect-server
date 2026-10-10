@@ -1593,3 +1593,28 @@ and the short net key on one member offset):
   capacity, and the station only needed to be switched on.
 - Not the station's fault: the bot said "dead end" because it looked for a
   switch object (`PowerSwitch`, 244) and passed a uId.
+
+### Haiku water + power round (`bot-goal-3-bot`)
+
+- **Overload cleared by capacity**: two more Capacitors (`build place 63 26` and
+  `56 27 -n Capacitor`) took `Main_Power_Station` (object 52, uId 8444868) to
+  `Capacity 250` against `Demand 65`; `problems` then lists no overload.
+- Objects 25 and 82 are **`Box` crates with `Contents='PowerStation'`**, i.e.
+  ordered stations waiting as deliveries, not stations (Haiku named them by
+  mistake: `ctl name set X 25` pointed at a Box). Items placed by the bot arrive
+  by supply truck as a crate first; the bot's `problems` once counted them as
+  stations while the live `ObjectData` still had the type.
+- **Water**: pump `WaterPumpStation` object 59 at 19.5,12.5 (uId 8463110),
+  powered. `PipeLarge` main line `ctl wire 19 13 19 69` then `19 69 -> 63 69`,
+  `PipeSmall` branches to each toilet / shower head / sink; no water problem
+  remained for rooms #11-#15. Pipes and cables are separate layers: they may
+  share cells.
+- **Power to the south rooms**: a cable trunk down x=23, a row at y=70 with
+  branches up each door column (x=23, 33, 53, 63). A building at x 17-21, y 39-46
+  blocked the straight route.
+- `ctl demolish` bulldoze + `-n DemolishWalls` + `-n ClearIndoorArea` removed
+  the old Kitchen #9 and Canteen #10 (64,52 and 72,52, 5x5).
+- Left: "There are no canteens accessible by this cell" for Cell #3 and
+  HoldingCell #11 (the canteen has an empty `Connected` in the save; guess: no
+  indoor route from the cells to the canteen), and Lights #61, #112 behind
+  walls.
