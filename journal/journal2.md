@@ -1328,3 +1328,22 @@ trees in `bot-goal.sqlite`); `src/bot/build.py` makes the jobs.
 - Assumed language lines are `key<TAB>text`; many use spaces, so the first
   text table missed every `roomerror_*` key.
 - First guessed `STAFF` names by hand; replaced by the binary's tables.
+
+### Haiku agent playing via `bot ctl` (Claude Opus 5.5)
+
+- **Attempt 1** (Haiku 5.5, guide `src/bot/PLAYING.md`): `ctl build foundation
+  24 10 5 5` was accepted and the floor (9 `ConcreteFloor`) built, but the 16
+  edge cells stayed `BuildingFrame` and the `Foundations` job stayed listed
+  (`Hidden=True`, `Counter` cycling) for ~6000 game minutes. The agent took
+  that as "not finished" and gave up.
+- **Why**: my first foundation's frame turned into `ConcreteWall` all at once
+  (cell (10,10) at 2212 s, no wall job), 3 s after the bot placed a JailDoor
+  in it. The second never got a door. Placing a JailDoor at (26,14) on the
+  Haiku foundation turned its frame into walls within a minute. So **a
+  foundation's walls go up only once it has a door** (observed twice). Wall
+  jobs (`flooring` ConcreteWall) over a `BuildingFrame` are refused silently.
+- New `ctl area X Y W H` (cells from the save's `Cells "x y" {Mat, Ind,
+  Room.i}` and live `CellData [i n] {x, y, Mat}`) shows the build as a grid of
+  letters; the guide now says door first, and how to check each step.
+- Gotcha for agents: Git Bash rewrites `/Construction`-like arguments into
+  Windows paths; use PowerShell.
