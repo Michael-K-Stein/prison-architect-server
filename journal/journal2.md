@@ -1430,3 +1430,8 @@ was wrong: `Dismantle` is a `WorkQueue` field and stays 0 here.
   cable inside. (Explains Haiku round 2's "no power" on the new rooms' lights.)
 - Bot: `ctl wire X1 Y1 X2 Y2` (cable along x then y); `problems` says "a cable
   must touch it" for unpowered non-lights.
+- **Overload** (host user): too many consumers cut *all* power and the
+  PowerStation reads "Overloaded, remove electrical items or add Capacitors".
+  In the save the station object has `Capacity=50` and `Overloaded=1` (seen on
+  PowerStation #52 at 60.5,26.5 in `bot-goal-2`); `problems` reports it. A second
+  PowerStation needs fully separate cables: crossing power lines short-circuit.

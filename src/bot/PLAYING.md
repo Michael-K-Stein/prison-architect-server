@@ -63,6 +63,9 @@ cell next to the device (check the objects' positions with `ctl state`).
 Walls block a cable's reach to lights; doors do not. A cable along a hallway may
 power lights in a room through its door, but a room with no door on the cable's
 side needs its own cable run inside.
+A PowerStation has a Capacity (50); past it the grid is overloaded and ALL power
+cuts out (`problems` says so). Remove load, add Capacitors, or add another
+PowerStation on completely separate cables: crossing lines short-circuit.
 Staff are hired with `ctl hire Guard 2`.
 
 ## Recipe: a prisoner cell

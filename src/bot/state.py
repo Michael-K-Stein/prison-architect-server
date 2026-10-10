@@ -542,6 +542,13 @@ class GameState:
             objects = self.save.children.get("Objects")
             for item in objects.children.values() if objects else ():
                 f = item.fields
+                if f.get("Type") == "PowerStation" and f.get("Overloaded"):
+                    out.append(
+                        f"PowerStation #{f.get('Id.i')}: overloaded (Capacity "
+                        f"{f.get('Capacity')}), all power is cut: remove electrical "
+                        "items, add Capacitors, or add a second PowerStation on "
+                        "its own cables (crossing lines short-circuit)"
+                    )
                 if f.get("Type") in ELECTRICAL and not f.get("Powered"):
                     pos = f"{f.get('Pos.x', '?')},{f.get('Pos.y', '?')}"
                     hint = (
