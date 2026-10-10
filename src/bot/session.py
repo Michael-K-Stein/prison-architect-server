@@ -17,7 +17,6 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-import typer
 from pyphotonrealtime import AppSettings, RealtimeClient
 from pyphotonrealtime.protocol.param.parameter_key import ParameterKey
 from pyphotonrealtime.realtime import (
@@ -31,6 +30,7 @@ from src.bot.formatting import format_event_lines
 from src.bot.recording import record_traffic
 from src.capture import Recorder
 from src.protocol import rpc
+from src.protocol.snapshot import decode_args, decompress
 from src.server.upstream import resolve_upstream
 
 log = logging.getLogger(__name__)
@@ -38,7 +38,13 @@ log = logging.getLogger(__name__)
 PING_INTERVAL = 4.0  # seconds between the game client's P (ping) updates
 FIRST_PING_DELAY = 1.3  # ... the first one comes this long after joining
 CLAUDE_ORANGE = "d97757"  # RRGGBB; sent as the game does: "0xRRGGBBAA"
+SYSTEM_STATE = 9  # event: (system name, zlib tree)
+OBJECTIVE_REMOVED = 21  # event: (objective name, bool)
 APP_VERSION = "the_slammer_1.0"  # AppVersion in the game's Authenticate (captures)
+
+
+class ConnectError(RuntimeError):
+    """The bot could not connect or join; the message is meant for the user."""
 
 
 @dataclass
@@ -77,6 +83,8 @@ class Session(
         self.regions: dict[str, str] = {}
         self.events: deque[tuple[int, int, Any]] = deque(maxlen=5000)
         self.master = self.joined = self.lobby_joined = False
+        self.objectives: dict[str, str] = {}
+        """Current objectives: ``Name`` -> ``Type``, from the game's events."""
         self.disconnected: object | None = None
         self.join_error = ""
         self._stop = threading.Event()
@@ -133,6 +141,22 @@ class Session(
             for line in format_event_lines(event.sender, event.code, value):
                 log.debug("event %s", line)
         self.events.append((event.sender, event.code, value))
+        if isinstance(value, bytes):
+            self._track_objectives(event.code, value)
+
+    def _track_objectives(self, code: int, data: bytes) -> None:
+        """Keep :attr:`objectives` current (``Objective`` state, ``ObjectiveRemoved``)."""
+        try:
+            args = decode_args(data)
+            if code == SYSTEM_STATE and args[:1] == [b"Objective"]:
+                tree = decompress(args[1]).tree
+                fields = dict(tree.fields) if tree else {}
+                if "Name" in fields:
+                    self.objectives[fields["Name"]] = fields.get("Type", "")
+            elif code == OBJECTIVE_REMOVED and args:
+                self.objectives.pop(args[0].decode("utf-8", "replace"), None)
+        except (ValueError, IndexError, AttributeError):
+            log.debug("could not read objectives from event %d", code)
 
     # thread and helpers
     def report_ping(self, now: float) -> bool:
@@ -242,7 +266,12 @@ def fetch_regions(opts: Options, recorder: Recorder | None = None) -> dict[str, 
     try:
         session.start(make_settings(opts))
         if not session.wait_for(lambda: bool(session.regions)):
-            raise typer.BadParameter("no region list received from the Name Server")
+            raise ConnectError(
+                f"no region list received from the Name Server"
+                f" (disconnected: {session.disconnected}). Is the Photon Name Server"
+                " reachable? If your hosts file redirects it to 127.0.0.1, set"
+                " PHOTON_NAME_SERVER (or --name-server) to its real address."
+            )
         return dict(session.regions)
     finally:
         session.stop()

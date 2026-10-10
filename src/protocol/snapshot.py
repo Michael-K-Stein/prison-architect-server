@@ -128,6 +128,8 @@ def _value(reader: _Reader, kind: int) -> Any:
         return struct.unpack("<d", reader.take(8))[0]
     if kind == 0x08:
         return reader.uint(2)
+    if kind == 0x09:
+        return struct.unpack("<q", reader.take(8))[0]
     msg = f"unknown field type 0x{kind:02x} at {reader.pos - 1}"
     raise ValueError(msg)
 

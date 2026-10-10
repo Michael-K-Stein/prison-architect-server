@@ -16,6 +16,9 @@ from src.bot.slider import pick_speed
 from src.bot.speed import GAME_SPEED_CHANGE, SPEED_STOPS, speed_wire_value
 from src.protocol import rpc
 
+OBJECTIVE_REMOVED = 21  # RPC code, ``ObjectiveRemoved(string, bool)``
+CEO_LETTER_OBJECTIVE = "ReadCeosLetter"  # captures/ad-hoc/read-ceo-letter.sqlite
+
 console = Console()
 log = logging.getLogger(__name__)
 
@@ -48,6 +51,18 @@ def action_speed(ctx: Context) -> None:
     ctx.log.append(f"speed {SPEED_STOPS[index][0]} -> {value}")
 
 
+def action_read_ceo_letter(ctx: Context) -> None:
+    """Send ``ObjectiveRemoved("ReadCeosLetter", False)``, as the client does."""
+    data = rpc.build(OBJECTIVE_REMOVED, CEO_LETTER_OBJECTIVE, False)
+    ok = ctx.session.raise_event(OBJECTIVE_REMOVED, data)
+    console.print(
+        f"{'sent' if ok else 'NOT sent'} ObjectiveRemoved({CEO_LETTER_OBJECTIVE!r}, "
+        f"False) event {OBJECTIVE_REMOVED}, Data={data.hex(' ')}",
+        markup=False,
+    )
+    ctx.log.append(f"objective removed {CEO_LETTER_OBJECTIVE}")
+
+
 def action_events(ctx: Context) -> None:
     """Stream incoming game events until Ctrl-C."""
     console.print("[dim]Streaming events, Ctrl-C to stop.[/dim]")
@@ -70,15 +85,24 @@ def action_events(ctx: Context) -> None:
 # Add new RPC actions here: (menu label, handler taking a Context).
 ACTIONS: list[tuple[str, Callable[[Context], None]]] = [
     ("Change game speed", action_speed),
+    ("Read the CEO's letter", action_read_ceo_letter),
     ("Show incoming events", action_events),
 ]
+
+
+def _menu_title(session: Session) -> str:
+    """The menu heading, with the current objectives under it."""
+    title = "Prison Architect bot"
+    if session.objectives:
+        title += "\nObjectives: " + ", ".join(sorted(session.objectives))
+    return title
 
 
 def menu(ctx: Context) -> None:
     """The in-game main menu; returns when the user leaves."""
     while ctx.session.disconnected is None:
         choice = pick(
-            "Prison Architect bot",
+            _menu_title(ctx.session),
             [*[(label, fn) for label, fn in ACTIONS], ("Leave / quit", None)],
         )
         if choice is None:

@@ -100,7 +100,8 @@ def start_proxy(
                 if direction == Direction.ToServer
                 else "server -> client"
             )
-            logging.info("%s\n  %s", arrow, "\n  ".join(log_lines(packet)))
+            tag = f"#{packet_id}  " if packet_id is not None else ""
+            logging.info("%s%s\n  %s", tag, arrow, "\n  ".join(log_lines(packet)))
         return packet
 
     with (

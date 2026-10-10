@@ -28,6 +28,7 @@ from src.bot.formatting import format_region
 from src.bot.session import (
     APP_VERSION,
     CLAUDE_ORANGE,
+    ConnectError,
     Options,
     Session,
     fetch_regions,
@@ -173,6 +174,10 @@ def run(opts: Options) -> None:
         except KeyboardInterrupt:
             log.info("interrupted by the user")
             console.print("\nInterrupted, disconnecting.")
+        except ConnectError as exc:
+            log.error("bot stopped: %s", exc)
+            console.print(f"[red]Error:[/red] {exc}", markup=True, highlight=False)
+            raise typer.Exit(1) from None
         except Exception:
             log.exception("bot stopped with an error")
             raise

@@ -63,6 +63,7 @@ Every `RaiseEvent` has two params:
   | `06` | u32 length, then a nested tagged list, e.g. `[0, '_Finance', 'ReceivePaymentSmall', 0]` |
   | `07` | double, e.g. `TimeIndex`                                           |
   | `08` | u16                                                                |
+  | `09` | int64 (run7, `has` on a type 526 object; always 0 so far)          |
 
 Example:
 
@@ -938,3 +939,61 @@ means.
 
 - Read the float one byte early after the type tag. Check the offset against
   the raw hex before trusting a decoded value.
+
+## Staff Door install (run7, Claude Sonnet 5.5 work)
+
+Capture `captures/run7.sqlite`, session 3: a `StaffDoor` placed at cell
+(46, 47) at the end of the run, then built and opened by workers.
+
+### Packet sequence (all decode)
+
+| Packet | Event | Content |
+| ------ | ----- | ------- |
+| 1314 | `DirectoryData` `WorkQueue` | job 283 `InstallObject`, `ObjType='StaffDoor'`, `CellX=46, CellY=47`, `WorkTotal=7` |
+| 1315 | 118 `TransactionAdded` | `object_StaffDoor: amount -100` |
+| 1316 | `PlayerData` | `Job {Type='Objects', Material=41, PosX=46, PosY=47, Status=-2}` (builder job; Status 1 earlier) |
+| 1638 | 13 `ObjectAdded` | `uId 8428736 as object 17, type 41` (41 = StaffDoor) |
+| 1641 | `CellData` | cell (46, 47) `Mat='BuildingFrame'` |
+| 1645 | `NetworkSoundSystem` | `[0, 17, 8428736, 'BeginOpen', 0]` |
+| 1674 | `NetworkSoundSystem` | `[0, 17, 8428736, 'BeginClose', 0]`, `'EndClose'` |
+
+- Object type 41 is the door's `t` in `ObjectData`; the sound cue args are
+  `[0, <object index>, <uId>, <state>, 0]`.
+- Cost 100 matches `Finance.v.6` (the in-game Bank Balance, confirmed by the
+  user) going 26794 -> 26694 right after packet 1315.
+
+### Parser gap found in run7
+
+Three `ObjectData` snapshots (packets after the type 526 `ObjectAdded`, e.g.
+1393) failed with `unknown field type 0x09`. The field is `has`, 8 bytes, 0.
+Now decoded as int64.
+
+### Mistakes log (continued)
+
+- None for the door itself; the 0x09 type was simply unseen before run7.
+
+## Object type ids across run1-7 (Claude Sonnet 5.5 work)
+
+Every `t` seen in `ObjectData` / `ObjectAdded` across the seven captures:
+
+| Type | Seen in | Evidence | Name |
+| ---- | ------- | -------- | ---- |
+| 0 | run7 | `ObjectAdded` for uId 8428662, removed again a moment later | placeholder / `None` (*guess*) |
+| 1 | run7 | same uId 8428662 after the add; has `ct=41` (the StaffDoor type) | a construction site (*guess*) |
+| 2 | run4, run5 | `con`, `qua` fields | material pallet (*guess*, see above) |
+| 41 | run7 | `WorkQueue` job `ObjType='StaffDoor'` + `PlayerData` `Job.Material=41` | **StaffDoor** (confirmed) |
+| 80 | run5 | no `o`-less extras; `p`/`o` fields only | unknown |
+| 109, 124, 526 | run5, run7 | person-like fields (`eq`, `sta`, `el`, `has`, `inc.N`) | unknown, an NPC-style class |
+| 139 | run4, run5, run7 | `ss`, `s` fields | delivery truck (*guess*) |
+| 261 | run2 | `p`, `o` only | unknown |
+| 525 | run7 | same `p` as 526 | unknown |
+
+Type ids do not match the file order of `data/materials.txt` (inside
+`main.dat`, a RAR archive; `7z x main.dat "data\*.txt"`): `StaffDoor` is the
+18th `BEGIN Object` block there but has id 41, so ids are assigned at runtime
+from a larger table (DLC objects, `materials_dlc.txt`, built-ins).
+`Object` names in the binary (`sub_14003AEB0`, `sub_1400AC2A0`) are static
+name constants, not an id table. To finish the table, either find another
+`WorkQueue ObjType` + `Job.Material` pair per object (build one of each
+object in a new capture), or find the runtime loader in IDA. Each new capture
+that builds an object gives one more id -> name pair.

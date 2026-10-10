@@ -6,13 +6,12 @@ import logging
 import time
 from typing import Any
 
-import typer
 from InquirerPy import inquirer
 from pyphotonrealtime.realtime import EnterRoomParams
 from pyphotonrealtime.realtime.lobby import LobbyType, TypedLobby
 
 from src.bot.formatting import colour_property, format_lobby, format_room
-from src.bot.session import Options, Session, make_settings
+from src.bot.session import ConnectError, Options, Session, make_settings
 from src.capture import Recorder
 
 log = logging.getLogger(__name__)
@@ -35,7 +34,7 @@ def join_flow(opts: Options, region: str, recorder: Recorder | None = None) -> S
     try:
         session.start(make_settings(opts, region))
         if not session.wait_for(lambda: session.master):
-            raise typer.BadParameter(f"could not reach region {region!r}")
+            raise ConnectError(f"could not reach region {region!r}")
         lobbies = [TypedLobby()]
         with session.lock:
             lobbies += [
@@ -57,7 +56,7 @@ def join_flow(opts: Options, region: str, recorder: Recorder | None = None) -> S
         with session.lock:
             rooms = list(session.client.room_list.values())
         if not rooms:
-            raise typer.BadParameter("no games in this lobby")
+            raise ConnectError("no games in this lobby")
         log.info("%d games listed", len(rooms))
         name = pick("Game", [(format_room(r), r.name) for r in rooms if r.is_open])
         log.info("game chosen: %s", name)
@@ -69,9 +68,9 @@ def join_flow(opts: Options, region: str, recorder: Recorder | None = None) -> S
                 )
             )
         if not session.wait_for(lambda: session.joined or bool(session.join_error)):
-            raise typer.BadParameter("joining timed out")
+            raise ConnectError("joining timed out")
         if session.join_error:
-            raise typer.BadParameter(f"join failed: {session.join_error}")
+            raise ConnectError(f"join failed: {session.join_error}")
     except BaseException:
         session.stop()
         raise

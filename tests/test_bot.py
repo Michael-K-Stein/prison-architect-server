@@ -1,5 +1,6 @@
 """The bot's pure helpers, the slider Application and the speed action (no network)."""
 
+import zlib
 import logging
 import sys
 from contextlib import contextmanager
@@ -200,6 +201,13 @@ def test_speed_action_cancel_sends_nothing(monkeypatch) -> None:
     session = FakeSession()
     actions.action_speed(actions.Context(session, Options("id")))
     assert session.sent == []
+
+
+def test_read_ceo_letter_action_matches_the_capture() -> None:
+    session = FakeSession()
+    actions.action_read_ceo_letter(actions.Context(session, Options("id")))
+    # captures/ad-hoc/read-ceo-letter.sqlite, packet 330
+    assert session.sent == [(21, b"\x12\x0eReadCeosLetter\x00")]
 
 
 def test_actions_registry_and_session_event_filter() -> None:
@@ -404,3 +412,18 @@ def test_session_recorder_wires_the_peer(tmp_path: Path) -> None:
     with Recorder(path) as recorder:
         Session(client, recorder=recorder)  # type: ignore[arg-type]
         assert isinstance(client.peer.transport, RecordingTransport)  # type: ignore[attr-defined]
+
+
+def test_session_tracks_objectives() -> None:
+    session = Session(client=SimpleNamespace(add_callback_target=lambda t: None))
+    tree = (
+        b"<\tObjective\x02\x04Name\x04\x10FeedAllPrisoners"
+        b"\x04Type\x04\x10FeedAllPrisoners\x00>"
+    )
+    blob = zlib.compress(tree) + len(tree).to_bytes(2, "big") + b"\x03"
+    state = b"\x12\x09Objective\x12" + bytes([len(blob)]) + blob
+    session._track_objectives(9, state)
+    assert session.objectives == {"FeedAllPrisoners": "FeedAllPrisoners"}
+    assert "FeedAllPrisoners" in actions._menu_title(session)
+    session._track_objectives(21, b"\x12\x10FeedAllPrisoners\x00")
+    assert session.objectives == {}

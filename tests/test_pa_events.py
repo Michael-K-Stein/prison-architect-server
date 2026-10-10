@@ -64,6 +64,11 @@ def decode_and_get(body: bytes) -> bytes:
     return bytes(packet(body).get_payload().params[245].value)
 
 
+def test_int64_field() -> None:
+    raw = b"<\x01X\x01\x03has\x09" + (-5).to_bytes(8, "little", signed=True) + b"\x00>"
+    assert decode_tree(raw).fields == [("has", -5)]
+
+
 def test_payloads() -> None:
     data = bytes(packet(CASHFLOW).get_payload().params[245].value)
     assert decode_args(data) == [35, b"finance_cost_cashflow", 0, 0]
