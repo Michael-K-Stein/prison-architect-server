@@ -3,6 +3,15 @@
 Open work for the bot and the protocol notes. Remove an item when it is done and put the
 finding in `journal/journal2.md`.
 
+## Bugs
+
+- **`/cash` does not work in the proxy terminal** (user report, 2026-10-10, attached to the MKS2
+  game). `src/cli/inject_commands.py` `cash AMOUNT [KEY]` injects a `TransactionAdded`
+  (`finance_cost_cashflow`) to the client; the effect on the client's balance was not seen.
+  Not yet reproduced: check that the event reaches the client (capture `injected` column), and
+  recall that a host ignores `TransactionAdded` / `Finance` writes from clients (journal2), so
+  only a client-side display may be possible.
+
 ## Bot
 
 - **Prisoner status and data.** Prisoners have names, ages, needs and reputations. Needs are
@@ -51,6 +60,16 @@ Found while running Haiku agents through `ctl`; most cost an agent real time. Ro
   `InputPower`/`ExcessPower`, battery charge, staff `EnergyLevel`: a `ctl object NAME|INDEX`
   that merges live `ObjectData` and the save with long names.
 - `speed` in `ctl state` reads null; read `World/ClientData gt` (host speed) instead.
+
+### Utilities layout (cables and pipes)
+- **Layout optimization functions** (user request, 2026-10-10). Given the buildings (rooms, doors, lights
+  and devices from the save) and the sources (Transformer output, pumps), plan the cable / pipe runs
+  instead of hand-placing `ctl wire` lines: a minimum Steiner-style tree per utility that reaches every
+  consumer, keeps raw-green and AC networks apart (never touch generators or the Transformer input),
+  routes through wall cells beside doors, avoids object footprints, and emits `build line` / `dismantle`
+  jobs plus a verification pass with `ctl network`. The MKS2 AC backbone done by hand (spine x=42, trunk
+  south and east, feeders per building; journal2 "Removing cables and the hall grid fix") is the
+  worked example. Needed first: `ctl map` with objects, and the `dismantle` tool (done).
 
 ### Doing things reliably
 - **Verify build jobs.** `sent: true` means nothing; the host drops jobs silently. After a build,

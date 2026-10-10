@@ -2125,3 +2125,446 @@ Goal: complete `Grant_bootstraps` in MKS2 (money was never a limit: balance 80 M
 - Hid errors with `>/dev/null` on `ctl zone set`; the running server predated nested zones, so five
   zones silently failed to save. Restart `bot serve` after code changes and read replies.
 - Ran plain `capture tail` on a live capture: it follows forever and ate the command timeout.
+
+
+## Removing cables and the hall grid fix (MKS2 live, `todos-10-10-2026-17-13.sqlite`, Claude Sonnet 5.5 work)
+
+- **Dismantle utility is a `Construction` job, not a new RPC.** The user's client removed one cable
+  cell at (21,48) (packet 66374): `Jobs [[i 0] {Type='Objects', Material=333, PosX=21, PosY=48,
+  SizeX=1, SizeY=1, OrY=1}]`. `Material 333` is the pseudo-object `DismantleUtility` (`332` is
+  `DismantleObject`). The host turns it into a `WorkQueue` entry (`Type='InstallObject'`,
+  `ObjType='DismantleUt...'`, packet 66387) that a workman carries out. The old "none known"
+  notes (this file, "Dismantling / removing") tried material 243/0/-1 and Types `Utilities` /
+  `DismantleUtility`, never `Objects` + 333. The bot sends the same job from the bot account:
+  stray cable (3,3) vanished within 15 s at game speed 10, and the six cells (22,35/37/39/43/45/47)
+  vanished too. New: `ctl dismantle X Y [W H] [--objects]`, tool `dismantle` in `src/bot/build.py`.
+  `ctl demolish` (flooring, material 2) does **not** remove cables (tested on the same stray cell).
+- **Hall grid fix.** Cutting the raw trunk's contact (22,y) on the light rows y=35/37/39/43/45/47 and
+  adding an AC spine `ctl wire 42 35 42 47` (touches the row ends at x=41 and the Transformer's
+  output row y=41) made one AC network of 142 cells with 20 lights, 0 unpowered; `problems` fell
+  from 38 to 27. Remaining: the lights of the outer rooms and the kitchen's Cooker/Fridge.
+- **`WireDataRequested` (94, no arguments).** A real client with the electricity overlay open
+  sends it about every 0.35 s (1025 requests from actor 2 in one capture). The sender
+  (`0x1403CA130`) sets a flag at `world+408 +216` after sending, so it asks once until the
+  flag is cleared. No reply with its own code appears (the proxy labels the relayed Photon event
+  `UNKNOWN[94]`; it is the request itself, with `ActorNr` and `Event 94 (WireDataRequested)`),
+  and the bot's own request changed no `Powered` flag. What the host does with it is not found yet.
+- **Local server:** console command `capacity [N]` shows or sets the players per room (default 4,
+  1-16), also on existing rooms.
+
+- **Linking the export meter is an RPC, not a cable** (user's client, packets 103693/103712):
+  `WiredObjectConnect` (92) `ObjectId(uId 487920, index 165)` (the PowerExportMeter),
+  `ObjectId(uId 324697, index 105)` (the Transformer). Afterwards the save shows on the Transformer
+  `linkedToPEM: True` (net key `lnkpem`), on the meter `LinkedTransformer.i/.u` = the Transformer,
+  `totalSellablePower: 1000` and `/Connections {Size 1, [i 0] {To.i, To.u, Triggered False,
+  TimeIndex 0.0}}`. A bot sends it with `ctl send WiredObjectConnect <meter> <transformer>`.
+  The meter placed by the bot at (28,43) has `Pos` (29,44), i.e. `place X Y` anchors the 2x2
+  footprint's top-left cell and the save reports the centre.
+- **Bot disconnect / reconnect (user's request).** `ctl send WiredObjectClear 487920,165` removed
+  the meter's `/Connections` entry within 3 s but left `LinkedTransformer.i/.u`,
+  `totalSellablePower 1000` and the Transformer's `linkedToPEM: True` unchanged;
+  `ctl send WiredObjectConnect 487920,165 324697,105` brought `/Connections` back identically.
+  So the bot can do both from a second client; `/Connections` is the wire list, `LinkedTransformer`
+  / `linkedToPEM` a cached link flag that the clear does not reset.
+  `target_ExportPower1` read `Completed` soon after the user's connect (ExportPower2/3, PassReform,
+  ChargeBattery still `InProgress`; `totalBatterysCharged` 12).
+
+## SUPER FUCKING EXCITING: fully agentic Bureaucracy completion (MKS2 live, 2026-10-10)
+
+The user reports a major breakthrough: a Haiku 5.5 agent, on its own bot account (`--name Haiku`,
+control port 8766, capture `captures/bot-goal/bureaucracy.sqlite`), is completing the Bureaucracy
+tab of MKS2 by itself, driven only by `src/bot/PLAYING.md` and the `ctl` commands. This entry is
+the marker; the agent's own report (what it hired, built and researched, and the values it found)
+goes below when it finishes. Not yet verified by me: which researches are done.
+
+## `WireDataRequested` (94): the host adds `wirec`/`wirei` to `ObjectData` (Claude work)
+
+IDA (`../ida-work/db/pa.i64`) plus the real-client capture `captures/bot-goal/todos-10-10-2026-17-13.sqlite`.
+
+- **Registration.** `0x1403C11D0` registers `WireDataRequested` with `sub_1403CFFC0(a1+9528, 94, ...)`
+  and the handler `0x1403CA200`. The handler (on whoever receives it, no sender check) only does
+  `world->+408->byte[+216] = 1`. The sender `0x1403CA130` sets the same byte after sending.
+  So byte `+216` is a "wire data wanted" flag of the electricity/object manager.
+- **Reply.** No RPC of its own. The host's server tick `0x1403CD1F0` (profiler label `ServerTick`)
+  builds the `ObjectData` `DirectoryData` and calls virtual slot `+280` of every object
+  (`0x14078A410` for wired classes). That one returns true, and writes two extra children, whenever
+  the flag is set: `wirec {Size N, [i k] {To.i, To.u, Triggered, TimeIndex, Via {Size, [i]..}}}`
+  (outgoing connections, the `WiredObjectConnect` links; same as `/Connections` in the save) and
+  `wirei {Size N, [i k] {Id.i, Id.u}}` (objects wired into it). After the `ObjectData` is built the
+  host clears the flag (`...+216 = 0` at the end of `0x1403CD1F0`). The client's receiver
+  (`0x1403CE260`, "ObjectData" branch) calls slot `+272` (`0x14078A520`, reads `wirec`/`wirei`) on
+  each object and clears its own flag, so it asks again: one request per reply, about every 0.35 s.
+- **Capture.** In 17-13 the first `ObjectData` after a request comes about 0.24 s later but the
+  `wirec` appears in the third one (about 0.9 s after the request, i.e. the next full tick that
+  carries the forced objects). 2057 host->client `ObjectData` carry `wirec`, always only for object
+  165 (the PowerExportMeter): `wirec {Size 0}` before the link, `{Size 1, [i 0] {To.i 105,
+  To.u 324697, Triggered False, TimeIndex 0}}` after it. Transformers, lights and cables never
+  appear: this is the link list of "wired objects" (the PEM family), not a per-cell power view. Power
+  state stays in `Powered`/`Capacity`/... of `Save Objects`; cables in `Save Electricity`.
+- **Bot.** `src/bot/wiredata.py` (`request`, `wire_data`, `parse_objects`, `connected_pairs`),
+  `tests/test_wiredata.py`. Suggested `ctl wires [--request]` printing `wire_data(state)`.
+- **Not confirmed.** The live test was impossible: room MKS2 answered `Game full (code 32765)`
+  (the Claude bot and the user's client occupy the slots), so no with/without diff against the
+  live host. Which classes besides the PowerExportMeter use slot `0x14078A410` (about 20 vtables
+  share it) and the meaning of the `Via` elements (`0x14074EE10`) are unread. Wrong turn: the first
+  assumption was a reply with its own RPC code (checked `PowerCellModified` 17 etc.); there is none.
+
+### MKS2 AC backbone, all buildings powered (hand-laid, `ctl wire` + `ctl dismantle`)
+
+Result: 54 of 54 Lights, the Fridge, the Cooker, the Transformer and the export meter read
+`Powered`; `problems` lists only the HoldingCell canteen message. One AC network of 478 cells.
+Layout, from the hall spine (x=42, y35-47):
+- south: x=42 y48-73, then y=73 west to x=20, stub (20,72) up to the Door at (20,71) (lights in the
+  14-27 x 63-71 and 30-36 x 66-72 buildings came on);
+- west: y=50 from x=42 to x=6, then (6,49)-(6,48) through the wall cell beside H's doors;
+- east: y=50 to x=77, x=77 north to y=2; feeder row y=22 (x=58-77) under the three kitchen
+  buildings with branches x=58, x=66 (y=16-22) and x=76 (y=17-22, joins the Cooker/Fridge stub);
+- building E (58-71 x 27-36): its inner cable x=62 was on the raw farm row (y=26) through (62,26),
+  (62,27), both dismantled; fed from x=62 y=37-50 and rows y=30 / y=33 (x=62-70, over the inner wall);
+- north: row y=2 from x=77 to x=8, drops x=48 (y=2-8), x=17 (y=2-7), x=8 (y=2-7).
+Rules confirmed: a cable may sit on a wall cell, so a feeder enters a building through the wall
+beside a door (a door cell cannot hold a cable); a light is powered by a cable in the same room or
+a few cells away with no wall between; lights in an inner room need their own row. Workmen took
+about 1.5 min at speed 10 per batch of eight lines, and one cell (65,2) arrived a minute after the
+rest. The raw network still shows 2 lights touching it (the hall lights nearest the x=21 trunk),
+both also on AC and powered.
+
+### Bureaucracy completed by the agent (Haiku 5.5; I verified the result)
+
+`ctl state Save Research` after the run: every entry (42 researches plus the `None` placeholder)
+has `Progress 1.0`; the balance stayed near 80 million. What the agent did: hired a Chief, a Foreman
+and a Lawyer; the Chief took the empty Office (room 4), two new 6x6 offices at the top left (rooms
+10 and 11, StaffDoor on the bottom edge, desk, chair, filing cabinet) took the Lawyer and the
+Foreman; game speed 10; every research set desired. Each staff member works one research at a
+time, and the Lawyer's chain was the slowest. Values worth keeping:
+- `BeginResearch` charges money but `Desired` stays false; `ToggleResearchDesired` then sets it,
+  and `Desired` reads true only after `ctl refresh` (the flag lags; confirm before toggling again).
+- `ToggleResearchDesired` on a finished research turns `Desired` off (harmless).
+- The `BeginResearch` choice list shows only the first 35 values; later researches work by their
+  index in `Save Research` order (Orderly 37, Farming 38, StaffVetting 41, CCTVImprovement 42).
+  `ctl research` and the action choices should list all 42 (to do).
+- Repeating alert "Chief: Our Guards are outnumbered" (3 Guards for the prison).
+
+- **Caveat (user):** the research indices 37-41 beyond the base game's list (Orderly, Farming, StaffVetting,
+  CCTVImprovement...) are probably from the DLCs / plugins loaded in this install. Keep them, but treat
+  them, and other ids that do not match the base game's data files, as install-specific; this may not be
+  the only such anomaly (object, material and program ids can differ between installs too).
+
+### `WireDataRequested` live test (my bot, `captures/bot-goal/grid2.sqlite`, Claude Sonnet 5.5)
+
+Done in a room with a free slot, against DHost. Two requests from the bot, each followed by one
+host `ObjectData` that carries `wirec` / `wirei` (nothing else in the whole capture does):
+
+| Request | `wirec` arrives | Content |
+| ------- | --------------- | ------- |
+| #450 18:15:54.914 | #465 18:15:55.865 (0.95 s) | object 165 `{sablpwr=1216}`, `wirec {Size=1} [i 0] {To.i=105, To.u=324697, Triggered=False, TimeIndex=0}`, `wirei {Size=0}` |
+| #5361 18:20:14.402 | #5374 18:20:15.353 (0.95 s) | the same |
+
+So the host answers once per request in its next `ObjectData` tick (about 0.95 s here), and without a
+request no `wirec` is sent. The flag is global to the host (a real client's requests make every
+client receive `wirec`), so the earlier capture of the real client shows it constantly. `ctl wires
+--request` returns the same link. Also decoded: **`sablpwr` = `totalSellablePower`** of the
+PowerExportMeter (1000 / 52 / 1216 in different reads; it is the energy stored and sellable).
+
+### Finance tab: the `PrisonerWageChanged` swarm (user capture, packets 168167-169470)
+
+Opening the Finance report tab made the client send **611** `PrisonerWageChanged` (116) to the host
+(and the proxy relayed 611 back from actor 2): 13 distinct first arguments, each exactly 47 times, all
+with the float `0.501`. The int is a **room type id** (`ROOM_TYPES`), not a prisoner: 8 Kitchen,
+15 Workshop, 21 Laundry, 23 CleaningCupboard, 27 Library, 28 Forestry, 35 MailRoom, 36 Shop,
+45 VegetableAllotment, 46 FruitOrchard, 47 FarmingField, 50 Restaurant, 52 Bakery: the rooms where
+prisoners work. The float is the wage rate (0..1) kept in `Save Finance` as `PrisonerWageRate_<RoomType>`
+(62 entries; 0.5 default, Kitchen 0.50099998 after this). The tab re-sends every job room's rate
+(about once per frame of a slider drag), so a single wage change is one packet and the swarm is a UI
+artefact. The older `category?, wage` argument names were wrong. Now: `events.format_event` prints
+`room=Kitchen (8), rate=0.501`, and `ctl send PrisonerWageChanged Kitchen 0.6` takes the room name.
+The Coverage and Valuation tabs sent no RPC at all (only 2 `EntityUpdateRequest` in the whole window), so
+those reports are built client-side from synced data (`Save CoveragePlan`, `StatsTracker`, `Finance`);
+there is no report request to send. Other keys met on the way: `Save Objectives` `PowerExportCap`
+(3 after the export goals), `FarmingResearchedTime`; `totalPowerSold`, `totalBatterysCharged` in
+`Save Electricity`; ObjectData `sablpwr` (export meter `totalSellablePower`).
+The in-game "Todo" list (2 items, 1 completed) is in no packet or save section I could find (search for
+`todo`, `checklist` in every payload of the capture: 0 hits), so it is probably client-local.
+
+## `TransactionAdded` (118) and `TransactionAppended` (119): the ledger (Claude Haiku 5.5 work)
+
+Question: what does the finance ledger event mean, what are its arguments, and why
+does the proxy print `Event:UNKNOWN[118]`? Evidence: every 118/119 in `captures/*.sqlite`
+and `captures/bot-goal/*.sqlite` (31 files, about 5,400 entries: about 4,750 x 118 and 620 x 119;
+about 10 are our own injected test packets). Live file read-only:
+`captures/bot-goal/todos-10-10-2026-17-13.sqlite`.
+
+### Wire shape
+
+`[amount, key, int, text]` (`rpc_table`, `int, string, signed char, string`). In every captured
+entry the third argument is int `0` and the fourth is int `0` (the game's empty string). Nonzero
+`text` only occurs in our own injected packets (`'""'`, see the test keys below). So the int and
+text slots are **not explained by any capture** (see "Unconfirmed").
+
+Both 118 and 119 have the same shape. Every captured 118 and 119 reached us as `server -> client`
+(relayed by the server from the host); in the todos file the sender shows as `ActorNr=1`.
+
+### Key table (game traffic only; counts are 118 + 119, real packets)
+
+| Key | Meaning | Sign | Amounts seen (example) |
+| --- | ------- | ---- | ---------------------- |
+| `finance_cost_cashflow` | running cash flow, about one per wall-clock minute in the todos capture (17:16:03, 17:17:03, ...) | negative | `-62` (808 in the 9 files that have it, 382 in basic-detention-centre), `-87`, `-54`, `-41`; `+35` once at game start (run1/2) |
+| `finance_cost_foundations` | concrete foundations, charged once the blueprint is built | negative | `-1050` ... `-10040` (= the blueprint's cost, see 7.82 in the table above) |
+| `finance_cost_prisonerintake` | fee for an arriving prisoner | positive | `300` ... `3600` (`800` in the earlier note) |
+| `finance_cost_grantadvance` | advance paid on accepting a grant | positive | `2500`, `5000`, `20000` (Grant_bootstraps) |
+| `finance_cost_grantcompletion` | payment on completing a grant | positive | `5000`, `10000` |
+| `finance_cost_equipbodyarmour` | body armour issued to staff (name only) | negative | `-100` |
+| `object_<Type>` | price of one placed object, paid when placed | negative | `object_Light -30`, `object_Door -50`, `object_StaffDoor -100`, `object_Battery -500`, `object_PowerExportMeter -1500`, `object_ElectricalCable -10 ... -440` (cable run, one per tile), `object_WindTurbine -2000`, `object_Lawyer -5000` |
+| `research_<Name>` | research project cost | negative | `research_Legal -5000`, `research_Cctv -2000`, `research_Security -500` |
+| `parole_fine` | parole fine | negative | `-5000` |
+| `reform_reward` | reward for a reformed prisoner | positive | `+1000` |
+| `d11_powerexportmeter_sell_desc` | sale line for a power export meter (its name is a description key) | positive | `500` ... `3000` |
+| `interface_action_snackbought` | snack bought (name only) | positive | `+2` |
+| `finance_cost_grantfine`, `_grantcancellation`, `_grantrefund`, `finance_cost_prisonsale` | in the binary (`sub_140300860`, `sub_140265DD0`), never seen in a capture | ? | ? |
+| `MONEY`, `4`, `"Money"` | not game keys: our own injected test packets (`/cash`, bot money tests) | ? | `+500`, `+5000` (about 10 entries) |
+
+Also amounts of `+1000000` on `finance_cost_grantadvance` and `finance_cost_cashflow`: the journal's
+money-cheat tests (dummy game), injected by us and relayed by the server, not game traffic. The ledger parser (`src/protocol/ledger.py`) classifies them as `unknown` with the description
+"our own injected test entry" when the key is one of the three test names.
+
+Consequence for an earlier note: the journal's `finance_cost_cashflow` = "one-off" item (the
+`+35` at game start, run1/2) is wrong as a general description. It is a periodic running cost (`-62`,
+about once a minute, in the todos capture), with the `+35` as a single start-of-game entry.
+
+### Balance: what the `Finance` snapshot shows
+
+`Finance` (`DirectoryData` 9, system `Finance`) is a tree of fields (`format_tree` prints
+them in `{...}`):
+
+- `v.6` = bank balance. `World.Balance` (float) is the same number in the `World` snapshot.
+- `tr.b` = the balance the ledger last saw (sent before `v.6` in the cashflow sequence).
+- `tr.tI`, `tr.tO`, `tr.tOI`, `tr.tOO` = ledger totals (in / out), not decoded individually.
+- `tr.v.<n>` (0 to 27) and `v.<n>` = per-category totals. `n` is a category index whose table
+  is not in the captures. Single-entry attribution: `reform_reward` moved `tr.v.24`, and
+  `d11_powerexportmeter_sell_desc` moved `tr.v.22` once each; the rest is noisy because `v.6` moves
+  with every entry.
+- Snapshots are sparse: a `Finance` packet sends only the fields that changed.
+
+Measured in `todos-10-10-2026-17-13.sqlite` and `basic-detention-centre.sqlite` (the balance drop from
+the last `v.6` before a `finance_cost_cashflow` to the next, against the 118 amount):
+
+| file | cashflow amount | balance drop | extra over `\|amount\|` |
+| ---- | --------------- | ------------ | ------------------------ |
+| todos (17:16) | `-62` | 64 | `+2` (73 cases), `+66` once after an unrelated change |
+| basic-detention-centre | `-62` | 64 | `+2` (380 cases) |
+| basic-detention-centre | `-54` | 56 | `+2` (6) |
+| todos | `-87` | 88 | `+1` (392) |
+
+So a cashflow entry moves the balance by `amount - 2` (or `amount - 1` for -87) and the extra is
+constant per cashflow value, not per event. Not explained: the 118 amount is an int, so a float
+rounding cannot account for a 2-unit gap in one direction only. Unconfirmed: a second, ledger-less
+charge of 1 or 2 dollars that goes into `v.6` but not into a 118, or the ledger amount being
+truncated. The +35 at game start in run1/2 was exact (`tr.b + 35 = v.6`), so the gap is specific to
+negative cashflow or to the running cost.
+
+Foundations: `finance_cost_foundations` -5280 with `v.6` 30390 -> 25110 (the 8.02 row of the
+foundations table above) matches exactly. The object purchases were not checked against the balance
+drop in this pass.
+
+### `TransactionAppended` (119)
+
+Same shape. For some keys it is about 1.3 to 2.3 times as frequent (119 `object_ElectricalCable` 192 vs
+118 85; `object_Light` 62 vs 47; `finance_cost_prisonerintake` 96 vs 41), so 119 is **not** a copy of 118. Hypothesis, not
+confirmed: 118 adds a new ledger row, 119 appends a row to an existing group (e.g. several cables in
+one order). `finance_cost_prisonerintake` and `object_*` are the bulk of 119.
+
+### Why the proxy shows `Event:UNKNOWN[118]`
+
+Nothing in the repo prints it. It comes from pyPhotonRealtime's `get_operation_name`
+(`protocol/enum_lookups.py`, `_get_x_name` returns `UNKNOWN[<code>]` when the code is not in the
+table). For an event packet the payload's `operation_code` is the **game's event code**, so the library
+looks 118 up in `OperationCode` and fails. The events table (`EventCode`, Photon's system codes: 223-230,
+250, 251, 253-255) also lacks 9, 13 and 118.
+
+Where it shows:
+
+- `log_lines` (`src/protocol/events.py`), the expanded proxy detail: `Command: Event`, then
+  `Operation: UNKNOWN[118]` (from `packet.log()`), then the parsed `Event 118 (TransactionAdded)`.
+- `Packet.name` (`src/capture/reader.py`), used by `capture tail --raw` and the undecodable-packet
+  lines: `Event: UNKNOWN[118]`.
+- Not in the compact line: `compact_lines` drops the header for events
+  (`ActorNr=1 Event 118 TransactionAdded finance_cost_cashflow -62`), which is correct.
+- `packet_label` (the proxy's collapsed line and its filters) prints `118:TransactionAdded`. The op
+  part is the numeric event code, not `RaiseEvent`/`Event`, because `OperationCode(118)` fails and the
+  code is printed as text. The docstring's `RaiseEvent:SystemState:World` form is therefore not what
+  server-side events produce; filters must use `118:TransactionAdded` or the alias `Cashflow`.
+
+Suggested change (not made; `events.py` belongs to another agent): in `log_lines`, after
+`lines = packet.log()`, when `event is not None`, rewrite the operation line:
+
+```python
+op = f"Operation: {rpc_name(event[0])}"
+lines = [op if line.startswith("Operation: UNKNOWN[") else line for line in lines]
+```
+
+and in `src/capture/reader.py` (`Packet.name`), for `is_event` use `rpc_name(self.code)` instead of
+`get_event_name` (keeps the numeric code for unknown events). Also consider making `packet_label` use
+`Event`/`RaiseEvent` for server events so that filters are uniform.
+
+### IDA (`../ida-work/db/pa.i64`, `py -3.11`, scripts in `C:\Users\mkupe\scratch\fin`)
+
+- Ledger key strings: `finance_cost_cashflow` (refs `sub_1402FC8F0`, a 4.5 KB cost calculator called
+  from `sub_1402FB490`, the wage/report hint path); `finance_cost_grantfine` /
+  `_grantcancellation` / `_grantrefund` (`sub_140300860`); `finance_cost_prisonsale`
+  (`sub_140265DD0`); `finance_cost_cashflow` is also referenced from `sub_14059F3E0` (1.2 KB, a
+  per-tick routine that reads a time counter from the game state: a guess that it is the running
+  cost). The `object_<Type>` and `research_<Name>` key strings appear as lookups; the builder that
+  joins the prefix and the object or research name was not located.
+- `TransactionAdded` string: no hit in the string table, so the RPC name is not stored as text.
+  The registrar `sub_1403C11D0` has no literal 118 in its decompile (713 lines), so the RPC table
+  index is not a literal there. The receiver of 118 is **not found** (not identified, with the
+  name strings absent).
+- Result for the int and text slots: not determined. Both IDA attempts ended there.
+
+### Mistakes log (this section)
+
+- Decoded the keys from hex in the first pass and got `object_...` as hex, then decode_args
+  returned `bytes` (not `str`), so a `str` check was silently false. Always decode keys with
+  `.decode()` before grouping.
+- Assumed `finance_cost_cashflow` was a one-off item because the first four samples were `+35`. The
+  todos capture shows about 4,000 of them, all negative, so the description above is the corrected one.
+- Hand-built test bytes: the first draft had the wrong length for `object_Ingredients` (17 vs 18) and
+  the wrong amount tag. Caught on re-reading before the first run. The tests now use captured bytes
+  for the cashflow and Light entries, and a hand-built one only for text in the fourth slot.
+- The Finance balance check counted only one snapshot after each event; the balance moves across two
+  snapshots (`tr.b` then `v.6`), so the first attribution pass undercounted. Reading the two snapshots
+  together gave the consistent `|amount| + 2` gap.
+
+### Unconfirmed
+
+- The meaning of the int (3rd) and text (4th) slots. Always 0 in game traffic; no IDA hit for the
+  receiver. A capture with a non-zero value would settle it.
+- The `v.6` gap of `+2` (or `+1`) per negative cashflow.
+- The `tr.v.<n>` category table (which `n` is which key).
+- Whether 119 is an append to a group (hypothesis).
+- The 118 receiver and any balance check the host makes with it (IDA did not find it).
+
+### Files
+
+- `src/protocol/ledger.py` (new): `parse_entry`, `classify`, `group_by_category`, `Entry`, the
+  key descriptions. `tests/test_ledger.py` (new, 27 tests; real payload bytes from the todos capture).
+  Parses every captured 118/119 event payload without an error (checked over the 31 capture files).
+
+## `Finance` short keys `tr.b`, `v.<n>` (Claude Haiku 5.5 work)
+
+Source: the bot-goal capture `todos-10-10-2026-17-13.sqlite` (the `DirectoryData:Finance` stream, 2248 snapshot lines, and the 118 ledger lines), the live save section `Save Finance` (`ctl state`, read-only), and IDA on `Prison Architect64.exe` (idalib, `py -3.11`). The decoded names are in `src/protocol/net_keys.py` (`KEYS["Finance"]`).
+
+### Where the code is (IDA)
+
+| Address | What |
+|---|---|
+| `0x14059CED0` | `FinanceSystem` constructor. Registers the streamed fields in a DataRegistry at `this+384`: `sp`, `bl`, `bcr`, `o`, `spm` (same offsets as save fields), `v.%i` (i = 0..11, ints at `this+52`), `pwr_<Room>` (floats), and the `tr` sub-record at `this+248`. |
+| `0x1405A0F30` | `FinanceSystem::Read` (save). Reads `Balance` (float `this+48`), `LastDay`, `LastHour`, `BankLoan`, `BankCreditRating`, `SalePrice`, `Ownership`, `WardensCut`, `StaffPayModifier`, `StartingFunds`, `PrisonerWageRate_<Room>`, the `*Yesterday` totals, then the `tr` block. |
+| `0x1405A22A0` | Registers the `tr` record: 5 scalars at `this+360..376`, then `"%s.v.%i"` with prefix `tr`, i = 0..27 (`tr.v.0`..`tr.v.27`, ints at `this+248+4i`). |
+| `0x1405A2580` | Category table: `finances_category_<name>` strings, 28 entries, 32-byte slots at `qword_140D2AEA0`, index = `n` in `tr.v.<n>` (order below). |
+| `0x14059EF30` | Transaction add: `this+48` (Balance) += amount, then ledger append (`0x1405A0060`, into a list at `this+232`), then the ledger event. |
+| `0x14059F3E0` | Per-tick cashflow: `((tI - tO) + (tOI - tOO)) / 24` per hour, charged as `finance_cost_cashflow`. |
+
+### Keys
+
+| Key | Meaning | Unit | Evidence |
+|---|---|---|---|
+| `v.6` | Balance (bank) | dollars, int | equals save `Balance` (80066720) and `World.Balance`. |
+| `tr.b` | balance before the latest transaction | dollars, int | `tr.b - v.6 = 64` after every cashflow tick in the replay. Each tick's snapshot shows `tr.b` (old) then `v.6` (new). |
+| `tr.tI` | total income this period | dollars | save value 2000 (= `tr.v.0`); used by the cashflow formula (IDA). Not seen in the stream. |
+| `tr.tO` | total outgoing this period, without reform programs | dollars, positive | save 4103 = sum of negative `tr.v.*` (4603) minus `tr.v.16` (500); stream: a `tr.v.21` change of -3 to -6 moved `tO` by +3. |
+| `tr.tOI` | other income | dollars | equals `tr.v.22` (PowerExport) in every sample: 2997, 500, 1000, 2500. |
+| `tr.tOO` | other outgoing | dollars, positive | equals `-tr.v.16` (ReformProgs): 250/-250, 500/-500. |
+| `tv` | target value, probably the victory money target | dollars, int | 80110000 and 80120000 in this capture (guess; the name is all the evidence). |
+| `sp`, `bl`, `bcr`, `o`, `spm` | save fields `SalePrice`, `BankLoan`, `BankCreditRating`, `Ownership`, `StaffPayModifier` | int, int, float, int, float | same offset in the constructor and `Read`. |
+| `pwr_<Room>` | `PrisonerWageRate_<Room>` | float, 0.5 default | save and stream values match (0.501 for some rooms). |
+| `tr.v.<n>` | per-period total of category `n` | dollars, signed (negative = out) | see the table below. |
+| `v.<n>` (n = 0..11, except 6) | 12-slot int array at `this+52`, not decoded | dollars | `v.4` moves by the price of each staff hire: 277000 -> 18500 at the period reset, then +1000 (`object_Chief`), +1000 (`object_Foreman`), +5000 (`object_Lawyer`). `v.1`, `v.2`, `v.3` move in steps of 5-70 with each cashflow tick, and `v.2` jumped by 5000 when `object_WaterPumpStation` (-5000) was bought. Not decoded. |
+
+The 28 categories (`tr.v.<n>`, from the table at `0x1405A2580`):
+
+0 FederalGrant, 1 MinSecPrisoners, 2 MedSecPrisoners, 3 MaxSecPrisoners, 4 Prisoners, 5 PrisonerBonus, 6 Workmen, 7 Guards, 8 Admin, 9 Staff, 10 Food, 11 StaffFood, 12 Electricity, 13 Workshops, 14 Upkeep, 15 LoanInterest, 16 ReformProgs, 17 PrisonerWages, 18 NoIncident, 19 Exports, 20 ShopRevenue, 21 CorpTax, 22 PowerExport, 23 CivilianCommerce, 24 Reformed, 25 Reoffended, 26 CoveragePlans, 27 ZombiePayments.
+
+Checks: `tr.v.22 = 2997` = save `DailyPowerExports` (2997.13); `tr.v.7 = -22950` (Guards) is the big outgoing item in one period; `tr.v.8` (Admin) went -600 -> -800 -> -1000 as the chiefs were hired, +200 per hire, so the admin slot looks like a salary total, not the price.
+
+### Evidence for the cashflow
+
+- Every minute the host sends `TransactionAdded finance_cost_cashflow -62` (or `-87`, 1058 entries in the replay) and the balance drops by 64 (or 88). The gap is float32 rounding, not a fee: the balance is a float (`this+48`), and near 8e7 a float32 steps in units of 8. All 2624 balance values above 2^26 in the replay (`tr.b` and `v.6`) are multiples of 8, and 62 and 87 round to 64 and 88 (nearest multiple of 8). So the `tr.b - v.6` gap is 64 - 62 = 2 or 88 - 87 = 1 by rounding, not a second charge.
+
+### Wrong turns
+
+- `Balance` is the float at `this+48`, not `v.6`. The stream's `v.6` is a separate int copy at `this+76`; equal in every sample, so it is safe to call it the balance.
+- IDA's default string search (minimum length 5) misses the 2 to 3 letter keys (`tI`, `tO`, `tOI`, `tOO`, `b`). The scalar names are inferred from the offsets and the `tr.tI / tO` uses in `0x14059F3E0`, not from a string.
+- `tr.v.<n>` is not indexed by the ledger keys. `object_Chief` is not a `tr.v` category at all; the staff-hire price shows up in the 12-slot `v.4`.
+- `1402FC8F0` has the `finances_*` strings, but it is the UI panel, not the writer. Its labels (`finances_income`, `finances_total`, `finances_other`) are the names the panel shows, not the `v.<n>` slots.
+
+### Unknown
+
+- Names of `v.0`..`v.5`, `v.7`..`v.11`. The writer of the 12-slot array at `this+52` is not found (no `this+52` writes in the sync function `0x14059D770`, which is too big to read in full).
+- Which ledger key feeds which `tr.v.<n>` (apart from the cashflow and `tr.v.22`/`tr.v.16` pairs).
+- The meaning of `tv`, and the names of the 12 `v.<n>` slots.
+- Whether `tr.tI` and `tr.tO` reset per hour or per day (`LastHour` and `LastDay` are the save's clock fields).
+
+### Water: pump, pipes, and what `WireDataRequested` does not return (MKS2 live, Claude Sonnet 5.5 work)
+
+- **`ObjectRemoved` from a client deletes an object on the host.** The user's hint ("alias the pump"):
+  `ctl name set Pump 183`, then `ctl send ObjectRemoved Pump` (RPC 14, `ObjectId`, bytes
+  `04 1e e3 09 02 b7`) and the next full save had no `WaterPumpStation` (`DismantleObject`
+  (Material 332) jobs from a client at the pump's centre cell and over its 3x3 footprint were
+  ignored: no job, no WorkQueue entry). So the host's handler removes whatever object it is told to,
+  without the dismantle work or a refund check. Use with care (the object is simply gone).
+- **A pump powers on when a cable touches it** (`Powered True` right after it was built beside the AC
+  row) and is 3x3 (anchor = top left cell: `place 62 23` gave `Pos` 63.5,24.5). The first pump
+  (55.5,55.5) was in a bad spot (far from the buildings); the new one sits at (62,23) under the AC
+  feeder row y=22 and the PipeLarge row y=22.
+- **A water appliance needs a pipe ON its own cell** (user): a pipe in a neighbouring cell does not
+  count (cables do reach neighbouring cells). Sink is 3x1 (any of its 3 cells), ShowerHead / Toilet 1x1.
+  Pipes run under walls. Layout used: PipeLarge x=56 (y=22-53) and y=22 (x=56-74), PipeSmall
+  branches ending on (56,17), (65,17)-(66,17) and (74,19).
+- **Bot:** `ctl network water` validates pipes (`network.WATER`: source `WaterPumpStation`, consumers
+  Toilet / Sink / ShowerHead / Sprinkler / Drain / LaundryMachine / Radiator, `adjacent=False`: a
+  consumer must stand on a pipe cell of a pumped network; the pump itself may touch the pipes).
+  Water has no short-circuit rule (unlike power), only `unfed` networks (appliances, no pump) and
+  appliances on no pumped pipe; `problems` in `ctl state` lists those as "no water". Footprints now
+  come from the game data (`src/bot/data/object_sizes.json`, `python -m src.bot.sizegen`), not a
+  hand table.
+- **`WireDataRequested` does not carry pipe data** (checked live after the request with the pump and
+  the piped appliances in place): only objects with a `WiredObjectConnect` link (the export meter,
+  index 165) get `wirec` / `wirei` in `ObjectData`; the pump (40) and the Toilet / ShowerHead / Sink
+  (125, 87, 100) have none. Pipes live in `Save Water` (cells `"x y"` with `PipeType`, 2 for the three
+  old cells; note two-part keys, cables have three) and are changed by `WaterCellModified` (18),
+  `WaterCellCleared` (19), `RPCWaterValveChanged` (20).
+- **Floors**: every material in `materials*.txt` is in the bot's table. Outdoor floors (`IndoorOutdoor 1`:
+  Grass 11, Gravel 16, PavingStone 10, Sand) lay on open ground (`flooring` jobs, Material = the id, as the
+  user's packets 206382 / 206529 show); `IndoorOutdoor 2` floors (WoodenFloor 34, BlueCarpet 43,
+  WhiteTiles 41, LimestoneFloor 39) were refused outdoors and laid fine on an indoor floor, so 2 means
+  indoor for materials.
+
+### Room planner and `ctl room` (Claude Sonnet 5.5 work)
+
+Goal from the user: one room of every type, each meeting its rules; bonus a minimum and a lavish
+version. New: `src/bot/rooms.py` (plan: interior size, door column, objects with top left anchors;
+wall-attached objects (`AttachToWall`: Bed, Toilet...) in the top row, others in rows with a free row
+between, last row and right column kept free as the corridor to the bottom-wall door), the object
+size table `src/bot/data/object_sizes.json` (`python -m src.bot.sizegen "<data dir>"`: Width, Height,
+`AttachToWall`, `IndoorOutdoor` of the 599 objects in `materials*.txt`), `ctl room plan|build` and
+`ctl issue`. Rules from `ROOM_RULES` (38 rooms) are met by construction; a test checks every room in
+both variants. Decisions: a Yard is a walled building (its own walls count as secure, journal above);
+Forestry (Outdoor), Deliveries / Exports / Garbage (1x3, no flags) and `None` / `ClearRooms` are
+zone-only; a walled room with no object requirement gets a 3x3 interior. First live test: `Cell` at
+(44,52): the 3x4 interior and walls were built, room 12 `Cell` appeared with no requirement problem; its
+Toilet then showed "no water" until a pipe is laid on it.
+Played by a Haiku 5.5 agent that files `ctl issue` entries for missing features (the maintainer fixes
+them). The first run failed to join ("Game full", code 32765, with 4 players: DHost, RealClient, the
+maintainer's bot and a stale session); the room had a free slot a minute later.
+
+### Land expansion: `LandPurchaseRequest` (87) (user capture 263101-263201; bot test)
+
+The user bought land downwards: client -> host `LandPurchaseRequest(int x=0, int y=80, int w=100, int h=40, bool False, bool True)` (packet 263101),
+the host answers with `LandPurchased` (10, no arguments, packet 263125, then to every client) and a `Finance`
+snapshot: the balance fell from 80066568 to 80046192, about 20400 for 4000 cells (about 5 per cell, plus the
+body-armour charge in the same window). The save then has `NumCellsY 120` (`NumCellsX` 100); `OriginW` /
+`OriginH` stay 100 x 80 (the starting land). The bot reproduced it with `ctl send LandPurchaseRequest 0 120 100
+10 false true`: `NumCellsY` 130 and the balance fell by 5088 (100 x 10 cells x 5.088). The two bools are
+unexplained (the client sent False, True). **The host sets the game speed to 1 after a purchase** (user), so a
+bot must send `GameSpeedChange 10` again (the room builder waits would otherwise crawl).
