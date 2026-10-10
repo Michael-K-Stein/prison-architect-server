@@ -19,9 +19,9 @@ from src.protocol import rpc
 OBJECTIVE_REMOVED = 21  # RPC code, ``ObjectiveRemoved(string, bool)``
 ACCEPT_GRANT = 47  # RPC codes, ``AcceptGrant(string)`` / ``CancelGrant(string)``
 CANCEL_GRANT = 48
-FIRST_GRANT = (
-    "bootstraps"  # objective ``Grant_bootstraps``, journal2 "Accepting the first grant"
-)
+FIRST_GRANT = "Grant_bootstraps"
+"""``AcceptGrant`` takes the grant's full objective name, ``Grant_`` included
+(journal2 "Grants by name")."""
 CEO_LETTER_OBJECTIVE = "ReadCeosLetter"  # captures/ad-hoc/read-ceo-letter.sqlite
 
 console = Console()
@@ -80,12 +80,12 @@ def _send_grant(ctx: Context, code: int, label: str, grant: str) -> None:
 
 
 def action_accept_grant(ctx: Context) -> None:
-    """Send ``AcceptGrant("bootstraps")``, the first grant."""
+    """Send ``AcceptGrant("Grant_bootstraps")``, the first grant."""
     _send_grant(ctx, ACCEPT_GRANT, "AcceptGrant", FIRST_GRANT)
 
 
 def action_cancel_grant(ctx: Context) -> None:
-    """Send ``CancelGrant("bootstraps")``."""
+    """Send ``CancelGrant("Grant_bootstraps")``."""
     _send_grant(ctx, CANCEL_GRANT, "CancelGrant", FIRST_GRANT)
 
 

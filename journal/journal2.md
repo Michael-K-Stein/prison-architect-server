@@ -1866,3 +1866,31 @@ earlier game accepted the same cable jobs. Causes not found yet: the location
 (near the south-west corner) or land ownership in this game, a rule after the
 bot re-joined as actor 4, or the host's reloads (every `ctl refresh` makes the
 host "prepare the save" again, which the agent suspected of wiping queued jobs).
+
+### Grants by name (MKS2)
+
+**`AcceptGrant` takes the grant's full objective name, `Grant_` prefix included.**
+`ctl send AcceptGrant Grant_GreenMachine` made `Grant_GreenMachine` `Completed` at once
+(its solar / wind / hybrid tasks were already met: 10/10/10) and the balance rose by
+9,464 (80,001,552 -> 80,011,016). The bare names the Haiku agent tried
+(`greenMachine`, `GreenMachine`, `greenmachine`, `administration`, `ecoFriendly`) and
+`bootstraps` do nothing (the host ignores an unknown objective name, `sent: true`
+only means the bot sent it). The earlier guess "the grant name is `bootstraps`"
+(journal "Accepting the first grant") was the objective `Grant_bootstraps` without
+its prefix.
+- The `ctl action AcceptGrant` choices only listed the live `target_*` entries
+  because they come from the game state; the full list is the game script
+  `data/grants.lua` (`Objective.CreateGrant(name, advance, completion)`, parents,
+  `SetPreRequisite`, `Require*` conditions) plus the DLC grants named in the
+  binary. `src/protocol/grants.py` is generated from both (29 grants:
+  bootstraps 20000/10000, Administration 5000/5000, FirstCellBlock, Health,
+  Bailout 50000/50000 for debt, Maintenance, Visitation, Basic/Enhanced/Advanced
+  Security, PrisonerWorkforce, EducationReformProgram 15000/40000, PrisonLabour,
+  FurnitureManufacturing, ReduceStaffStress, Short/LongTermInvestment,
+  NutritionResearch, DrugSearch, ContrabandSupply, CellBlock50-500, and the DLC
+  EcoFriendly, FirstInsaneCellBlock, GivingSomethingBack, GreenMachine, TrackerPilot).
+- The bot now lists them all as `AcceptGrant` choices (`Grant_x: Title`), accepts any
+  spelling (`greenmachine` -> `Grant_GreenMachine`, `target_*` kept) and `ctl names
+  grants` prints the table.
+- The Haiku test of "pick the easiest grant" found Green Machine on its own (compared
+  seven grants) but could not accept it because of the name; the fix above is that.

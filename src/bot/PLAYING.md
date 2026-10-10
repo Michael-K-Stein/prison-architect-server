@@ -118,3 +118,11 @@ pass the Solar Panel Development reform program, 10 of each green source,
 **no PowerStation running for 10 game days** (`ctl send ElectricalSwitch NAME off`;
 the prison must run on green sources), and 100 batteries fully charged. An
 object's index is reused after it is removed: check `current` in `ctl name list`.
+
+## Grants
+
+`ctl names grants` lists every grant (payments in `start`/`done`); `ctl send AcceptGrant NAME`
+takes the name in any spelling (`greenmachine`, `Grant_GreenMachine`). A grant whose tasks
+the prison already meets completes at once; read the tasks in `src/protocol/grants.py`
+(`GRANTS[...]['tasks']`) and compare with `ctl state`. Check `grants` in `ctl state` after
+accepting: an unknown name is ignored without an error.

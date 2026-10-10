@@ -216,8 +216,8 @@ def test_grant_actions_send_the_grant_name() -> None:
     actions.action_accept_grant(ctx)
     actions.action_cancel_grant(ctx)
     assert session.sent == [
-        (47, build(47, "bootstraps")),
-        (48, build(48, "bootstraps")),
+        (47, build(47, "Grant_bootstraps")),
+        (48, build(48, "Grant_bootstraps")),
     ]
 
 

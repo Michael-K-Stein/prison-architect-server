@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from src.protocol.grants import GRANTS, canonical
 from src.protocol.enums import RESEARCH, ROOM_TYPES, STAFF, VEHICLES, name_of
 from src.protocol.rpc import COMPONENTS, COMPOSITE_ARITY
 from src.protocol.rpc_table import RPCS
@@ -301,6 +302,10 @@ def parse_args(action: Action, values: list[Any], state: Any = None) -> list[Any
             f"{action.signature} takes {len(action.args)} arguments, got {len(values)}"
         )
     resolve = state.uid_of if state is not None else None
+    values = [
+        canonical(str(v)) if source(a) == "grant" and isinstance(v, str) else v
+        for a, v in zip(action.args, values)
+    ]
     return [
         _by_name(a, v, state)
         if _is_named(a, v, state)
@@ -401,13 +406,18 @@ def choices(arg: Arg, state: Any = None) -> list[Choice]:
             if r.get("uId") is not None
         ]
     if kind == "grant":
-        names = set(state.grants()) | {
-            n.removeprefix("Grant_") for n in state.objectives if n.startswith("Grant_")
-        }
-        return [Choice(n, n) for n in sorted(names)]
+        names = set(GRANTS) | set(state.grants())
+        names |= {n for n in state.objectives if n.startswith("Grant_")}
+        return [Choice(n, _grant_label(n)) for n in sorted(names)]
     if kind == "objective":
         return [Choice(n, n) for n in sorted(state.objectives)]
     return []
+
+
+def _grant_label(name: str) -> str:
+    """``Grant_GreenMachine`` -> ``Grant_GreenMachine: Green Machine (status)``."""
+    info = GRANTS.get(name)
+    return f"{name}: {info['title']}" if info and info.get("title") else name
 
 
 def _research_label(ident: int, progress: tuple[float, bool] | None) -> str:

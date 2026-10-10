@@ -31,6 +31,7 @@ from urllib import error, request
 from urllib.parse import parse_qs, unquote, urlsplit
 
 from src.bot import build, catalog
+from src.protocol.grants import GRANTS
 from src.protocol import enums, rpc
 
 log = logging.getLogger(__name__)
@@ -43,6 +44,10 @@ NAME_TABLES = {
     "rooms": enums.ROOMS,
     "vehicles": enums.VEHICLES,
     "intake": enums.INTAKE_TYPES,
+    "grants": {
+        i: f"{n}: {info['title'] or ''} start {info['start']} done {info['completion']}"
+        for i, (n, info) in enumerate(GRANTS.items())
+    },
 }
 """``/names/<table>``: the game's id -> name tables."""
 AREA_DEFAULTS = (("x", 0), ("y", 0), ("w", 10), ("h", 10))
