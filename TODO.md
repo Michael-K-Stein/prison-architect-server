@@ -12,6 +12,30 @@ finding in `journal/journal2.md`.
   recall that a host ignores `TransactionAdded` / `Finance` writes from clients (journal2), so
   only a client-side display may be possible.
 
+## Deferred from the MKS2 session (2026-10-10)
+
+Prioritised after the main tasks (room goal, PassReform, Needs report); each is a thread that was opened and
+parked:
+- **DLC gating** (user): offer a DLC object / room / research only when the current game supports it. The data
+  files tag them (`DLC PrisonWingPriviledges`, `SeaAirLand`, `FreeContentPack_1`, `VersionAdded`); find how a
+  game declares its DLCs (save keys, `Version`), then filter `ctl rules`, `ctl names`, `ctl room plan` and refuse
+  unavailable placements with a clear message.
+- **Tables from the `*_dlc` files** (audit): reform programs (33 programs, the game's index order changes with unlocked
+  research, so map by probing `StartReformProgram` + `Save Reform`), needs (33 names, Needs {Size=34} in
+  `EntityUpdate`), prefabs (54, the game's own room layouts: `prefabs*.txt`; a good source for designs and the
+  `Prefabs` job type). Objects, materials, research and rooms are complete.
+- **`ctl needs`** (the Psychologist's report): request `EntityUpdateRequest` for each prisoner and parse the
+  `NeedsUpdate` / `Needs` reply (needs prisoners; intake was reopened with FillCapacity).
+- **`ctl remove NAME|INDEX`**: a client's `ObjectRemoved` (14) deletes any object on the host (found with the pump);
+  wrap it with a confirmation, and a refund check.
+- **Verify high priority live** (`ctl priority`, Construction Type -11) once a queue exists; read `WorkQueue.HighPri`.
+- **Armoury door mismatch** reported by the player (planned x=9, built x=6): unconfirmed; check `rooms.stages` door x.
+- **Finance keys** `v.0`-`v.5`, `v.7`-`v.11`, `tv` still unnamed (journal2 "Finance short keys").
+- **`/cash` in the proxy terminal** does not work (see Bugs).
+- **The in-game Todo list** (2 items, 1 done) is in no packet or save section: probably client-local.
+- **Unknown ObjectData keys `p`, `v`, `o`**, **intake categories**, **layout optimization**, **power hall wiring** (solved
+  by hand, journal2): see the sections above.
+
 ## Bot
 
 - **Prisoner status and data.** Prisoners have names, ages, needs and reputations. Needs are
